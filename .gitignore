@@ -1,0 +1,9 @@
+# Ignore Individual Git Settings
+.git
+
+# Ignore Individual PyCharm Settings
+.idea
+/.idea/*
+
+/src/snu_module/DATA/
+/src/snu_module/results/
