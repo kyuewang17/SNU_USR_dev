@@ -29,14 +29,14 @@ topic_dict = {
         # RGB (color)
         "rgb": {
             "raw": "/osr/image_color",
-            "camera_info": "/osr/image_color_camerainfo",
+            "camera_info": "/camera/color/image_color_camerainfo",
         },
 
         # Depth (stereo)
         "depth": {
             "raw": "/osr/image_depth",
             "aligned": "/osr/image_aligned_depth",
-            "camera_info": "/osr/image_depth_camerainfo",
+            "camera_info": "/camera/depth/image_depth_camerainfo",
         },
     },
 }
@@ -106,12 +106,12 @@ class ros_embedder(object):
         # self.rgb_sub = \
         #     message_filters.Subscriber(topic_dict["d435i"]["rgb"]["raw"])
 
-        self.rgb_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
-        self.depth_sub = message_filters.Subscriber("/camera/aligned_depth_to_color/image_raw", Image)
+        self.rgb_sub = message_filters.Subscriber("/osr/image_color", Image)
+        self.depth_sub = message_filters.Subscriber("/osr/image_depth", Image)
 
         # Subscribe these independently
-        self.rgb_cam_params_sub = rospy.Subscriber("/osr/image_color_camerainfo", numpy_msg(CameraInfo), self.rgb_cam_params_callback)
-        self.depth_cam_params_sub = rospy.Subscriber("/osr/image_depth_camerainfo", numpy_msg(CameraInfo), self.depth_cam_params_callback)
+        self.rgb_cam_params_sub = rospy.Subscriber("/camera/color/image_color_camerainfo", numpy_msg(CameraInfo), self.rgb_cam_params_callback)
+        self.depth_cam_params_sub = rospy.Subscriber("/camera/depth/image_color_camerainfo", numpy_msg(CameraInfo), self.depth_cam_params_callback)
 
         # Approximate Time Synchronizer (slop ==> time window for synchronous subscribe)
         self.synchronous_sub_node_dict = {
@@ -119,7 +119,7 @@ class ros_embedder(object):
             "depth": self.depth_sub,
         }
         self.ats = message_filters.ApproximateTimeSynchronizer(
-                self.synchronous_sub_node_dict.values(), queue_size=1, slop=0.005, allow_headerless=False)
+                self.synchronous_sub_node_dict.values(), queue_size=1, slop=0.01, allow_headerless=False)
 
     # Image Message to OpenCV Image (Separate This from Callback Function)
     def imgmsg_to_cv2(self, img_msg, msg_encode_type):
@@ -232,7 +232,8 @@ class ros_embedder(object):
                 cv2.namedWindow(winname)
                 cv2.moveWindow(winname, self.imshow_window_x, self.imshow_window_y)
 
-                cv2.imshow(winname, bgr_frame)
+                # cv2.imshow(winname, bgr_frame)
+                cv2.imshow(winname, concat_frame)
                 cv2.waitKey(1)
             else:
                 # print("RGB Frame is None")

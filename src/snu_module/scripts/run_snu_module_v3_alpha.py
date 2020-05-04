@@ -71,14 +71,10 @@ import cv2
 import socket
 import datetime
 
-
-
-
 # Import SNU Algorithm Modules
 import module_detection as snu_det
 import module_tracking as snu_mmt
 import module_action as snu_acl
-
 
 ########### Switches ###########
 switches = {
