@@ -1,4 +1,4 @@
-### SNU Unmanned Surveillance Robot (USR) Project
+## SNU Unmanned Surveillance Robot (USR) Project
 
 ---
 #### Project Information
