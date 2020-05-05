@@ -47,7 +47,77 @@ def load_model(opts, is_default_device=True):
     return framework
 
 
-def detect(framework, imgStruct_dict, opts, is_default_device=True):
+def detect(framework, sync_data_dict, opts, is_default_device=True):
+    """
+    [MEMO]
+    -> Develop this code more~
+
+    """
+    # Select GPU Device for Detector Model
+    device = (0 if is_default_device is True else opts.detector.device)
+
+    # Get Color and Thermal Image Frame
+    """
+    Color (numpy array)
+    - shape: (h, w, 3)
+    - range: [0, 255]
+    - if there is no color image frame, "color_frame" is None
+    
+    Thermal (numpy array)
+    - shape: (h, w)
+    - range: [0, 255]
+    - if there is no thermal image frame, "thermal_frame" is None
+    """
+    color_frame = (sync_data_dict["color"].frame if "color" in sync_data_dict.keys() else None)
+    thermal_frame = (sync_data_dict["thermal"].frame if "thermal" in sync_data_dict.keys() else None)
+
+    # Get Color Frame Size
+    color_size = (color_frame.shape[0], color_frame.shape[1])
+    input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
+
+    if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
+        img_size = thermal_frame.shape[:2]
+        img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
+        img = torch.cat([img, img, img], dim=2)
+    elif (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
+        img_size = color_size
+        img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
+    else:
+        raise NotImplementedError
+
+    img = img.permute(2, 0, 1).unsqueeze(dim=0).float().cuda(device) / 255.0
+
+    # Feed-forward
+    _, result_dict = framework.forward({"img": img}, train=False)
+
+    # Get Result BBOX, Confidence, and Labels
+    boxes, confs, labels = result_dict["boxes_l"][0], result_dict["confs_l"][0], result_dict["labels_l"][0]
+
+    boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
+    boxes[:, [1, 3]] *= (float(img_size[0]) / float(input_size[0]))
+
+    # Copy Before Conversion
+    if opts.detector.sensor_dict["thermal"] is True:
+        thermal_boxes = boxes.cpu().numpy()
+    else:
+        thermal_boxes = None
+
+    # Get BBOX, Confidence, Labels
+    boxes, confs, labels = \
+        boxes.detach().cpu().numpy(), confs.detach().cpu().numpy(), labels.detach().cpu().numpy()
+
+    # Detection Results
+    det_results = np.concatenate([boxes, confs, labels], axis=1)
+
+    if opts.detector.sensor_dict["thermal"] is True:
+        return det_results, thermal_boxes
+    elif opts.detector.sensor_dict["color"] is True:
+        return det_results
+    else:
+        raise NotImplementedError
+
+
+def detect_old(framework, imgStruct_dict, opts, is_default_device=True):
     if is_default_device is True:
         device = 0
     else:
@@ -105,3 +175,14 @@ def detect(framework, imgStruct_dict, opts, is_default_device=True):
         return det_results, thermal_boxes
     else:
         return det_results
+
+
+def standalone_detector(detection_model):
+    pass
+
+
+if __name__ == "__main__":
+    # Load Model (framework)
+    detection_model = []
+
+    standalone_detector(detection_model)

@@ -46,7 +46,10 @@ def usr_object_detection(sync_data_dict, opts):
     # Activate Detector Module
     # TODO: by implementing above TODO, this also needs to be altered
     # TODO: Condition it w.r.t. "agent_type" in opts
-    dets = snu_det.detect()
+    dets = snu_det.detect(
+        framework=framework, sync_data_dict=detection_sensor_data,
+        opts=opts
+    )
     confs, labels = dets[:, 4:5], dets[:, 5:6]
     dets = dets[:, 0:4]
 
@@ -62,35 +65,33 @@ def usr_object_detection(sync_data_dict, opts):
 
     return detections, (DET_STOP_TIME-DET_START_TIME).total_seconds()
 
-    # return [], []
-
 
 # Unmanned Surveillance Robot Multiple Target Tracker
 def usr_multiple_target_tracking(sync_data_dict, fidx, tracklets, tracklet_cands, detections, opts):
-    # """
-    # NOTE: Keep thinking about how to accommodate maximum id of tracklets
-    #       (essential for giving new tracklet id)
-    # """
-    # # Start Time for Multiple Target Tracker
-    # TRK_START_TIME = datetime.datetime.now()
-    #
-    # # Parse-out Required Sensor Modalities
-    # tracking_sensor_data = {}
-    # for modal, modal_switch in opts.tracker.sensor_dict.items():
-    #     if modal_switch is True:
-    #         tracking_sensor_data[modal] = sync_data_dict[modal]
-    #
-    # # Activate Multiple Target Tracker Module
-    # # TODO: by implementing above TODO, this also needs to be altered
-    # tracklets, tracklet_cands = \
-    #     snu_trk.tracker()
-    #
-    # # Stop Time
-    # TRK_STOP_TIME = datetime.datetime.now()
-    #
-    # return tracklets, tracklet_cands, (TRK_STOP_TIME-TRK_START_TIME).total_seconds()
+    """
+    NOTE: Keep thinking about how to accommodate maximum id of tracklets
+          (essential for giving new tracklet id)
+    """
+    # Start Time for Multiple Target Tracker
+    TRK_START_TIME = datetime.datetime.now()
 
-    return [], [], []
+    # Parse-out Required Sensor Modalities
+    tracking_sensor_data = {}
+    for modal, modal_switch in opts.tracker.sensor_dict.items():
+        if modal_switch is True:
+            tracking_sensor_data[modal] = sync_data_dict[modal]
+
+    # Activate Multiple Target Tracker Module
+    # TODO: by implementing above TODO, this also needs to be altered
+    tracklets, tracklet_cands = \
+        snu_trk.tracker()
+
+    # Stop Time
+    TRK_STOP_TIME = datetime.datetime.now()
+
+    return tracklets, tracklet_cands, (TRK_STOP_TIME-TRK_START_TIME).total_seconds()
+
+    # return [], [], []
 
 
 # Unmanned Surveillance Robot Action Classifier
