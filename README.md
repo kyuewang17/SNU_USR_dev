@@ -94,10 +94,14 @@
                 - _run as same as ordinary pycharm projects_\
                 (debugging is also possible)
 
+    3. Script Information
+        > [ros_snu_module.py](src/snu_module/scripts4/run_snu_module.py)
+        >    - the main execution code
+        
+        > [options.py](src/snu_module/scripts4/options.py)
+        >    - option file for SNU USR integrated algorithm
 
-
-
-
+        - TBA
 
 
 
