@@ -41,7 +41,6 @@ SNU Integrated Module v3.0
         - opencv-python (download using pip)
         - empy (pip download)
         - yaml (download "pyyaml")
-        - cython (install via conda) : ????!?!?!?!?!
 
         - numpy, numba, scipy, FilterPy, sklearn, yacs
 
