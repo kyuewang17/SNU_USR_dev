@@ -48,27 +48,50 @@
         - need "rospkg" module, install via *pip*
         - for "pycharm" IDE, refer to [**THIS**](https://stackoverflow.com/questions/24197970/pycharm-import-external-library/24206781#24206781)
             - import: **/opt/ros/\<distro\>/lib/python2.7/dist-packages**\
-              also refer to [THIS](https://developpaper.com/ros-python-libraries-such-as-import-rospy-are-not-available-in-sublime-text-3-and-pycharm/) 
+              also refer to [THIS](https://developpaper.com/ros-python-libraries-such-as-import-rospy-are-not-available-in-sublime-text-3-and-pycharm/)
     - opencv-python (install via *pip*)
     - empy (*pip*)
     - yaml
     - numpy, numba, scipy, FilterPy, sklearn, yacs
+    
+- Build Detection Module (tentative, for current detector model: **RefineDet** \[[Paper](https://arxiv.org/abs/1711.06897)\])
+    - TBA
 
 - How to use ROS-embedded current algorithm?
     1. Install [ROS-kinetic](http://wiki.ros.org/kinetic/Installation) and set basic things
         - Recommended to Install the "**ros-kinetic-desktop-full**" repository
-            - `sudo apt install ros-kinetic-desktop-full`
+            - `>> sudo apt install ros-kinetic-desktop-full`
         - For convenience, add source "**/opt/ros/kinetic/setup.bash**" to the "**bashrc**" file
-            - `echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc`\
-              `source ~/.bashrc`
+            - `>> echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc`\
+              `>> source ~/.bashrc`
         - Install other dependencies
-            - `sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential`
+            - `>> sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential`
         - Initialize rosdep
-            - `sudo apt install python-rosdep`\
-              `sudo rosdep init`\
-              `rosdep update`
-
-
+            - `>> sudo apt install python-rosdep`\
+              `>> sudo rosdep init`\
+              `>> rosdep update`
+              
+    2. Run SNU USR Integrated Algorithm\
+         (The main execution file is  [**_run_snu_module.py_**](src/snu_module/scripts4/run_snu_module.py))
+         1. `>> roscore`
+         2. Publish _rostopics_ to the ROS Core
+            - [1] Unpack **_\*.bag_** file
+                1. Use "_rosbag_" command (CUI-based) \[[options](http://wiki.ros.org/rosbag/Commandline)\]
+                    - `>> rosbag play <file_name>.bag`
+                2. Use "_rqt_bag_" command (GUI-based)
+                    - `>> rqt_bag <file_name>.bag`
+                3. Use "_rqt\_image\_view_" command (for image-like rostopics only)
+                    - `>> rqt_image_view <file_name>.bag`
+                4. Use "_rviz_" command
+                    - TBA
+            - [2] Publish all the "_rostopics-of-interest_"
+            - [3] Play the bag file
+         3. Run the execution file
+            - For command-line,\
+            `>> rosrun snu_module path/to/scripts4/run_snu_module.py`
+            - For PyCharm IDE
+                - _run as same as ordinary pycharm projects_\
+                (debugging is also possible)
 
 
 
