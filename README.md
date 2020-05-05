@@ -46,6 +46,9 @@
         - cuDNN 7.5.0
     - ROS-kinetics (install at base)
         - need "rospkg" module, install via *pip*
+        - for "pycharm" IDE, refer to [**THIS**](https://stackoverflow.com/questions/24197970/pycharm-import-external-library/24206781#24206781)
+            - import: **/opt/ros/\<distro\>/lib/python2.7/dist-packages**\
+              also refer to [THIS](https://developpaper.com/ros-python-libraries-such-as-import-rospy-are-not-available-in-sublime-text-3-and-pycharm/) 
     - opencv-python (install via *pip*)
     - empy (*pip*)
     - yaml
