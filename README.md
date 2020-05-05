@@ -44,7 +44,7 @@
         - torchvision 0.3.0
     - CUDA 10.0
         - cuDNN 7.5.0
-    - ROS-kinetics (install at base)
+    - ROS-kinetic (install at base)
         - need "rospkg" module, install via *pip*
         - for "pycharm" IDE, refer to [**THIS**](https://stackoverflow.com/questions/24197970/pycharm-import-external-library/24206781#24206781)
             - import: **/opt/ros/\<distro\>/lib/python2.7/dist-packages**\
@@ -54,7 +54,19 @@
     - yaml
     - numpy, numba, scipy, FilterPy, sklearn, yacs
 
-
+- How to use ROS-embedded current algorithm?
+    1. Install [ROS-kinetic](http://wiki.ros.org/kinetic/Installation) and set basic things
+        - Recommended to Install the "**ros-kinetic-desktop-full**" repository
+            - `sudo apt install ros-kinetic-desktop-full`
+        - For convenience, add source "**/opt/ros/kinetic/setup.bash**" to the "**bashrc**" file
+            - `echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc`\
+              `source ~/.bashrc`
+        - Install other dependencies
+            - `sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential`
+        - Initialize rosdep
+            - `sudo apt install python-rosdep`\
+              `sudo rosdep init`\
+              `rosdep update`
 
 
 
