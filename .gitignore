@@ -7,3 +7,7 @@
 /src/snu_module/DATA/
 /src/snu_module/results/
 
+# Ignore devel files
+/devel/
+/build/
+
