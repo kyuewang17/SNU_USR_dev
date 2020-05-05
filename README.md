@@ -58,7 +58,15 @@
     - numpy, numba, scipy, FilterPy, sklearn, yacs
     
 - Build Detection Module (tentative, for current detector model: **RefineDet** \[[Paper](https://arxiv.org/abs/1711.06897)\])
-    - TBA
+    - Setting Requirements (_as far as we know_...)
+        - gcc 5.4.0\
+        (note that on gcc 8.x, the module does not build)
+        - PyTorch 1.0 ~ 1.2
+        - CUDA 9.0 ~ 10.1
+    - Build Steps
+        1. Run [detection_setup.py](/src/snu_module/scripts4/detection_setup.py) using the Anaconda environments\
+        `>> python detection_setup.py build develop`
+        
 
 - How to use ROS-embedded current algorithm?
     1. Install [ROS-kinetic](http://wiki.ros.org/kinetic/Installation) and set basic things
@@ -120,7 +128,12 @@
 
         - TBA
 
-
+---
+#### Code Know-hows and Trouble-shootings
+1. rospkg.common.Resourcenotfound (**tf2_ros**) \[on **PyCharm** IDE\]
+    - Run PyCharm at the terminal with Anaconda environment activated
+    
+2. TBA
 
 
 
