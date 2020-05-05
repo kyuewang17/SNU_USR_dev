@@ -50,7 +50,8 @@
             - import-(1): **/opt/ros/\<distro\>/lib/python2.7/dist-packages**\
               also refer to [THIS](https://developpaper.com/ros-python-libraries-such-as-import-rospy-are-not-available-in-sublime-text-3-and-pycharm/)
             - import-(2): **/devel/lib/python2.7/dist-packages**\
-              **\[Note\]** : "**catkin\_make**" is necessary (check-out for step-02 to build Custom ROS Messages)
+              **\[Note\]** : "**catkin\_make**" is necessary\
+              (check-out for step-02 in "_How to use ROS-embedded current algorithm?_" to build Custom ROS Messages)
     - opencv-python (install via *pip*)
     - empy (*pip*)
     - yaml
@@ -73,7 +74,21 @@
               `>> sudo rosdep init`\
               `>> rosdep update`
               
-    2. Run SNU USR Integrated Algorithm\
+    2. Build Custom ROS Messages
+        - [osr_msgs](/src/osr/osr_msgs)
+            1. [BoundingBox.msg](/src/osr/osr_msgs/msg/BoundingBox.msg)
+            2. [Track.msg](/src/osr/osr_msgs/msg/Track.msg)
+            3. [Tracks.msg](/src/osr/osr_msgs/msg/Tracks.msg)
+        
+        - How to build **osr_msgs**
+            1. At the master directory, (_**i.e.**_ /path/to/SNU\_USR\_dev) run the following:\
+            `>> catkin_make`
+            2. If successful, then additionally import the following path to the python interpreter:\
+            **/devel/lib/python2.7/dist-packages**
+            3. \[**Important**\] Before running the code, run the following at the terminal:\
+            `>> source /path/to/SNU_USR_dev/devel/setup.bash`
+              
+    3. Run SNU USR Integrated Algorithm\
          (The main execution file is  [**_run_snu_module.py_**](src/snu_module/scripts4/run_snu_module.py))
          1. `>> roscore`
          2. Publish _rostopics_ to the ROS Core
