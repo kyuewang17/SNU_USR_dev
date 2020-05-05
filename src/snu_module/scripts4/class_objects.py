@@ -20,7 +20,7 @@ import kalman_params as kparams
 import snu_utils.bounding_box as fbbox
 import snu_utils.patch as ptch
 
-import rescue.force_thermal_align_iitp_final_night as rgb_t_align
+# import rescue.force_thermal_align_iitp_final_night as rgb_t_align
 
 
 # [1] Tracklet Candidate Class
