@@ -102,7 +102,7 @@
                 4. Use "_rviz_" command
                     - TBA
             - [2] Publish all the "_rostopics-of-interest_"\
-            (_i.e._) "**/osr/image_color**"
+            (_i.e._) "**/osr/image_color**", "**/osr/lidar_pointcloud**", ...
             - [3] Play the bag file
          3. Run the execution file
             - For command-line,\
