@@ -84,7 +84,8 @@
                     - `>> rqt_image_view <file_name>.bag`
                 4. Use "_rviz_" command
                     - TBA
-            - [2] Publish all the "_rostopics-of-interest_"
+            - [2] Publish all the "_rostopics-of-interest_"\
+            (_i.e._) "**/osr/image_color**"
             - [3] Play the bag file
          3. Run the execution file
             - For command-line,\
