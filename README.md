@@ -20,17 +20,17 @@
     - Professor
         - [Jin Young Choi](http://pil.snu.ac.kr/about/view.do?idx=1)
     - Ph.D. Candidate
-        - [Kyuewang Lee]()
-        - [Daeho Um]()
+        - [Kyuewang Lee](http://pil.snu.ac.kr/member/view.do?idx=15)
+        - [Daeho Um](http://pil.snu.ac.kr/member/view.do?idx=66)
         
 - **Machine Intelligence and Pattern Recognition Laboratory (MIPAL)**
     - Professor
         - [Nojun Kwak](http://mipal.snu.ac.kr/index.php/Nojun_Kwak)
     - Ph.D. Candidate
-        - [Jae-Young Yoo]()
-        - [Jee-soo Kim]()
-        - [Hojun Lee]()
-        - [Inseop Chung]()
+        - [Jae-Young Yoo](http://mipal.snu.ac.kr/index.php/Jae-Young_Yoo)
+        - [Jee-soo Kim](http://mipal.snu.ac.kr/index.php/Jee-soo_Kim)
+        - [Hojun Lee](http://mipal.snu.ac.kr/index.php/Hojun_Lee)
+        - [Inseop Chung](http://mipal.snu.ac.kr/index.php/Inseop_Chung)
 
 ---
 #### Code Instructions
