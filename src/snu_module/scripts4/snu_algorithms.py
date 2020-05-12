@@ -1,149 +1,150 @@
 """
 SNU Integrated Module v3.0
-    - Actual Code that contains SNU key Implementations
 
-    - SNU Algorithms
-        - Object Detection
-        - Multiple Target Tracking
-        - Action Classification
 
-    - Object Detection
-        - INFO INFO INFO
 
-    - Multiple Target Tracking
-        - INFO INFO INFO
-
-    - Action Classification
-        - INFO INFO INFO
 """
 
 import datetime
-import cv2
 
-# Import SNU Algorithm Modules
 import module_detection as snu_det
 import module_tracking as snu_trk
 import module_action as snu_acl
 
-# Import SNU Visualizer Module
-import snu_visualizer as snu_vis
 
+class snu_algorithms(object):
+    def __init__(self, frameworks):
+        # Load Detection Model
+        self.det_framework = frameworks["det"]
 
-# Unmanned Surveillance Robot Object Detector
-def usr_object_detection(sync_data_dict, opts):
-    # Get Detector Framework
-    framework = snu_det.load_model(opts)
+        # Load Action Classification Model
+        self.acl_framework = frameworks["acl"]
 
-    # Start Time for Detector
-    DET_START_TIME = datetime.datetime.now()
+        # Initialize Tracklet and Tracklet Candidates
+        self.trks, self.trk_cands = [], []
 
-    # Parse-out Required Sensor Modalities
-    detection_sensor_data = {}
-    for modal, modal_switch in opts.detector.sensor_dict.items():
-        if modal_switch is True:
-            detection_sensor_data[modal] = sync_data_dict[modal]
+        # Initialize Maximum Tracklet ID
+        self.max_trk_id = -1
 
-    # Activate Detector Module
-    # TODO: by implementing above TODO, this also needs to be altered
-    # TODO: Condition it w.r.t. "agent_type" in opts
-    dets = snu_det.detect(
-        framework=framework, sync_data_dict=detection_sensor_data,
-        opts=opts
-    )
-    confs, labels = dets[:, 4:5], dets[:, 5:6]
-    dets = dets[:, 0:4]
+        # Initialize Detections
+        self.detections = {}
 
-    # Remove Too Small Detections
-    # TODO: Relocate this to the detect() in the "module_detection"
-    # TODO: in order to make the code clean
+        # Initialize Frame Index
+        self.fidx = None
 
-    # Stop Time
-    DET_STOP_TIME = datetime.datetime.now()
+        # Initialize Module Time Dictionary
+        self.module_time_dict = {
+            "det": 0.0,
+            "trk": 0.0,
+            "acl": 0.0,
+        }
 
-    # Detection Result Dictionary
-    detections = {"dets": dets, "confs": confs, "labels": labels}
+    # Detection Module
+    def usr_object_detection(self, sync_data_dict, opts):
+        # Start Time
+        START_TIME = datetime.datetime.now()
 
-    return detections, (DET_STOP_TIME-DET_START_TIME).total_seconds()
+        # Parse-out Required Sensor Modalities
+        # TODO: Integrate this for all 3 modules
+        detection_sensor_data = {}
+        for modal, modal_switch in opts.detector.sensor_dict.items():
+            if modal_switch is True:
+                detection_sensor_data[modal] = sync_data_dict[modal]
 
+        # Activate Module
+        dets = snu_det.detect(
+            framework=self.det_framework, sync_data_dict=detection_sensor_data,
+            opts=opts
+        )
+        confs, labels = dets[:, 4:5], dets[:, 5:6]
+        dets = dets[:, 0:4]
 
-# Unmanned Surveillance Robot Multiple Target Tracker
-def usr_multiple_target_tracking(sync_data_dict, fidx, tracklets, tracklet_cands, detections, opts):
-    """
-    NOTE: Keep thinking about how to accommodate maximum id of tracklets
-          (essential for giving new tracklet id)
-    """
-    # Start Time for Multiple Target Tracker
-    TRK_START_TIME = datetime.datetime.now()
+        # Remove Too Small Detections
+        keep_indices = []
+        for det_idx, det in enumerate(dets):
+            if det[2] * det[3] >= opts.detector.tiny_area_threshold:
+                keep_indices.append(det_idx)
+        dets = dets[keep_indices, :]
+        confs = confs[keep_indices, :]
+        labels = labels[keep_indices, :]
 
-    # Parse-out Required Sensor Modalities
-    tracking_sensor_data = {}
-    for modal, modal_switch in opts.tracker.sensor_dict.items():
-        if modal_switch is True:
-            tracking_sensor_data[modal] = sync_data_dict[modal]
+        # Stop Time
+        END_TIME = datetime.datetime.now()
 
-    # Activate Multiple Target Tracker Module
-    # TODO: by implementing above TODO, this also needs to be altered
-    tracklets, tracklet_cands = \
-        snu_trk.tracker()
+        self.detections = {"dets": dets, "confs": confs, "labels": labels}
+        self.module_time_dict["det"] = (END_TIME - START_TIME).total_seconds()
 
-    # Stop Time
-    TRK_STOP_TIME = datetime.datetime.now()
+    # Multiple Target Tracking Module
+    def usr_multiple_target_tracking(self, sync_data_dict, opts):
+        # Start Time
+        START_TIME = datetime.datetime.now()
 
-    return tracklets, tracklet_cands, (TRK_STOP_TIME-TRK_START_TIME).total_seconds()
+        # Parse-out Required Sensor Modalities
+        tracking_sensor_data = {}
+        for modal, modal_switch in opts.tracker.sensor_dict.items():
+            if modal_switch is True:
+                tracking_sensor_data[modal] = sync_data_dict[modal]
 
-    # return [], [], []
+        # Activate Module
+        self.trks, self.trk_cands = snu_trk.tracker(
+            sync_data_dict=sync_data_dict, fidx=self.fidx,
+            detections=self.detections, max_trk_id=self.max_trk_id,
+            opts=opts, trks=self.trks, trk_cands=self.trk_cands
+        )
 
+        # Update Maximum Tracklet ID
+        for trk in self.trks:
+            if trk.id > self.max_trk_id:
+                self.max_trk_id = trk.id
 
-# Unmanned Surveillance Robot Action Classifier
-def usr_action_classification(sync_data_dict, tracklets, opts):
-    # # Get Action Classifier Framework
-    # framework = snu_acl.load_model(opts)
-    #
-    # # Start Time for Action Classifier
-    # ACL_START_TIME = datetime.datetime.now()
-    #
-    # # Parse-out Required Sensor Modalities
-    # aclassify_sensor_data = {}
-    # for modal, modal_switch in opts.aclassifier.sensor_dict.items():
-    #     if modal_switch is True:
-    #         aclassify_sensor_data[modal] = sync_data_dict[modal]
-    #
-    # # Activate Action Classifier Module
-    # # TODO: by implementing above TODO, this also needs to be altered
-    # # TODO: Condition it w.r.t. "agent_type" in opts
-    # tracklets = snu_acl.aclassify()
-    #
-    # # Stop Time
-    # ACL_STOP_TIME = datetime.datetime.now()
-    #
-    # return tracklets, (ACL_STOP_TIME-ACL_START_TIME).total_seconds()
+        # Stop Time
+        END_TIME = datetime.datetime.now()
 
-    return [], []
+        self.module_time_dict["trk"] = (END_TIME - START_TIME).total_seconds()
 
+    # Action Classification Module
+    def usr_action_classification(self, sync_data_dict, opts):
+        START_TIME = datetime.datetime.now()
 
-# Integrated SNU Algorithm for Unmanned Surveillance Robot
-def usr_integrated_snu(fidx, sync_data_dict, tracklets, tracklet_cands, opts):
-    # SNU Object Detector Module
-    detections, DET_TIME = usr_object_detection(
-        sync_data_dict=sync_data_dict, opts=opts
-    )
+        # Parse-out Required Sensor Modalities
+        aclassify_sensor_data = {}
+        for modal, modal_switch in opts.aclassifier.sensor_dict.items():
+            if modal_switch is True:
+                aclassify_sensor_data[modal] = sync_data_dict[modal]
 
-    # SNU Multiple Target Tracker Module
-    tracklets, tracklet_cands, TRK_TIME = usr_multiple_target_tracking(
-        sync_data_dict=sync_data_dict, fidx=fidx,
-        tracklets=tracklets, tracklet_cands=tracklet_cands, detections=detections, opts=opts
-    )
+        # Activate Module
+        # NOTE: CODE HERE
+        # <Pseudo-Code>
+        # for trk_idx, trk in enumerate(self.trks):
+        #     action = snu_acl.aclassify(trk)
+        #     trk.update_action(action)
+        #     self.trks[trk_idx] = trk
+        #     del trk
 
-    # SNU Action Classification Module
-    tracklets, ACL_TIME = usr_action_classification(
-        sync_data_dict=sync_data_dict, tracklets=tracklets, opts=opts
-    )
+        END_TIME = datetime.datetime.now()
 
-    # Pack Algorithm Times
-    algorithm_time_dict = {"det": DET_TIME, "trk": TRK_TIME, "acl": ACL_TIME}
+        self.module_time_dict["acl"] = (END_TIME - START_TIME).total_seconds()
 
-    return tracklets, tracklet_cands, detections, algorithm_time_dict
+    # Call as Function
+    def __call__(self, sync_data_dict, fidx, opts):
+        # Update Frame Index
+        self.fidx = fidx
 
+        # TODO: (Later) Integrate Parsing Task for sync_data_dict
 
-if __name__ == "__main__":
-    pass
+        # SNU Object Detector Module
+        self.usr_object_detection(
+            sync_data_dict=sync_data_dict, opts=opts
+        )
+
+        # SNU Multiple Target Tracker Module
+        self.usr_multiple_target_tracking(
+            sync_data_dict=sync_data_dict, opts=opts
+        )
+
+        # SNU Action Classification Module
+        self.usr_action_classification(
+            sync_data_dict=sync_data_dict, opts=opts
+        )
+
+        return self.trks, self.detections, self.module_time_dict

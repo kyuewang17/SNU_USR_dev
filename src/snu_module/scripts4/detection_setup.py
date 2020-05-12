@@ -13,6 +13,9 @@ from torch.utils.cpp_extension import CUDAExtension
 
 requirements = ["torch", "torchvision"]
 
+# Set CUDA Device!
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))

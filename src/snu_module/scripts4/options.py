@@ -62,19 +62,23 @@ class snu_option_class(object):
                 "lidar": True,
             }
         elif agent_type == "rosbagfile":
+            self.agent_type = agent_type
             self.modal_switch_dict = {
                 "color": True,
                 "disparity": True,
                 "thermal": False,
                 "infrared": False,
                 "nightvision": False,
-                "lidar": False,
+                "lidar": True,
             }
         else:
             assert 0, "UNDEFINED AGENT TYPE!"
 
         # Agent Name
         self.agent_name = agent_name
+
+        # ROS Node Sleep Time for Sensor Synchronization
+        self.node_sleep_time_for_sensor_sync = 0.05
 
         # Paths (e.g. models, parameters, etc.)
         self.paths = {
@@ -93,9 +97,9 @@ class snu_option_class(object):
         self.aclassifier = aclassifier_options(modal_switch_dict=self.modal_switch_dict, device=0)
 
         # Visualizer Options
-        self.visualization = visualizer_options(is_draw_detection=False,
-                                                is_draw_tracking=True,
-                                                is_draw_aclassification=True)
+        self.visualization = visualizer_options(is_draw_detection=True,
+                                                is_draw_tracking=False,
+                                                is_draw_aclassification=False)
 
         # Sensor Options
         self.sensors = sensor_options()
@@ -149,7 +153,7 @@ class sensor_options(object):
         # Thermal Camera
         self.thermal = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "8UC1",
+            "imgmsg_to_cv2_encoding": "16UC1",
             "rostopic_name": "/osr/image_thermal",
             "camerainfo_rostopic_name": None,
 
@@ -259,7 +263,7 @@ class detector_options(object):
 
         # Post-processing Arguments
         self.postproc_args = {
-            'n_infer_rois': 300, 'device': 1, 'only_infer': True,
+            'n_infer_rois': 300, 'device': 0, 'only_infer': True,
             # 'conf_thresh' ==>> Classification(2nd threshold)
             # 'nms_thresh': 0.45, 'conf_thresh': 0.3,
             # 'nms_thresh': 0.5, 'conf_thresh': 0.83,
@@ -281,7 +285,7 @@ class tracker_options(object):
         self.sensor_dict = {
             "color": True,
             "disparity": True,
-            "thermal": True,
+            "thermal": False,
             "infrared": False,
             "nightvision": False,
             "lidar": True,
@@ -312,6 +316,9 @@ class tracker_options(object):
         self.disparity_params = {
             # Extraction Rate for Disparity Patch
             "extraction_roi_rate": 0.65,
+
+            # Histogram Bin for Rough Depth Computation
+            "rough_hist_bin": 25,
 
             # Histogram Bin Number
             "hist_bin": 100,

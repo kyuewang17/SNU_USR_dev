@@ -189,6 +189,30 @@ class visualizer(object):
         self.DET_VIS_OBJ = vis_det_obj(vopts=self.vopts)
         self.TRK_ACL_VIS_OBJ = vis_trk_acl_obj(vopts=self.vopts)
 
+    # Visualize Image Sequences Only
+    @staticmethod
+    def visualize_modal_frames(sensor_data):
+        if sensor_data is not None:
+            # Get Visualization Sensor Data Modality
+            modal_type = sensor_data.modal_type
+
+            # Get Image Frame
+            vis_frame = sensor_data.frame
+
+            # OpenCV Window Name
+            winname = "[%s]" % modal_type
+
+            # Make NamedWindow
+            cv2.namedWindow(winname)
+
+            # IMSHOW
+            if modal_type == "color":
+                cv2.imshow(winname, cv2.cvtColor(vis_frame, cv2.COLOR_RGB2BGR))
+            else:
+                cv2.imshow(winname, vis_frame)
+
+            cv2.waitKey(1)
+
     # Functional Visualizer Call
     def __call__(self, sensor_data, tracklets, detections, _check_run_time=False):
         # Get Visualization Sensor Data Modality

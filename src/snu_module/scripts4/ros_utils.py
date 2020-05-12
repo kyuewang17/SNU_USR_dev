@@ -5,15 +5,19 @@ SNU Integrated Module v3.0
     - Message Wrapper for SNU Module Result to Publish Message to ETRI Module
 """
 # Import Modules
+import cv2
 import numpy as np
+import rospy
+from cv_bridge import CvBridge, CvBridgeError
 
-# ImportROS Message Modules
-# import sensor_msgs.point_cloud2 as pc2
 
 # Import ROS Messages
-import rospy
 from osr_msgs.msg import Track, Tracks, BoundingBox
 from geometry_msgs.msg import Pose, Twist, Point, Quaternion, Vector3
+from std_msgs.msg import Header
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2
+from nav_msgs.msg import Odometry
+from rospy.numpy_msg import numpy_msg
 from tf.transformations import quaternion_from_euler
 
 
@@ -43,7 +47,7 @@ class ros_sensor(object):
 
     # Switch Back New Sensor Data Flag
     def flush_new_data_flag(self):
-        self.is_new_data = False
+        self.is_new_data = None
 
 
 # Class for Image-like ROS Sensor Data
@@ -54,8 +58,26 @@ class ros_sensor_image(ros_sensor):
         # Image Frame
         self.frame = None
 
+        # Processed Frame
+        self.processed_frame = None
+
         # Camera Parameters
         self.cam_params = None
+
+    # Empty Frame Data
+    def empty_frame(self):
+        self.frame = None
+
+    # Update Processed Frame
+    def update_processed_frame(self, processed_frame):
+        self.processed_frame = processed_frame
+
+    # Get Data (processed data first priority)
+    def get_data(self):
+        if self.processed_frame is not None:
+            return self.processed_frame
+        else:
+            return self.frame
 
     # Update Data
     def update(self, frame, msg_header):
@@ -66,7 +88,10 @@ class ros_sensor_image(ros_sensor):
         self.seq, self.stamp = msg_header.seq, msg_header.stamp
 
         # Update New Data Flag
-        self.is_new_data = True
+        if frame is not None:
+            self.is_new_data = True
+        else:
+            self.is_new_data = False
 
         # Update Image Frame
         self.frame = frame
@@ -99,6 +124,14 @@ class ros_sensor_lidar(ros_sensor):
         # XYZRGB 3D-cloud Data
         self.xyzrgb = None
 
+    # Empty 3D-cloud Data
+    def empty_xyzrgb(self):
+        self.xyzrgb = None
+
+    # Get Data
+    def get_data(self):
+        return self.xyzrgb
+
     # Update LiDAR Data
     def update(self, pc2_msg, msg_header):
         # Increase Frame Index
@@ -108,7 +141,10 @@ class ros_sensor_lidar(ros_sensor):
         self.seq, self.stamp = msg_header.seq, msg_header.stamp
 
         # Update New Data Flag
-        self.is_new_data = True
+        if pc2_msg is not None:
+            self.is_new_data = True
+        else:
+            self.is_new_data = False
 
         # Update LiDAR Point-cloud Message
         self.pc2_msg = pc2_msg
@@ -135,74 +171,241 @@ class ros_sensor_lidar(ros_sensor):
         raise NotImplementedError
 
 
-# Function to check if input "stamp" is a proper stamp variable
-def check_if_stamp(stamp):
-    assert (stamp.__class__.__name__ == "Time"), "Input Argument Type must be <time>!"
-    assert (hasattr(stamp, "secs") and hasattr(stamp, "nsecs")), \
-        "Input Argument Does not have appropriate attributes"
-    assert (stamp.secs is not None and stamp.nsecs is not None), "Stamp has no values for time"
+# Define ROS Multimodal Subscribe Module Class
+class ros_multimodal_subscriber(object):
+    def __init__(self, opts):
+        # Options
+        self.opts = opts
 
+        # (1) Color Modality
+        self.color_msg = None
+        self.color = ros_sensor_image(modal_type="color")
 
-# Return total time in 'seconds' for "stamp"
-def stamp_to_secs(stamp):
-    check_if_stamp(stamp)
-    return stamp.secs + (stamp.nsecs * 1e-9)
+        # (2) Disparity Modality
+        self.disparity_msg = None
+        self.disparity = ros_sensor_image(modal_type="disparity")
 
+        # (3) Thermal Modality
+        self.thermal_msg = None
+        self.thermal = ros_sensor_image(modal_type="thermal")
 
-# List Version of 'stamp_to_secs'
-def stamp_list_to_secs_list(stamp_list):
-    assert (type(stamp_list) == list), "Input Argument Type must be a <list>!"
-    secs_list = []
-    for stamp in stamp_list:
-        secs_list.append(stamp_to_secs(stamp))
-    return secs_list
+        # (4) Infrared Modality
+        self.infrared_msg = None
+        self.infrared = ros_sensor_image(modal_type="infrared")
 
+        # (5) NightVision Modality
+        self.nightvision_msg = None
+        self.nightvision = ros_sensor_image(modal_type="nightvision")
 
-# Timestamp Class
-class timestamp(object):
-    def __init__(self):
-        self.secs, self.nsecs = None, None
+        # (6) LiDAR Modality
+        self.lidar_msg = None
+        self.lidar = ros_sensor_lidar()
 
-    # Update Timestamp
-    def update(self, stamp):
-        if stamp is None:
-            self.secs, self.nsecs = None, None
-        else:
-            if hasattr(stamp, 'secs') is True and hasattr(stamp, 'secs') is True:
-                self.secs, self.nsecs = stamp.secs, stamp.secs
+        # Odometry Message Variable (Pass-Through)
+        self.odometry_msg = None
+
+        # CvBridges
+        self.sub_bridge, self.pub_bridge = CvBridge(), CvBridge()
+
+        # Sensor Subscribers
+        self.color_sub = rospy.Subscriber(opts.sensors.color["rostopic_name"], Image, self.color_callback)
+        self.disparity_sub = rospy.Subscriber(opts.sensors.disparity["rostopic_name"], Image, self.disparity_callback)
+        self.thermal_sub = rospy.Subscriber(opts.sensors.thermal["rostopic_name"], Image, self.thermal_callback)
+        self.infrared_sub = rospy.Subscriber(opts.sensors.infrared["rostopic_name"], Image, self.infrared_callback)
+        self.nightvision_sub = rospy.Subscriber(opts.sensors.nightvision["rostopic_name"], Image, self.nightvision_callback)
+        self.lidar_sub = rospy.Subscriber(opts.sensors.lidar["rostopic_name"], PointCloud2, self.lidar_callback)
+
+        # Camerainfo Subscribers
+        self.color_camerainfo_sub = rospy.Subscriber(
+            opts.sensors.color["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.color_camerainfo_callback
+        )
+        self.disparity_camerainfo_sub = rospy.Subscriber(
+            opts.sensors.disparity["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.disparity_camerainfo_callback
+        )
+
+        # Subscribe Odometry
+        self.odometry_sub = rospy.Subscriber(opts.sensors.odometry["rostopic_name"], Odometry, self.odometry_callback)
+
+    # Image Message to OpenCV Image
+    def imgmsg_to_cv2(self, img_msg, msg_encode_type):
+        return self.sub_bridge.imgmsg_to_cv2(img_msg, msg_encode_type)
+
+    # Color Callback Function
+    def color_callback(self, msg):
+        self.color_msg = msg
+
+    # Color Modal Update Function
+    def update_color_sensor_data(self, color_sensor_opts, null_timestamp):
+        if self.color_msg is not None:
+            # for BGR format
+            if self.color_msg.encoding.__contains__("bgr") is True:
+                # Convert BGR to RGB
+                color_frame = cv2.cvtColor(
+                    self.imgmsg_to_cv2(self.color_msg, color_sensor_opts["imgmsg_to_cv2_encoding"]),
+                    cv2.COLOR_BGR2RGB
+                )
+            # for RGB format
+            elif self.color_msg.encoding.__contains__("rgb") is True:
+                color_frame = self.imgmsg_to_cv2(self.color_msg, color_sensor_opts["imgmsg_to_cv2_encoding"])
+            # for GrayScale image
+            elif self.color_msg.encoding.__contains__("mono") is True:
+                color_frame = self.imgmsg_to_cv2(self.color_msg, "8UC1")
             else:
-                assert 0, "stamp needs to have both following attributes: <secs>, <nsecs>"
+                assert 0, "Current Encoding Type is not Defined!"
 
-    # Update Timestamp with {secs, nsecs}
-    def _update(self, secs, nsecs):
-        self.secs, self.nsecs = secs, nsecs
-
-    # Get Time Information of the Timestamp Class
-    def get_time(self):
-        if self.secs is None and self.nsecs is None:
-            retVal = None
-        elif self.nsecs is None:
-            retVal = self.secs
+            # Update Color Frame
+            self.color.update(color_frame, self.color_msg.header)
         else:
-            retVal = self.secs + self.nsecs * 1e-9
-        return retVal
+            null_header = Header()
+            null_header.stamp = null_timestamp
+            self.color.update(None, null_header)
 
+    # Disparity Callback Function
+    def disparity_callback(self, msg):
+        self.disparity_msg = msg
 
-# Seqstamp Class
-class seqstamp(object):
-    def __init__(self, modal):
-        self.seq = None
-        self.timestamp = timestamp()
-        self.modal = modal
+    # Disparity Modal Update Function
+    def update_disparity_sensor_data(self, disparity_sensor_opts, null_timestamp):
+        if self.disparity_msg is not None:
+            self.disparity.update(
+                self.imgmsg_to_cv2(self.disparity_msg, disparity_sensor_opts["imgmsg_to_cv2_encoding"]),
+                self.disparity_msg.header
+            )
+        else:
+            null_header = Header()
+            null_header.stamp = null_timestamp
+            self.disparity.update(None, null_header)
 
-    # Update Seqstamp
-    def update(self, seq, stamp):
-        self.seq = seq
-        self.timestamp.update(stamp)
+    # Thermal Callback Function
+    def thermal_callback(self, msg):
+        self.thermal_msg = msg
 
-    # Get Time Information of the Seqstamp Class
-    def get_time(self):
-        return self.timestamp.get_time()
+    # Thermal Modal Update Function
+    def update_thermal_sensor_data(self, thermal_sensor_opts, null_timestamp):
+        if self.thermal_msg is not None:
+            self.thermal.update(
+                self.imgmsg_to_cv2(self.thermal_msg, thermal_sensor_opts["imgmsg_to_cv2_encoding"]),
+                self.thermal_msg.header
+            )
+        else:
+            null_header = Header()
+            null_header.stamp = null_timestamp
+            self.thermal.update(None, null_header)
+
+    # Infrared Callback Function
+    def infrared_callback(self, msg):
+        self.infrared_msg = msg
+
+    # Infrared Modal Update Function
+    def update_infrared_sensor_data(self, infrared_sensor_opts, null_timestamp):
+        if self.infrared_msg is not None:
+            self.infrared.update(
+                self.imgmsg_to_cv2(self.infrared_msg, infrared_sensor_opts["imgmsg_to_cv2_encoding"]),
+                self.infrared_msg.header
+            )
+        else:
+            null_header = Header()
+            null_header.stamp = null_timestamp
+            self.infrared.update(None, null_header)
+
+    # Nightvision Callback Function
+    def nightvision_callback(self, msg):
+        self.nightvision_msg = msg
+
+    # Nightvision Modal Update Function
+    def update_nightvision_sensor_data(self, nightvision_sensor_opts, null_timestamp):
+        if self.nightvision_msg is not None:
+            self.nightvision.update(
+                self.imgmsg_to_cv2(self.nightvision_msg, nightvision_sensor_opts["imgmsg_to_cv2_encoding"]),
+                self.nightvision_msg.header
+            )
+        else:
+            null_header = Header()
+            null_header.stamp = null_timestamp
+            self.nightvision.update(None, null_header)
+
+    # LiDAR Callback Function
+    def lidar_callback(self, msg):
+        self.lidar_msg = msg
+
+    # LiDAR Modal Update Function
+    def update_lidar_sensor_data(self, lidar_sensor_opts, null_timestamp):
+        if self.lidar_msg is not None:
+            self.lidar.update(self.lidar_msg, self.lidar_msg.header)
+        else:
+            null_header = Header()
+            null_header.stamp = null_timestamp
+            self.lidar.update(None, null_header)
+
+    # Color Camerainfo Callback Function
+    def color_camerainfo_callback(self, msg):
+        self.color.update_cam_params(msg)
+
+    # Disparity Camerainfo Callback Function
+    def disparity_camerainfo_callback(self, msg):
+        self.disparity.update_cam_params(msg)
+
+    # Odometry Callback Function
+    def odometry_callback(self, msg):
+        self.odometry_msg = msg
+
+    # Update All Modals
+    def update_all_modals(self, null_timestamp):
+        self.update_color_sensor_data(
+            color_sensor_opts=self.opts.sensors.color, null_timestamp=null_timestamp
+        )
+        self.update_disparity_sensor_data(
+            disparity_sensor_opts=self.opts.sensors.disparity, null_timestamp=null_timestamp
+        )
+        self.update_thermal_sensor_data(
+            thermal_sensor_opts=self.opts.sensors.thermal, null_timestamp=null_timestamp
+        )
+        self.update_infrared_sensor_data(
+            infrared_sensor_opts=self.opts.sensors.infrared, null_timestamp=null_timestamp
+        )
+        self.update_nightvision_sensor_data(
+            nightvision_sensor_opts=self.opts.sensors.nightvision, null_timestamp=null_timestamp
+        )
+        self.update_lidar_sensor_data(
+            lidar_sensor_opts=self.opts.sensors.lidar, null_timestamp=null_timestamp
+        )
+
+    # Collect All Timestamps
+    def collect_all_headers(self):
+        header_dict = {
+            "color": self.color_msg.header,
+            "disparity": self.disparity_msg.header,
+            "thermal": self.thermal_msg.header,
+            "infrared": self.infrared_msg.header,
+            "nightvision": self.nightvision_msg.header,
+            "lidar": self.lidar_msg.header
+        }
+        return header_dict
+
+    # Collect All Sensor Data
+    def collect_all_sensors(self):
+        sensor_data = {
+            "color": self.color,
+            "disparity": self.disparity,
+            "thermal": self.thermal,
+            "infrared": self.infrared,
+            "nightvision": self.nightvision,
+            "lidar": self.lidar
+        }
+        return sensor_data
+
+    # Collect all Sensor Existence Flag
+    def collect_all_sensor_flags(self):
+        sensor_flags = {
+            "color": self.color.is_new_data,
+            "disparity": self.disparity.is_new_data,
+            "thermal": self.thermal.is_new_data,
+            "infrared": self.infrared.is_new_data,
+            "nightvision": self.nightvision.is_new_data,
+            "lidar": self.lidar.is_new_data
+
+        }
+        return sensor_flags
 
 
 # Function for Publishing SNU Module Result to ETRI Module
