@@ -90,8 +90,9 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         rospy.init_node(module_name, anonymous=True)
 
         # ROS Sensor Modal Synchronization Target List
-        # sync_target_modal_list = ["color", "disparity", "thermal"]
-        sync_target_modal_list = ["color", "disparity", "thermal", "infrared", "nightvision", "lidar"]
+        sync_target_modal_list = ["color", "disparity", "thermal"]  # 190823_kiro_lidar_camera_calib.bag
+        # sync_target_modal_list = ["color", "disparity", "thermal", "lidar"]  # kiro_rosbag.bag
+        # sync_target_modal_list = ["color", "disparity", "thermal", "infrared", "nightvision"]
 
         while not rospy.is_shutdown():
             rospy.sleep(self.opts.node_sleep_time_for_sensor_sync)

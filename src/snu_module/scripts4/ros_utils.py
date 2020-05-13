@@ -8,8 +8,8 @@ SNU Integrated Module v3.0
 import cv2
 import numpy as np
 import rospy
+from ros_numpy import point_cloud2 as pc2
 from cv_bridge import CvBridge, CvBridgeError
-import ros_numpy
 
 # Import ROS Messages
 from osr_msgs.msg import Track, Tracks, BoundingBox
@@ -134,29 +134,47 @@ class ros_sensor_image(ros_sensor):
 
 
 # Class for LiDAR ROS Sensor Data
-# for LiDAR, do not convert to XYZ (XYZRGB) format instantaneously
-# instead, make a in-class function to convert it by declaring the function
-# (ROS subscribe speed issue)
 class ros_sensor_lidar(ros_sensor):
     def __init__(self, modal_type="lidar"):
         super(ros_sensor_lidar, self).__init__(modal_type)
 
-        # Point-cloud Message
-        self.pc2_msg = None
+        # XYZ 3D-cloud Data
+        self.xyz_arr = None
 
-        # XYZRGB 3D-cloud Data
-        self.xyzrgb = None
+        # Projected LiDAR
+        self.frame = None
 
     # Empty 3D-cloud Data
     def empty_xyzrgb(self):
-        self.xyzrgb = None
+        self.xyz_arr = None
 
     # Get Data
     def get_data(self):
-        return self.xyzrgb
+        return self.frame[:, :, 0] if self.frame is not None else None
+
+    # Get Data in millimeters
+    def get_data_in_mm(self):
+        pass
+
+    # # Update LiDAR Data
+    # def update(self, xyz_arr, msg_header):
+    #     # Increase Frame Index
+    #     self.sensor_fidx += 1
+    #
+    #     # Update Seqstamp and Timestamp
+    #     self.seq, self.stamp = msg_header.seq, msg_header.stamp
+    #
+    #     # Update New Data Flag
+    #     if xyz_arr is not None:
+    #         self.is_new_data = True
+    #     else:
+    #         self.is_new_data = False
+    #
+    #     # Update LiDAR XYZ Array
+    #     self.xyz_arr = xyz_arr
 
     # Update LiDAR Data
-    def update(self, pc2_msg, msg_header):
+    def update(self, frame, msg_header):
         # Increase Frame Index
         self.sensor_fidx += 1
 
@@ -164,34 +182,13 @@ class ros_sensor_lidar(ros_sensor):
         self.seq, self.stamp = msg_header.seq, msg_header.stamp
 
         # Update New Data Flag
-        if pc2_msg is not None:
+        if frame is not None:
             self.is_new_data = True
         else:
             self.is_new_data = False
 
-        # Update LiDAR Point-cloud Message
-        self.pc2_msg = pc2_msg
-
-    # Convert Point-cloud ROS Message to XYZRGB 3D-cloud format
-    def convert_pc2_to_xyzrgb(self):
-        # """
-        # https://github.com/anshulpaigwar/Attentional-PointNet/blob/master/tools/pcl_helper.py
-        # """
-        # points_list = []
-        #
-        # if self.is_new_data is True:
-        #     for data in pc2.read_points(self.pc2_msg, skip_nans=True):
-        #         points_list.append([data[0], data[1], data[2], data[3]])
-        #
-        #     xyzrgb = pcl.PointCloud_PointXYZRGB()
-        #     xyzrgb.from_list(points_list)
-        # else:
-        #     print("[WARNING/ERROR] Point Cloud Data is Deprecated...!")
-        #     xyzrgb = None
-        #
-        # # Converted XYZRGB 3-D Cloud Data
-        # self.xyzrgb = xyzrgb
-        raise NotImplementedError
+        # Update LiDAR XYZ Array
+        self.frame = frame
 
 
 # Define ROS Multimodal Subscribe Module Class
@@ -236,7 +233,8 @@ class ros_multimodal_subscriber(object):
         self.thermal_sub = rospy.Subscriber(opts.sensors.thermal["rostopic_name"], Image, self.thermal_callback)
         self.infrared_sub = rospy.Subscriber(opts.sensors.infrared["rostopic_name"], Image, self.infrared_callback)
         self.nightvision_sub = rospy.Subscriber(opts.sensors.nightvision["rostopic_name"], Image, self.nightvision_callback)
-        self.lidar_sub = rospy.Subscriber(opts.sensors.lidar["rostopic_name"], PointCloud2, self.lidar_callback)
+        # self.lidar_sub = rospy.Subscriber(opts.sensors.lidar["rostopic_name"], PointCloud2, self.lidar_callback)
+        self.lidar_sub = rospy.Subscriber(opts.sensors.lidar["rostopic_name"], Image, self.lidar_callback)
 
         # Camerainfo Subscribers
         self.color_camerainfo_sub = rospy.Subscriber(
@@ -369,7 +367,14 @@ class ros_multimodal_subscriber(object):
     # LiDAR Modal Update Function
     def update_lidar_sensor_data(self, lidar_sensor_opts, null_timestamp):
         if self.lidar_msg is not None:
-            self.lidar.update(self.lidar_msg, self.lidar_msg.header)
+            # self.lidar.update(
+            #     pc2.pointcloud2_to_xyz_array(self.lidar_msg),
+            #     self.lidar_msg.header
+            # )
+            self.lidar.update(
+                self.imgmsg_to_cv2(self.lidar_msg, lidar_sensor_opts["imgmsg_to_cv2_encoding"]),
+                self.lidar_msg.header
+            )
 
             # Message back to None
             self.lidar_msg = None

@@ -258,7 +258,14 @@ def asso_dets_trks(sync_data_dict, detections, trks, cost_thresh):
 
     # Get Concatenated Frame
     color_frame = sync_data_dict["color"].get_data()
-    normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(0, 255)
+    disparity_frame = sync_data_dict["disparity"].frame
+
+    # Normalize Disparity Frame
+    d_max, d_min = disparity_frame.max(), disparity_frame.min()
+    normalized_disparity_frame = \
+        ((disparity_frame - d_min) / (d_max - d_min)) * 255
+
+    # Concatenate
     rgbd_frame = np.dstack((color_frame, normalized_disparity_frame))
 
     # Calculate Cost Matrix

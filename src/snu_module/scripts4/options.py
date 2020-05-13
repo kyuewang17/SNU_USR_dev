@@ -77,8 +77,8 @@ class snu_option_class(object):
         # Agent Name
         self.agent_name = agent_name
 
-        # ROS Node Sleep Time for Sensor Synchronization
-        self.node_sleep_time_for_sensor_sync = 0.05
+        # ROS Node Sleep Time
+        self.node_sleep_time_for_sensor_sync = 0.01
 
         # Paths (e.g. models, parameters, etc.)
         self.paths = {
@@ -184,11 +184,11 @@ class sensor_options(object):
             "calib_obj_cam": "color",
         }
 
-        # LIDAR Point-cloud
+        # LIDAR Point-cloud Image
         self.lidar = {
             # ROS Message
-            # "rostopic_name": "/velodyne_points",
-            "rostopic_name": "/osr/lidar_pointcloud",
+            "imgmsg_to_cv2_encoding": "8UC3",
+            "rostopic_name": "/camera_lidar",
 
             # Calibrated to Camera
             "calib_obj_cam": "color",

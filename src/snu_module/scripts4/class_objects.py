@@ -7,6 +7,7 @@ SNU Integrated Module v3.0
 """
 
 # Import Modules
+import cv2
 import numpy as np
 import filterpy.kalman.kalman_filter as kalmanfilter
 
@@ -250,12 +251,76 @@ class Tracklet(object):
 
     # Get Tracklet Depth (as an Observation)
     def get_depth(self, sync_data_dict, opts):
+        # Get Observation Patch bbox
+        if self.asso_dets[-1] is not None:
+            patch_bbox = self.asso_dets[-1]
+        else:
+            patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
+
+        # Get Disparity Frame
+        disparity_frame = sync_data_dict["disparity"].get_data()
+
+        # Get and Process LiDAR Frame
+        if sync_data_dict["lidar"].get_data() is not None:
+            lidar_frame = sync_data_dict["lidar"].get_data() / 255.0
+            # NOTE: Need to convert units into < millimeters >
+            # lidar_frame = sync_data_dict["lidar"].get_data_in_mm()
+
+            # Bilateral Filtering on LiDAR Frame
+            # TODO: Implement Bilateral Filtering on LiDAR Frame
+            pass
+        else:
+            lidar_frame = \
+                np.zeros((disparity_frame.shape[0], disparity_frame.shape[1]), dtype=np.uint16)
+
+        # Sum Frames
+        depth_frame = (disparity_frame + lidar_frame) * 0.5
+
+        # Get Patch
+        trk_patch = snu_patch.get_patch(
+            img=depth_frame, bbox=patch_bbox
+        )
+
+        # Get Histogram
+        depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
+            sensor_patch=trk_patch, dhist_bin=opts.tracker.disparity_params["hist_bin"],
+            min_value=opts.sensors.disparity["clip_distance"]["min"],
+            max_value=opts.sensors.disparity["clip_distance"]["max"]
+        )
+
+        # Get Max-bin and Representative Depth Value of Disparity Histogram
+        max_bin = depth_hist.argmax()
+        depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+
+        self.depth.append(depth_value)
 
 
-
-
-
-        self.depth.append(0)
+        # # Get Frames
+        # if sync_data_dict["lidar"].get_data() is not None:
+        #     disparity_frame = sync_data_dict["disparity"].get_normalized_data(0.6, 0.8)
+        #     lidar_frame = sync_data_dict["lidar"].get_data() / 255.0
+        #
+        #     fusion_frame = 0.25*disparity_frame + 0.75*lidar_frame
+        #
+        #     comparison_frame = np.hstack((disparity_frame, fusion_frame))
+        #
+        #     # DEBUG
+        #     cv2.imshow("comparison", comparison_frame)
+        #     cv2.waitKey(1)
+        #
+        #     # Get Associated Disparity Patch
+        #     if self.asso_dets[-1] is not None:
+        #         patch_bbox = self.asso_dets[-1]
+        #     else:
+        #         patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
+        #
+        #     # Get Disparity Patch
+        #     patch = snu_patch.get_patch(
+        #         img=disparity_frame, bbox=patch_bbox
+        #     )
+        #
+        #     print(1)
+        # self.depth.append(0)
 
     # Image Coordinates(2D) to Camera Coordinates(3D)
     def img_coord_to_cam_coord(self):

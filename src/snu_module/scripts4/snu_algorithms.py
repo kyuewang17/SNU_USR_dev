@@ -130,14 +130,15 @@ class snu_algorithms(object):
         # Update Frame Index
         self.fidx = fidx
 
-        # Clip Disparity Frame
-        disparity_frame = sync_data_dict["disparity"].frame
-        clipped_frame = np.where(
-            (disparity_frame < opts.sensors.disparity["clip_distance"]["min"]) |
-            (disparity_frame > opts.sensors.disparity["clip_distance"]["max"]),
-            opts.sensors.disparity["clip_value"], disparity_frame
-        )
-        sync_data_dict["disparity"].update_processed_frame(clipped_frame)
+        # # Clip Disparity Frame
+        # NOTE: Clipping is conducted when extracting histogram
+        # disparity_frame = sync_data_dict["disparity"].frame
+        # clipped_frame = np.where(
+        #     (disparity_frame < opts.sensors.disparity["clip_distance"]["min"]) |
+        #     (disparity_frame > opts.sensors.disparity["clip_distance"]["max"]),
+        #     opts.sensors.disparity["clip_value"], disparity_frame
+        # )
+        # sync_data_dict["disparity"].update_processed_frame(clipped_frame)
 
         # TODO: (Later) Integrate Parsing Task for sync_data_dict
 
