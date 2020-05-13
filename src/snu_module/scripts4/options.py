@@ -98,7 +98,7 @@ class snu_option_class(object):
 
         # Visualizer Options
         self.visualization = visualizer_options(is_draw_detection=True,
-                                                is_draw_tracking=False,
+                                                is_draw_tracking=True,
                                                 is_draw_aclassification=False)
 
         # Sensor Options
@@ -134,6 +134,7 @@ class sensor_options(object):
         self.disparity = {
             # ROS Message
             "imgmsg_to_cv2_encoding": "16UC1",
+            # "rostopic_name": "/osr/image_aligned_depth",
             "rostopic_name": "/osr/image_depth",
             "camerainfo_rostopic_name": "/camera/depth/camera_info",
 
@@ -186,6 +187,7 @@ class sensor_options(object):
         # LIDAR Point-cloud
         self.lidar = {
             # ROS Message
+            # "rostopic_name": "/velodyne_points",
             "rostopic_name": "/osr/lidar_pointcloud",
 
             # Calibrated to Camera
@@ -295,21 +297,24 @@ class tracker_options(object):
         self.association = {
             # Tracklet Candidate to Tracklet Association age (for Tracklet Initialization)
             # bug when set to even number
-            'trk_init_age': 5,
+            'trk_init_age': 4,
             # 'trk_init_age': 1,
 
             # Destroy Unassociated Tracklets with this amount of continuous unassociation
             # 'trk_destroy_age': 4,
-            'trk_destroy_age': 10,
+            'trk_destroy_age': 7,
 
             # Destroy Unassociated Tracklet Candidates with this amount of continuous unassociation
-            'trkc_destroy_age': 7,
+            'trkc_destroy_age': 5,
 
             # Association Cost Threshold
             # [1] DETECTION to TRACKLET
-            'cost_thresh_d2trk': 0.0001,
+            'cost_thresh_d2trk': 0.01,
+            # 'cost_thresh_d2trk': 0.,
+
             # [2] DETECTION to TRACKLET CANDIDATE (d2d)
-            'cost_thresh_d2trkc': 0.35
+            # 'cost_thresh_d2trkc': 0.35,
+            'cost_thresh_d2trkc': 0.
         }
 
         # Disparity Modality Parameters

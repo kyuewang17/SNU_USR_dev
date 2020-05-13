@@ -64,6 +64,21 @@ class ros_sensor_image(ros_sensor):
         # Camera Parameters
         self.cam_params = None
 
+    # Addition Defined as Channel-wise Concatenation
+    def __add__(self, other):
+        assert isinstance(other, ros_sensor_image), "Argument 'other' must be same type!"
+
+        modal_type = self.modal_type + "+" + other.modal_type
+        null_header = Header()
+        null_header.stamp = rospy.Time.now()
+
+        # Concatenate Channel-wise
+        concat_frame = np.dstack((self.get_data(), other.get_data()))
+
+        # Initialize Concatenated Sensor Data Object
+        concat_sensor_data = ros_sensor_image(modal_type=modal_type)
+        concat_sensor_data.update(frame=concat_frame, msg_header=null_header)
+
     # Empty Frame Data
     def empty_frame(self):
         self.frame = None
@@ -78,6 +93,14 @@ class ros_sensor_image(ros_sensor):
             return self.processed_frame
         else:
             return self.frame
+
+    # Get Normalize Data
+    def get_normalized_data(self, min_value, max_value):
+        frame = self.get_data()
+        frame_max_value, frame_min_value = frame.max(), frame.min()
+        z_normalized_frame = (frame - frame_min_value) / (frame_max_value - frame_min_value)
+        normalized_frame = min_value + (max_value - min_value) * z_normalized_frame
+        return normalized_frame
 
     # Update Data
     def update(self, frame, msg_header):
@@ -255,6 +278,9 @@ class ros_multimodal_subscriber(object):
 
             # Update Color Frame
             self.color.update(color_frame, self.color_msg.header)
+
+            # Message back to None
+            self.color_msg = None
         else:
             null_header = Header()
             null_header.stamp = null_timestamp
@@ -271,6 +297,9 @@ class ros_multimodal_subscriber(object):
                 self.imgmsg_to_cv2(self.disparity_msg, disparity_sensor_opts["imgmsg_to_cv2_encoding"]),
                 self.disparity_msg.header
             )
+
+            # Message back to None
+            self.disparity_msg = None
         else:
             null_header = Header()
             null_header.stamp = null_timestamp
@@ -287,6 +316,9 @@ class ros_multimodal_subscriber(object):
                 self.imgmsg_to_cv2(self.thermal_msg, thermal_sensor_opts["imgmsg_to_cv2_encoding"]),
                 self.thermal_msg.header
             )
+
+            # Message back to None
+            self.thermal_msg = None
         else:
             null_header = Header()
             null_header.stamp = null_timestamp
@@ -303,6 +335,9 @@ class ros_multimodal_subscriber(object):
                 self.imgmsg_to_cv2(self.infrared_msg, infrared_sensor_opts["imgmsg_to_cv2_encoding"]),
                 self.infrared_msg.header
             )
+
+            # Message back to None
+            self.infrared_msg = None
         else:
             null_header = Header()
             null_header.stamp = null_timestamp
@@ -319,6 +354,9 @@ class ros_multimodal_subscriber(object):
                 self.imgmsg_to_cv2(self.nightvision_msg, nightvision_sensor_opts["imgmsg_to_cv2_encoding"]),
                 self.nightvision_msg.header
             )
+
+            # Message back to None
+            self.nightvision_msg = None
         else:
             null_header = Header()
             null_header.stamp = null_timestamp
@@ -332,6 +370,9 @@ class ros_multimodal_subscriber(object):
     def update_lidar_sensor_data(self, lidar_sensor_opts, null_timestamp):
         if self.lidar_msg is not None:
             self.lidar.update(self.lidar_msg, self.lidar_msg.header)
+
+            # Message back to None
+            self.lidar_msg = None
         else:
             null_header = Header()
             null_header.stamp = null_timestamp
@@ -381,6 +422,18 @@ class ros_multimodal_subscriber(object):
             "lidar": self.lidar_msg.header
         }
         return header_dict
+
+    # Collect All Messages
+    def collect_all_messages(self):
+        msg_dict = {
+            "color": self.color_msg,
+            "disparity": self.disparity_msg,
+            "thermal": self.thermal_msg,
+            "infrared": self.infrared_msg,
+            "nightvision": self.nightvision_msg,
+            "lidar": self.lidar_msg
+        }
+        return msg_dict
 
     # Collect All Sensor Data
     def collect_all_sensors(self):

@@ -9,7 +9,6 @@ SNU Integrated Module v3.0
 # Import Module
 import numpy as np
 import torch
-import itertools
 
 
 # Convert bbox to z(or x)
@@ -25,7 +24,7 @@ def _bbox_to_zx(bbox, velocity=None):
 
 
 # Convert bbox to z(or x)
-def bbox_to_zx(bbox, velocity=None, depth=None, ddepth=None):
+def bbox_to_zx(bbox, velocity=None, depth=None):
     w = bbox[2]-bbox[0]
     h = bbox[3]-bbox[1]
     u = bbox[0]+w/2
@@ -34,18 +33,17 @@ def bbox_to_zx(bbox, velocity=None, depth=None, ddepth=None):
         if depth is None:
             return np.array([u, v, w, h]).reshape(4, 1)
         else:
-            if ddepth is None:
-                return np.array([u, v, depth, w, h]).reshape(5, 1)
-            else:
-                return np.array([u, v, depth, ddepth, w, h]).reshape(6, 1)
+            return np.array([u, v, depth, w, h]).reshape(5, 1)
     else:
         if depth is None:
             return np.array([u, v, velocity[0], velocity[1], w, h]).reshape(6, 1)
         else:
-            if ddepth is None:
-                return np.array([u, v, depth, velocity[0], velocity[1], w, h]).reshape(7, 1)
-            else:
-                return np.array([u, v, depth, ddepth, velocity[0], velocity[1], w, h]).reshape(8, 1)
+            return np.array([u, v, depth, velocity[0], velocity[1], w, h]).reshape(7, 1)
+
+
+# Convert x3(z3) to x2(z2)
+def zx3_to_zx2(zx):
+    return np.delete(zx, 2)
 
 
 def zxs_to_bboxes(bboxes, is_torch=False):
@@ -65,10 +63,20 @@ def zxs_to_bboxes(bboxes, is_torch=False):
 
 # Convert z(or x) to bbox
 def zx_to_bbox(zx):
-    u1 = zx[0]-zx[4]/2
-    v1 = zx[1]-zx[5]/2
-    u2 = zx[0]+zx[4]/2
-    v2 = zx[1]+zx[5]/2
+    zx = zx.reshape(len(zx))
+    if len(zx) == 6:
+        u1 = zx[0] - zx[4] / 2
+        v1 = zx[1] - zx[5] / 2
+        u2 = zx[0] + zx[4] / 2
+        v2 = zx[1] + zx[5] / 2
+    elif len(zx) == 7:
+        u1 = zx[0] - zx[5] / 2
+        v1 = zx[1] - zx[6] / 2
+        u2 = zx[0] + zx[5] / 2
+        v2 = zx[1] + zx[6] / 2
+    else:
+        assert 0, "Check for input numpy array dimension!"
+
     bbox = np.array([u1, v1, u2, v2]).reshape(4)
     velocity = np.array([zx[2], zx[3]]).reshape(2)
     return bbox, velocity
@@ -104,7 +112,7 @@ if __name__ == '__main__':
     c1 = intersection_bbox(b1, b2)
 
     x = [10, 10, 100, 100]
-    kk = bbox_to_zx(bbox=x, velocity=np.zeros(2), depth=1, ddepth=np.zeros(1))
+    kk = bbox_to_zx(bbox=x, velocity=np.zeros(2), depth=1)
 
 
     pass

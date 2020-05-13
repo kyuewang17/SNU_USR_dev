@@ -4,7 +4,7 @@ SNU Integrated Module v3.0
 
 
 """
-
+import numpy as np
 import datetime
 
 import module_detection as snu_det
@@ -87,7 +87,7 @@ class snu_algorithms(object):
 
         # Activate Module
         self.trks, self.trk_cands = snu_trk.tracker(
-            sync_data_dict=sync_data_dict, fidx=self.fidx,
+            sync_data_dict=tracking_sensor_data, fidx=self.fidx,
             detections=self.detections, max_trk_id=self.max_trk_id,
             opts=opts, trks=self.trks, trk_cands=self.trk_cands
         )
@@ -129,6 +129,15 @@ class snu_algorithms(object):
     def __call__(self, sync_data_dict, fidx, opts):
         # Update Frame Index
         self.fidx = fidx
+
+        # Clip Disparity Frame
+        disparity_frame = sync_data_dict["disparity"].frame
+        clipped_frame = np.where(
+            (disparity_frame < opts.sensors.disparity["clip_distance"]["min"]) |
+            (disparity_frame > opts.sensors.disparity["clip_distance"]["max"]),
+            opts.sensors.disparity["clip_value"], disparity_frame
+        )
+        sync_data_dict["disparity"].update_processed_frame(clipped_frame)
 
         # TODO: (Later) Integrate Parsing Task for sync_data_dict
 

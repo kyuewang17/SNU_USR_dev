@@ -26,7 +26,7 @@ class TrackletCandidate(object):
 
         # Detection BBOX, Confidence, Label Lists
         self.asso_dets = [bbox]
-        self.asso_confs = [conf]
+        self.asso_det_confs = [conf]
         self.label = label
 
         # Association Flag List
@@ -68,6 +68,7 @@ class TrackletCandidate(object):
         max_bin = disparity_hist.argmax()
         depth_value = ((disparity_hist_idx[max_bin] + disparity_hist_idx[max_bin + 1]) / 2.0) / 1000.0
 
+        return depth_value
 
     # Update
     def update(self, fidx, bbox=None, conf=None):
@@ -81,34 +82,55 @@ class TrackletCandidate(object):
         # Update Detection BBOX
         if bbox is None:
             self.asso_dets.append(None)
-            self.asso_confs.append(None)
+            self.asso_det_confs.append(None)
             self.is_associated.append(False)
             self.z.append(None)
         else:
             z_bbox = snu_bbox.bbox_to_zx(bbox)
             velocity = (z_bbox[0:2] - self.z[-1][0:2]).reshape(2)
             self.asso_dets.append(bbox)
-            self.asso_confs.append(conf)
+            self.asso_det_confs.append(conf)
             self.is_associated.append(True)
             self.z.append(snu_bbox.bbox_to_zx(bbox, velocity))
 
     # Initialize Tracklet Class from TrackletCandidate
-    def init_tracklet(self):
-        pass
+    def init_tracklet(self, disparity_frame, trk_id, fidx, opts):
+        # Get Rough Depth
+        depth = self.get_rough_depth(disparity_frame, opts)
+
+        # Initialize Tracklet
+        tracklet = Tracklet(
+            asso_dets=self.asso_dets, asso_det_confs=self.asso_det_confs, label=self.label,
+            is_associated=self.is_associated, init_fidx=fidx, init_depth=depth, trk_id=trk_id,
+            colorbar=opts.tracker.tracklet_colors,
+            colorbar_refresh_period=opts.tracker.trk_color_refresh_period
+        )
+
+        return tracklet
 
 
 # Tracklet Class
 class Tracklet(object):
     # Initialization
-    def __init__(self, bbox, conf, label, init_fidx, init_depth, trk_id):
+    def __init__(self, asso_dets, asso_det_confs, label, is_associated, init_fidx, init_depth, trk_id, colorbar, colorbar_refresh_period):
         """
+        * Initialization from "TrackletCandidate" Class Object
+
         < Some Notations > (self)
         - Observation (Detection) [u,v,du,dv,w,h] : z2 < 6x1 >
-        - Observation BBOX [l,t,w,h] : z_bbox
-        - 3D Observation [u,v,D,du,dv,dD,w,h] : z3 < 8x1 >
+        - Observation BBOX [u,v,w,h] : z2_bbox
+        - 3D Observation [u,v,D,du,dv,w,h] : z3 < 7x1 >
 
-        - 3D State on Camera Coordinates [X,Y,Z,dX,dY,dZ,w,h] : x3 < 8x1 >
-            * (w,h) is the weight and height on Image Coordinates
+        - 3D State on Image Coordinates : x3 < 7x1 >
+            - Kalman Filtering of "z3"
+
+        - 3D State on Camera Coordinates [X,Y,Z,dX,dY,dZ] : c3 < 6x1 >
+            - Projected via "x3"
+
+        NOTE: If the 3D State on Camera Coordinate is not stable, then consider
+              conducting Kalman Filter on "c3"
+                - in this case, "z3" is projected directly to "c3" and "c3" acts as
+                  an observation
 
         """
         # Tracklet ID
@@ -117,39 +139,56 @@ class Tracklet(object):
         # Tracklet Frame Indices
         self.fidxs = [init_fidx]
 
-        # Associated Detections (bbox, confidence, label)
-        self.asso_dets = [bbox]
-        self.det_confs = [conf]
+        # Associated Detections
+        self.asso_dets = asso_dets  # (bbox)
+        self.asso_det_confs = asso_det_confs
         self.label = label
 
-        # Association Flag List
-        self.is_associated = [True]
+        # Association Flag
+        self.is_associated = is_associated
+
+        # Tracklet Depth Value
+        self.depth = [init_depth]
 
         # Tracklet Visualization Color
+        self.color = colorbar[self.id % colorbar_refresh_period, :] * 255
 
-        # Tracklet Kalman Parameter Initialization
-        # self.A = kparams.
+        # Initialize Tracklet Kalman Parameters
+        self.A = kparams.A  # State Transition Matrix (Motion Model)
+        self.H = kparams.H  # Unit Transformation Matrix
+        self.P = kparams.P  # Error Covariance Matrix
+        self.Q = kparams.Q  # State Covariance Matrix
+        self.R = kparams.R  # Measurement Covariance Matrix
 
-        # Kalman States (Initial States)
-        init_state = None
-        # TODO: Add this!!
-
-        # Initialize Depth
-        self.depth = init_depth
-
-        # Observations
-        self.z2 = snu_bbox.bbox_to_zx(
-            bbox=bbox, velocity=np.zeros(2)
-        )
-        self.z3 = snu_bbox.bbox_to_zx(
-            bbox=bbox, velocity=np.zeros(2), depth=init_depth, ddepth=0.0
+        # Initialize Image Coordinate Observation Vector
+        curr_z2_bbox = snu_bbox.bbox_to_zx(asso_dets[-1])
+        prev_z2_bbox = snu_bbox.bbox_to_zx(asso_dets[-2])
+        init_observation = snu_bbox.bbox_to_zx(
+            bbox=asso_dets[-1], velocity=(curr_z2_bbox - prev_z2_bbox)[0:2].reshape(2),
+            depth=init_depth
         )
 
-        # Convert to "x3"
-        self.x3 = None
+        # Kalman State (initial state)
+        self.x3 = init_observation
+        self.x3p, self.Pp = kalmanfilter.predict(self.x3, self.P, self.A, self.Q)
 
+        # Tracklet States
+        self.states = [self.x3]
 
-        pass
+        # Tracklet Predicted States
+        self.pred_states = [self.x3p]
+
+        # 3D Tracklet State on Camera Coordinates
+        self.c3 = None
+
+        # Roll, Pitch, Yaw
+        self.roll, self.pitch, self.yaw = None, None, None
+
+        # Action Classification Results
+        self.pose_list = []
+        self.pose = None
+
+    # Get 2D Image Coordinate Tracklet State
 
     # Destructor
     def __del__(self):
@@ -163,30 +202,55 @@ class Tracklet(object):
         return len(self.fidxs)
 
     # Tracklet Update
-    def update(self, bbox=None, conf=None):
+    def update(self, fidx, bbox=None, conf=None):
         """
-        Kalman Update on 3D camera coordinates, if possible
+        Make sure that the depth value (self.depth) is updated prior to this code
         """
-        pass
+        # Assertion
+        if bbox is None and conf is not None:
+            assert 0, "Input Argument 'bbox' cannot be <None> while 'conf' is not <None>!"
+
+        # Append Frame Index
+        self.fidxs.append(fidx)
+
+        # If Tracklet is unassociated, replace detection with the previous Kalman Prediction
+        if bbox is None:
+            self.asso_dets.append(None)
+            self.asso_det_confs.append(None)
+            self.is_associated.append(False)
+            z3 = self.x3p
+        else:
+            self.asso_dets.append(bbox)
+            self.asso_det_confs.append(conf)
+            self.is_associated.append(True)
+
+            # Get Velocity
+            c = np.array([(bbox[0]+bbox[2])/2.0, (bbox[1]+bbox[3])/2.0])
+            velocity = c - self.x3p[0:2].reshape(2)
+
+            # Make sure to Update Depth Prior to this code
+            assert (len(self.fidxs) == len(self.depth)), "Depth Not Updated!"
+            z3 = snu_bbox.bbox_to_zx(bbox=bbox, velocity=velocity, depth=self.depth[-1])
+
+        # Kalman Update
+        self.x3, self.P = kalmanfilter.update(self.x3p, self.Pp, z3, self.R, self.H)
+
+        # Append to Tracklet States
+        self.states.append(self.x3)
 
     # Tracklet Predict
     def predict(self):
-        """
-        Kalman Prediction on 3D camera coordinates, if possible
-        """
-        pass
+        # Kalman Prediction
+        self.x3p, self.Pp = kalmanfilter.predict(self.x3, self.P, self.A, self.Q)
+        self.pred_states.append(self.x3p)
 
-    # Get Tracklet state in a specific frame index
-    def get_state(self, fidx):
-        pass
+    # Get Tracklet 2D state on Image Coordinates
+    def get_2d_img_coord_state(self):
+        return snu_bbox.zx3_to_zx2(self.x3)
 
-    # Get Image Coordinate State [Back-project x3 to image coordinates]
-    def get_img_coord_state(self):
-        pass
-
-    # Update Tracklet Depth
-    def update_depth(self):
-        pass
+    # Get Tracklet Depth (as an Observation)
+    def get_depth(self, sync_data_dict, opts):
+        self.depth.append(0)
 
     # Image Coordinates(2D) to Camera Coordinates(3D)
     def img_coord_to_cam_coord(self):
@@ -209,14 +273,7 @@ class Tracklet(object):
         pass
 
 
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    tt = np.array([1, 2, 3, 4, 5])
+    np.delete(tt, 0)
 

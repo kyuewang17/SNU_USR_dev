@@ -46,29 +46,30 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         # Declare SNU Visualizer
         self.visualizer = snu_visualizer.visualizer(opts=opts)
 
-        # Asynchronous Sensor Modals
+        # Sensor Synchronization Flag
         self.is_all_synchronous = None
-        self.async_modals = []
 
         # ROS Publisher
         self.tracks_pub = rospy.Publisher(
             opts.publish_mesg["tracks"], Tracks, queue_size=1
         )
 
-    def notify_asynchronous_sensors(self):
-        async_modals = []
-        sensor_flag_dict = self.collect_all_sensor_flags()
+    def synchronize_sensor_msg(self, sync_target_modal_list):
+        self.is_all_synchronous = None
 
-        if not all(sensor_flag_dict.values()):
-            for idx, (modal, sensor_flag) in enumerate(sensor_flag_dict.items()):
-                if sensor_flag is not True:
-                    async_modals.append(modal)
-            print(async_modals)
-            self.is_all_synchronous = False
-        else:
-            self.is_all_synchronous = True
-
-        self.async_modals = async_modals
+        # ROS Target Sensors Synchronization
+        while self.is_all_synchronous is not True:
+            sync_modal_list = []
+            msg_flag_dict = self.collect_all_messages()
+            for modal, modal_msg in msg_flag_dict.items():
+                if modal_msg is not None:
+                    sync_modal_list.append(modal)
+                if modal in sync_modal_list:
+                    self.is_all_synchronous = False
+                    continue
+            # Check for Sub-list Relation
+            if all((k in sync_modal_list for k in sync_target_modal_list)):
+                self.is_all_synchronous = True
 
     def publish_tracks(self, tracklets):
         pass
@@ -88,12 +89,15 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         # ROS Node Initialization
         rospy.init_node(module_name, anonymous=True)
 
+        # ROS Sensor Modal Synchronization Target List
+        # sync_target_modal_list = ["color", "disparity", "thermal"]
+        sync_target_modal_list = ["color", "disparity", "thermal", "infrared", "nightvision", "lidar"]
+
         while not rospy.is_shutdown():
-            # Mandatory ROS Node Sleep
             rospy.sleep(self.opts.node_sleep_time_for_sensor_sync)
 
-            # Notify Asynchronous Sensors
-            self.notify_asynchronous_sensors()
+            # ROS Sensor Message Synchronization
+            self.synchronize_sensor_msg(sync_target_modal_list=sync_target_modal_list)
 
             # Get Current ROS Timestamp
             curr_timestamp = rospy.Time.now()
@@ -110,13 +114,13 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
                 fidx=self.fidx, opts=self.opts
             )
 
-            # Draw Color Image Sequence
-            self.visualizer.visualize_modal_frames(self.color)
+            # # Draw Color Image Sequence
+            # self.visualizer.visualize_modal_frames(self.color)
 
-            # # Draw Detection Results
-            # self.visualizer(
-            #     sensor_data=self.color, tracklets=tracklets, detections=detections
-            # )
+            # Draw Results
+            self.visualizer(
+                sensor_data=self.color, tracklets=tracklets, detections=detections
+            )
 
 
 def main():

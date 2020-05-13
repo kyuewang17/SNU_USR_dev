@@ -127,7 +127,7 @@ class vis_trk_acl_obj(vis_obj):
 
             # Visualize Tracklet Depth
             if trk.depth is not None:
-                trk_depth_str = "d=" + str(round(trk.depth, 3)) + "(m)"
+                trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
                 (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
                 text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
                 text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)

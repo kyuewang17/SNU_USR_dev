@@ -27,7 +27,7 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
     destroy_trk_indices = []
     for trk_idx, trk in enumerate(trks):
         # (1) Tracklets with tiny bounding box
-        if trk.x3[6] * trk.x3[7] < 10:
+        if trk.x3[5] * trk.x3[6] < 10:
             destroy_trk_indices.append(trk_idx)
 
         # (2) Prolonged Consecutively Unassociated Tracklets
@@ -68,8 +68,11 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
                 unasso_det_indices.append(match[0]), unasso_trk_indices.append(match[1])
                 print("[TEST] Inconsistent Label Test!")
             else:
+                # TODO: Depth Observation (Matched)
+                matched_trk.get_depth(sync_data_dict, opts)
+
                 # If passed, update Tracklet
-                matched_trk.update(matched_det, matched_conf)
+                matched_trk.update(fidx, matched_det, matched_conf)
                 trks[match[1]] = matched_trk
             del matched_trk
 
@@ -77,8 +80,11 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
         for unasso_trk_idx in unasso_trk_indices:
             unasso_trk = trks[unasso_trk_idx]
 
+            # TODO: Depth Observation (Unmatched)
+            unasso_trk.get_depth(sync_data_dict, opts)
+
             # Update
-            unasso_trk.update()
+            unasso_trk.update(fidx)
             trks[unasso_trk_idx] = unasso_trk
             del unasso_trk
 
@@ -157,10 +163,18 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
                 selected_trkc_indices.append(trkc_idx)
         sel_trk_cands = snu_gfuncs.select_from_list(trk_cands, selected_trkc_indices)
 
-        # Initialize Tracklets
+        # Initialize New Tracklets
         for sel_trkc_idx, sel_trk_cand in enumerate(sel_trk_cands):
-            # TODO: Implement New Method to Initialize <Tracklet> from <TrackletCandidate>
-            pass
+            # Get New Tracklet ID
+            new_trk_id = max_trk_id + 1 + sel_trkc_idx
+
+            # Initialize New Tracklet
+            new_trk = sel_trk_cand.init_tracklet(
+                disparity_frame=sync_data_dict["disparity"].get_data(),
+                trk_id=new_trk_id, fidx=fidx, opts=opts
+            )
+            new_trks.append(new_trk)
+            del new_trk
         del sel_trk_cands
 
         # Destroy Associated Tracklet Candidates
@@ -242,9 +256,10 @@ def asso_dets_trks(sync_data_dict, detections, trks, cost_thresh):
     # Initialize Cost Matrix Variable
     cost_matrix = np.zeros((len(dets), len(trks)), dtype=np.float32)
 
-    # Get Main Modal Frame
-    main_modal = "color"
-    frame = sync_data_dict[main_modal].get_data()
+    # Get Concatenated Frame
+    color_frame = sync_data_dict["color"].get_data()
+    normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(0, 255)
+    rgbd_frame = np.dstack((color_frame, normalized_disparity_frame))
 
     # Calculate Cost Matrix
     for det_idx, det in enumerate(dets):
@@ -254,19 +269,22 @@ def asso_dets_trks(sync_data_dict, detections, trks, cost_thresh):
             # Get Predicted State of Tracklet
             trk_bbox, _ = snu_bbox.zx_to_bbox(trk.pred_states[-1])
 
-            # Get Detection and Tracklet Patch Histograms
-            det_hist = snu_hist.histogramize_patch(
-                sensor_patch=snu_patch.get_patch(frame, det),
+            # Get Detection and Tracklet Patch RGBD Histograms
+            det_hist, det_hist_idx = snu_hist.histogramize_patch(
+                sensor_patch=snu_patch.get_patch(rgbd_frame, det),
                 dhist_bin=128, min_value=0, max_value=255, count_window=None
             )
-            trk_hist = snu_hist.histogramize_patch(
-                sensor_patch=snu_patch.get_patch(frame, trk_bbox),
+            trk_hist, trk_hist_idx = snu_hist.histogramize_patch(
+                sensor_patch=snu_patch.get_patch(rgbd_frame, trk_bbox),
                 dhist_bin=128, min_value=0, max_value=255, count_window=None
             )
 
             # Get Histogram Similarity
-            hist_similarity = 1.0
-            pass
+            if len(det_hist) == 0 or len(trk_hist) == 0:
+                hist_similarity = 1.0
+            else:
+                hist_product = np.matmul(det_hist.reshape(-1, 1).transpose(), trk_hist.reshape(-1, 1))
+                hist_similarity = hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist))
 
             # Get IOU
             iou_cost = snu_bbox.iou(det, trk_bbox)

@@ -34,15 +34,11 @@ def get_depth_histogram(depth_patch, dhist_bin, min_value, max_value):
 
 # Get Weighted Histogram of Pixel Values of a Sensor Patch
 def histogramize_patch(sensor_patch, dhist_bin, min_value, max_value, count_window=None):
-    if sensor_patch is []:
+    if sensor_patch is [] or (sensor_patch.shape[0] == 0 or sensor_patch.shape[1] == 0):
         hist, idx = [], []
     else:
-        # Check for Channel Dimension of the Patch
-        if len(sensor_patch.shape) != 2:
-            assert 0, "Patch Dimension Error!"
-
         np.set_printoptions(threshold=np.inf)
-        patch_max_value = np.max(sensor_patch.flatten())
+        patch_max_value = sensor_patch.flatten().max()
         if patch_max_value < 0:
             hist = np.zeros(dhist_bin, dtype=int)
             idx = np.zeros(dhist_bin+1, dtype=float)
