@@ -47,6 +47,8 @@
     - ROS-kinetic (**Install on Ubuntu Main System**)
         - need "rospkg" module, install via *pip*\
         (**rospkg module is needed in the Anaconda Environment**, don't install it via pip on the system)
+        - For **LiDAR** support, do install additional module "_ros\_numpy_" as follows:\
+        `>> sudo apt install ros-kinetic-ros-numpy`
         - for "pycharm" IDE, refer to [**THIS**](https://stackoverflow.com/questions/24197970/pycharm-import-external-library/24206781#24206781)
             - import-(1): **/opt/ros/\<distro\>/lib/python2.7/dist-packages**\
               also refer to [THIS](https://developpaper.com/ros-python-libraries-such-as-import-rospy-are-not-available-in-sublime-text-3-and-pycharm/)

@@ -250,6 +250,11 @@ class Tracklet(object):
 
     # Get Tracklet Depth (as an Observation)
     def get_depth(self, sync_data_dict, opts):
+
+
+
+
+
         self.depth.append(0)
 
     # Image Coordinates(2D) to Camera Coordinates(3D)

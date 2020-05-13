@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
-
+import ros_numpy
 
 # Import ROS Messages
 from osr_msgs.msg import Track, Tracks, BoundingBox
