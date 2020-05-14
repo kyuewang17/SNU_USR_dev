@@ -113,13 +113,11 @@ class snu_algorithms(object):
                 aclassify_sensor_data[modal] = sync_data_dict[modal]
 
         # Activate Module
-        # NOTE: CODE HERE
-        # <Pseudo-Code>
-        # for trk_idx, trk in enumerate(self.trks):
-        #     action = snu_acl.aclassify(trk)
-        #     trk.update_action(action)
-        #     self.trks[trk_idx] = trk
-        #     del trk
+        self.trks = snu_acl.aclassify(
+            model=self.acl_framework,
+            sync_data_dict=aclassify_sensor_data,
+            trackers=self.trks, opts=opts
+        )
 
         END_TIME = datetime.datetime.now()
 

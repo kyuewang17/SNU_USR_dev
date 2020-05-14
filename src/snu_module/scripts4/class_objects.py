@@ -8,6 +8,8 @@ SNU Integrated Module v3.0
 
 # Import Modules
 import cv2
+import torch
+import torch.nn.functional as F
 import numpy as np
 import filterpy.kalman.kalman_filter as kalmanfilter
 
@@ -260,67 +262,60 @@ class Tracklet(object):
         # Get Disparity Frame
         disparity_frame = sync_data_dict["disparity"].get_data()
 
+        # Get Disparity Patch
+        disparity_patch = snu_patch.get_patch(
+            img=disparity_frame, bbox=patch_bbox
+        )
+
         # Get and Process LiDAR Frame
         if sync_data_dict["lidar"].get_data() is not None:
             lidar_frame = sync_data_dict["lidar"].get_data() / 255.0
             # NOTE: Need to convert units into < millimeters >
             # lidar_frame = sync_data_dict["lidar"].get_data_in_mm()
 
-            # Bilateral Filtering on LiDAR Frame
-            # TODO: Implement Bilateral Filtering on LiDAR Frame
-            pass
+            # Get LiDAR Patch
+            lidar_patch = snu_patch.get_patch(
+                img=lidar_frame, bbox=patch_bbox
+            )
+
+            # Custom Convolutional Filtering on LiDAR Image
+            # TODO: Find an appropriate Conv2d Kernel
+            kernel = torch.from_numpy(opts.sensors.lidar["kernel"])
+            filtered_lidar_patch = F.conv2d(
+                input=torch.from_numpy(lidar_patch).view(-1, 1, lidar_patch.shape[0], lidar_patch.shape[1]),
+                weight=kernel.view(-1, 1, kernel.shape[0], kernel.shape[1]),
+                stride=1, padding=2
+            )
+            filtered_lidar_patch = \
+                filtered_lidar_patch.view(lidar_patch.shape[0], lidar_patch.shape[1]).numpy()
+
+            # compare = np.hstack((lidar_patch, filtered_lidar_patch))
+            # cv2.imshow("lidar compare", compare)
+            # cv2.waitKey(1)
+
+            # pass
         else:
-            lidar_frame = \
-                np.zeros((disparity_frame.shape[0], disparity_frame.shape[1]), dtype=np.uint16)
+            filtered_lidar_patch = \
+                np.zeros((disparity_patch.shape[0], disparity_patch.shape[1]), dtype=np.uint16)
 
         # Sum Frames
-        depth_frame = (disparity_frame + lidar_frame) * 0.5
-
-        # Get Patch
-        trk_patch = snu_patch.get_patch(
-            img=depth_frame, bbox=patch_bbox
-        )
+        depth_patch = (disparity_patch + filtered_lidar_patch) * 0.5
 
         # Get Histogram
         depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
-            sensor_patch=trk_patch, dhist_bin=opts.tracker.disparity_params["hist_bin"],
+            sensor_patch=depth_patch, dhist_bin=opts.tracker.disparity_params["hist_bin"],
             min_value=opts.sensors.disparity["clip_distance"]["min"],
             max_value=opts.sensors.disparity["clip_distance"]["max"]
         )
 
         # Get Max-bin and Representative Depth Value of Disparity Histogram
-        max_bin = depth_hist.argmax()
-        depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+        if len(depth_hist) != 0:
+            max_bin = depth_hist.argmax()
+            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+        else:
+            depth_value = self.depth[-1]
 
         self.depth.append(depth_value)
-
-
-        # # Get Frames
-        # if sync_data_dict["lidar"].get_data() is not None:
-        #     disparity_frame = sync_data_dict["disparity"].get_normalized_data(0.6, 0.8)
-        #     lidar_frame = sync_data_dict["lidar"].get_data() / 255.0
-        #
-        #     fusion_frame = 0.25*disparity_frame + 0.75*lidar_frame
-        #
-        #     comparison_frame = np.hstack((disparity_frame, fusion_frame))
-        #
-        #     # DEBUG
-        #     cv2.imshow("comparison", comparison_frame)
-        #     cv2.waitKey(1)
-        #
-        #     # Get Associated Disparity Patch
-        #     if self.asso_dets[-1] is not None:
-        #         patch_bbox = self.asso_dets[-1]
-        #     else:
-        #         patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
-        #
-        #     # Get Disparity Patch
-        #     patch = snu_patch.get_patch(
-        #         img=disparity_frame, bbox=patch_bbox
-        #     )
-        #
-        #     print(1)
-        # self.depth.append(0)
 
     # Image Coordinates(2D) to Camera Coordinates(3D)
     def img_coord_to_cam_coord(self):

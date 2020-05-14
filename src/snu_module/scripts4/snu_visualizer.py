@@ -240,6 +240,8 @@ class visualizer(object):
             # IMSHOW
             # If Visualization Frame is Color Modality, convert RGB to BGR
             cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
+        else:
+            det_vis_frame = None
 
         if self.vopts.tracking["is_draw"] is True or self.vopts.aclassifier["is_draw"] is True:
             # Update Module Results
@@ -256,9 +258,13 @@ class visualizer(object):
             # IMSHOW
             # If Visualization Frame is Color Modality, convert RGB to BGR
             cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
+        else:
+            trk_acl_frame = None
 
         # OpenCV Window Delay
         cv2.waitKey(1)
+
+        return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
 
 def main():

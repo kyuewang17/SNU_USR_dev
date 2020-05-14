@@ -99,7 +99,7 @@ class snu_option_class(object):
         # Visualizer Options
         self.visualization = visualizer_options(is_draw_detection=True,
                                                 is_draw_tracking=True,
-                                                is_draw_aclassification=False)
+                                                is_draw_aclassification=True)
 
         # Sensor Options
         self.sensors = sensor_options()
@@ -110,9 +110,8 @@ class snu_option_class(object):
             "tracks": "/osr/tracks",
             "result_image": "/osr/snu_result_image",
 
-            "detection_result": "/osr/snu_detection_result_image",
-            "tracking_result": "/osr/snu_tracking_result_image",
-            "aclassification_result": "/osr/snu_aclassification_result_image",
+            "det_result_rostopic_name": "/osr/snu_det_result_image",
+            "trk_acl_result_rostopic_name": "/osr/snu_trk_acl_result_image",
         }
 
 
@@ -189,6 +188,22 @@ class sensor_options(object):
             # ROS Message
             "imgmsg_to_cv2_encoding": "8UC3",
             "rostopic_name": "/camera_lidar",
+
+            # LiDAR Filtering Kernel
+            "kernel": np.array([
+                [1, 1, 1, 1, 1],
+                [1, 2, 2, 2, 1],
+                [1, 2, 3, 2, 1],
+                [1, 2, 2, 2, 1],
+                [1, 1, 1, 1, 1]
+            ]) * (1.0 / 35),
+            "kernel2": np.array([
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1]
+            ]) * (1.0 / 25),
 
             # Calibrated to Camera
             "calib_obj_cam": "color",

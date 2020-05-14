@@ -46,6 +46,12 @@ def zx3_to_zx2(zx):
     return np.delete(zx, 2)
 
 
+# Get Diagonal Length of bbox
+def get_diagonal_of_bbox(bbox):
+    lt, rb = bbox[0:2], bbox[2:4]
+    return np.linalg.norm(rb-lt)
+
+
 def zxs_to_bboxes(bboxes, is_torch=False):
     u = bboxes[:, 0:1]
     v = bboxes[:, 1:2]

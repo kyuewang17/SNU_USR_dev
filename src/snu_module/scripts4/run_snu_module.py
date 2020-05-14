@@ -53,6 +53,12 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         self.tracks_pub = rospy.Publisher(
             opts.publish_mesg["tracks"], Tracks, queue_size=1
         )
+        self.det_result_pub = rospy.Publisher(
+            opts.publish_mesg["det_result_rostopic_name"], Image, queue_size=1
+        )
+        self.trk_acl_result_pub = rospy.Publisher(
+            opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
+        )
 
     def synchronize_sensor_msg(self, sync_target_modal_list):
         self.is_all_synchronous = None
@@ -71,8 +77,28 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             if all((k in sync_modal_list for k in sync_target_modal_list)):
                 self.is_all_synchronous = True
 
-    def publish_tracks(self, tracklets):
-        pass
+    def publish_tracks(self):
+        # Wrap Tracklets into ROS Topic Type
+        out_tracks = ros_utils.wrap_tracks(self.trks, self.odometry_msg)
+        self.tracks_pub.publish(out_tracks)
+
+    def publish_snu_result_image(self, result_frame_dict):
+        for module, result_frame in result_frame_dict.items():
+            if result_frame is not None:
+                if module == "det":
+                    self.det_result_pub.publish(
+                        self.pub_bridge.cv2_to_imgmsg(
+                            result_frame, "rgb8"
+                        )
+                    )
+                elif module == "trk_acl":
+                    self.trk_acl_result_pub.publish(
+                        self.pub_bridge.cv2_to_imgmsg(
+                            result_frame, "rgb8"
+                        )
+                    )
+                else:
+                    assert 0, "Undefined module!"
 
     def __call__(self, module_name):
         # Load Detection and Action Classification Models
@@ -119,9 +145,12 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             # self.visualizer.visualize_modal_frames(self.color)
 
             # Draw Results
-            self.visualizer(
+            result_frame_dict = self.visualizer(
                 sensor_data=self.color, tracklets=tracklets, detections=detections
             )
+
+            # Publish Results
+            self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
 
 def main():
