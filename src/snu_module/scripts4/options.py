@@ -81,11 +81,8 @@ class snu_option_class(object):
         self.node_sleep_time_for_sensor_sync = 0.01
 
         # Paths (e.g. models, parameters, etc.)
-        self.paths = {
-            "curr_file_path": curr_file_path,
-            "model_base_path": model_base_path,
-            "static_cam_param_path": os.path.join(static_cam_param_path, "CamParam.yml"),
-        }
+        self.sensor_param_base_path = \
+            os.path.join(os.path.dirname(curr_file_path), "sensor_params", agent_type)
 
         # Detector Options
         self.detector = detector_options(modal_switch_dict=self.modal_switch_dict, device=0)
@@ -113,6 +110,8 @@ class snu_option_class(object):
             "det_result_rostopic_name": "/osr/snu_det_result_image",
             "trk_acl_result_rostopic_name": "/osr/snu_trk_acl_result_image",
         }
+
+    # Update Camera Parameter
 
 
 # Sensor Option Class (ROS message)

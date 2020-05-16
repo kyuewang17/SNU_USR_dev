@@ -186,23 +186,37 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
         del new_trk
     del new_trks
 
-    # Predict Tracklet States and Print Tracking Message
-    msg_fidx_part = "Frame #[%08d] --> {Tracklets}: " % fidx
-    tracklet_recursive_msg = ""
-    for trk_idx, trk in enumerate(trks):
-        trk.predict()
-        trks[trk_idx] = trk
+    # Get Pseudo-inverse of Projection Matrix
+    color_P_inverse = sync_data_dict["color"].sensor_params.pinv_projection_matrix
 
+    # Set Base Tracklet Message
+    trk_msg_fidx_part = "Frame #[%08d] --> {Tracklets}: " % fidx
+    tracklet_recursive_msg = ""
+
+    # Tracklet Prediction, Projection, and Message
+    for trk_idx, trk in enumerate(trks):
+        # Predict Tracklet States (time-ahead Kalman Prediction)
+        trk.predict()
+
+        # Project Image Coordinate State (x3) to Camera Coordinate State (c3)
+        trk.img_coord_to_cam_coord(
+            inverse_projection_matrix=color_P_inverse, opts=opts
+        )
+
+        # Message
         if trk_idx < len(trks)-1:
             add_tracklet_msg = "[%d]," % trk.id
         else:
             add_tracklet_msg = "[%d]" % trk.id
         tracklet_recursive_msg += add_tracklet_msg
+
+        # Adjust to Tracklet List
+        trks[trk_idx] = trk
         del trk
 
-    msg_trk = msg_fidx_part + tracklet_recursive_msg
-    print(msg_trk)
-    # print(len(trk_cands))
+    # Print Tracklet Message
+    trk_msg = trk_msg_fidx_part + tracklet_recursive_msg
+    print(trk_msg)
 
     return trks, trk_cands
 
@@ -347,54 +361,5 @@ def associate(cost_matrix, cost_thresh, workers, works):
     return matches, unmatched_worker_indices, unmatched_work_indices
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    pass

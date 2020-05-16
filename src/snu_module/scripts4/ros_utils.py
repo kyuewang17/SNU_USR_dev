@@ -6,6 +6,8 @@ SNU Integrated Module v3.0
 """
 # Import Modules
 import cv2
+import os
+import yaml
 import numpy as np
 import rospy
 from ros_numpy import point_cloud2 as pc2
@@ -23,6 +25,116 @@ from tf.transformations import quaternion_from_euler
 
 # Sensor Modal Reference List
 __sensor_modals__ = ["color", "disparity", "thermal", "infrared", "nightvision", "lidar"]
+
+
+# Sensor Parameter Base Class
+class sensor_params(object):
+    def __init__(self, param_precision):
+        # Set Parameter Precision
+        self.param_precision = param_precision
+
+        # Set Projection Matrix and its Pseudo-inverse Matrix
+        self.projection_matrix = None
+        self.pinv_projection_matrix = None
+
+    # Update Parameters
+    def update_params(self, param_argument):
+        raise NotImplementedError()
+
+
+# Sensor Parameter Class (Rostopic)
+class sensor_params_rostopic(sensor_params):
+    def __init__(self, param_precision):
+        super(sensor_params_rostopic, self).__init__(param_precision)
+
+        """ Initialize Camera Parameter Matrices
+        ----------------------------------------
+        D: Distortion Matrix (5x1)
+        K: Intrinsic Matrix (3x3)
+        R: Rotation Matrix (3x3)
+        P: Projection Matrix (3x4)
+        ----------------------------------------
+        """
+        self.D, self.K, self.R, self.P = None, None, None, None
+
+    def update_params(self, msg):
+        self.D = msg.D.reshape((5, 1))  # Distortion Matrix
+        self.K = msg.K.reshape((3, 3))  # Intrinsic Matrix
+        self.R = msg.R.reshape((3, 3))  # Rotation Matrix
+        self.P = msg.P.reshape((3, 4))  # Projection Matrix
+
+        self.projection_matrix = self.P
+        self.pinv_projection_matrix = np.linalg.pinv(self.P)
+
+
+# Sensor Parameter Class (File)
+class sensor_params_file(sensor_params):
+    def __init__(self, param_precision):
+        super(sensor_params_file, self).__init__(param_precision)
+
+        # Initialize Intrinsic-related Variables
+        self.fx, self.fy, self.cx, self.cy = None, None, None, None
+        self.w = None
+
+        # Initialize Translation-related Variables
+        self.x, self.y, self.z = None, None, None
+
+        # Initialize Pan(yaw) / Tilt(pitch) / Roll Variables
+        self.pan, self.tilt, self.roll = None, None, None
+
+        # Set Camera Parameter Matrices
+        self.intrinsic_matrix, self.extrinsic_matrix, self.rotation_matrix = None, None, None
+
+    # Update Parameter Variables
+    def update_params(self, param_array):
+        # Intrinsic-related
+        self.fx, self.fy, self.cx, self.cy = \
+            param_array[0], param_array[1], param_array[2], param_array[3]
+        self.w = param_array[4]
+
+        # Translation-related
+        self.x, self.y, self.z = param_array[5], param_array[6], param_array[7]
+
+        # Pan / Tilt / Roll
+        self.pan, self.tilt, self.roll = param_array[8], param_array[9], param_array[10]
+
+        # Intrinsic Matrix < 3 x 4 >
+        self.intrinsic_matrix = np.array([[self.fx, self.w, self.cx, 0],
+                                          [0, self.fy, self.cy, 0],
+                                          [0, 0, 1, 0]], dtype=self.param_precision)
+
+        # Rotation Matrix
+        self.rotation_matrix = self.convert_ptr_to_rotation()
+
+        # Extrinsic Matrix < 4 x 4 >
+        translation_vector = np.matmul(
+            self.rotation_matrix,
+            np.array([self.x, self.y, self.z], dtype=self.param_precision).reshape((3, 1))
+        )
+        self.extrinsic_matrix = np.block(
+            [np.vstack((self.rotation_matrix, np.zeros((1, 3)))), np.append(translation_vector, 1).reshape(-1, 1)]
+        )
+
+        # Get Projection Matrix and its Pseudo-inverse
+        self.projection_matrix = np.matmul(self.intrinsic_matrix, self.extrinsic_matrix)
+        self.pinv_projection_matrix = np.linalg.pinv(self.projection_matrix)
+
+    # Convert PTR to Rotation Matrix
+    def convert_ptr_to_rotation(self):
+        r11 = np.sin(self.pan) * np.cos(self.roll) - np.cos(self.pan) * np.sin(self.tilt) * np.sin(self.roll)
+        r12 = -np.cos(self.pan) * np.cos(self.roll) - np.sin(self.pan) * np.sin(self.tilt) * np.sin(self.roll)
+        r13 = np.cos(self.tilt) * np.sin(self.roll)
+        r21 = np.sin(self.pan) * np.sin(self.roll) + np.sin(self.tilt) * np.cos(self.pan) * np.cos(self.roll)
+        r22 = -np.cos(self.pan) * np.sin(self.roll) + np.sin(self.tilt) * np.sin(self.pan) * np.cos(self.roll)
+        r23 = -np.cos(self.tilt) * np.cos(self.roll)
+        r31 = np.cos(self.tilt) * np.cos(self.pan)
+        r32 = np.cos(self.tilt) * np.sin(self.pan)
+        r33 = np.sin(self.tilt)
+
+        rotation_matrix = np.array([[r11, r12, r13],
+                                    [r21, r22, r23],
+                                    [r31, r32, r33]], dtype=self.param_precision)
+        return rotation_matrix
 
 
 # Base Class for ROS Sensor Data
@@ -62,7 +174,7 @@ class ros_sensor_image(ros_sensor):
         self.processed_frame = None
 
         # Camera Parameters
-        self.cam_params = None
+        self.sensor_params = None
 
     # Addition Defined as Channel-wise Concatenation
     def __add__(self, other):
@@ -119,18 +231,48 @@ class ros_sensor_image(ros_sensor):
         # Update Image Frame
         self.frame = frame
 
-    # Update Camera Parameters
-    def update_cam_params(self, msg):
-        # For D435i Modalities (Color and Disparity), update camera parameters using rostopic messages
-        if self.modal_type in ["color", "disparity"]:
-            self.cam_params = {
-                "D": msg.D.reshape((5, 1)),  # Distortion Matrix
-                "K": msg.K.reshape((3, 3)),  # Intrinsic Matrix
-                "R": msg.R.reshape((3, 3)),  # Rotation Matrix
-                "P": msg.P.reshape((3, 4)),  # Projection Matrix
-            }
+    # Update Sensor Parameters by File
+    def update_sensor_params_file(self, opts):
+        # Get Sensor Parameter File Path
+        sensor_param_file_path = \
+            os.path.join(opts.sensor_param_base_path, self.modal_type + ".yml")
+
+        if os.path.exists(sensor_param_file_path) is True:
+            if self.sensor_params is None:
+                # Initialize Sensor Parameter Object (from file)
+                self.sensor_params = sensor_params_file(param_precision=np.float32)
+
+                # Open YML File
+                with open(sensor_param_file_path, "r") as stream:
+                    tmp = yaml.safe_load(stream)
+                sensor_param = np.asarray(tmp[opts.agent_name]["camera_param"])
+
+                # Update Sensor Parameters
+                self.sensor_params.update_params(param_array=sensor_param)
+
+                # Message
+                sensor_param_msg = "[%s] modal sensor parameters loaded as file...!" % self.modal_type
+
+            else:
+                assert 0, "Sensor Parameter Collision! (both rostopic and file exists!)"
         else:
-            raise NotImplementedError
+            # Message
+            sensor_param_msg = \
+                "[NOTE]: (%s) modal does not have parameters as a 'yml' file!" % self.modal_type
+
+        # Print Message
+        print(sensor_param_msg)
+
+    # Update Sensor Parameters by Rostopic
+    def update_sensor_params_rostopic(self, msg):
+        if msg is not None and self.modal_type in ["color", "disparity"]:
+            # Initialize Sensor Parameter Object (from rostopic)
+            self.sensor_params = sensor_params_rostopic(param_precision=np.float32)
+
+            # Update Parameters
+            self.sensor_params.update_params(msg=msg)
+        else:
+            raise NotImplementedError("[Error] rostopic for modal (%s) camerainfo message..!" % self.modal_type)
 
 
 # Class for LiDAR ROS Sensor Data
@@ -189,6 +331,10 @@ class ros_sensor_lidar(ros_sensor):
 
         # Update LiDAR XYZ Array
         self.frame = frame
+
+    # Update LiDAR Rectification Parameters by File
+    def update_rectification_parameters(self, opts):
+        pass
 
 
 # Define ROS Multimodal Subscribe Module Class
@@ -385,11 +531,13 @@ class ros_multimodal_subscriber(object):
 
     # Color Camerainfo Callback Function
     def color_camerainfo_callback(self, msg):
-        self.color.update_cam_params(msg)
+        if self.color.sensor_params is None:
+            self.color.update_sensor_params_rostopic(msg)
 
     # Disparity Camerainfo Callback Function
     def disparity_camerainfo_callback(self, msg):
-        self.disparity.update_cam_params(msg)
+        if self.disparity.sensor_params is None:
+            self.disparity.update_sensor_params_rostopic(msg)
 
     # Odometry Callback Function
     def odometry_callback(self, msg):
@@ -464,6 +612,15 @@ class ros_multimodal_subscriber(object):
 
         }
         return sensor_flags
+
+    # Collect all Sensor Parameters by File (yml file)
+    def gather_all_sensor_parameters(self):
+        self.color.update_sensor_params_file(opts=self.opts)
+        self.disparity.update_sensor_params_file(opts=self.opts)
+        self.thermal.update_sensor_params_file(opts=self.opts)
+        self.infrared.update_sensor_params_file(opts=self.opts)
+        self.nightvision.update_sensor_params_file(opts=self.opts)
+        self.lidar.update_rectification_parameters(opts=self.opts)
 
 
 # Function for Publishing SNU Module Result to ETRI Module

@@ -5,17 +5,10 @@ WRITE COMMENTS
 
 
 """
-
-import cv2
-import copy
-import numpy as np
+import time
 import rospy
-from cv_bridge import CvBridge, CvBridgeError
 
-from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
-from nav_msgs.msg import Odometry
-from rospy.numpy_msg import numpy_msg
 from osr_msgs.msg import Tracks
 
 import options
@@ -29,7 +22,7 @@ from module_action import load_model as load_acl_model
 
 # Get Agent Type and Agent Name
 agent_type = "rosbagfile"
-agent_name = "snu_osr"
+agent_name = "kyle"
 
 
 # Define SNU Module Class
@@ -106,11 +99,19 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             "det": load_det_model(self.opts),
             "acl": load_acl_model(self.opts),
         }
-        print("Loading Detection and Action Classification Models...!")
+        print("[SNU Algorithm Flow #01] Loading Detection and Action Classification Models...!")
+        time.sleep(1)
 
         # Initialize SNU Algorithm Class
         snu_usr = snu_algorithms.snu_algorithms(frameworks=frameworks)
-        print("Loading SNU Algorithm...!")
+        print("[SNU Algorithm Flow #02] Loading SNU Algorithm...!")
+        time.sleep(1)
+
+        # Attempt to Gather all Sensor Parameters by File
+        self.gather_all_sensor_parameters()
+
+        # Time Sleep
+        time.sleep(1)
 
         # ROS Node Initialization
         rospy.init_node(module_name, anonymous=True)

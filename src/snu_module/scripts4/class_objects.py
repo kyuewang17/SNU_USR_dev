@@ -8,6 +8,7 @@ SNU Integrated Module v3.0
 
 # Import Modules
 import cv2
+import math
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -280,6 +281,7 @@ class Tracklet(object):
 
             # Custom Convolutional Filtering on LiDAR Image
             # TODO: Find an appropriate Conv2d Kernel
+            # TODO: Also, compute filtering via GPU mode
             kernel = torch.from_numpy(opts.sensors.lidar["kernel"])
             filtered_lidar_patch = F.conv2d(
                 input=torch.from_numpy(lidar_patch).view(-1, 1, lidar_patch.shape[0], lidar_patch.shape[1]),
@@ -317,21 +319,46 @@ class Tracklet(object):
 
         self.depth.append(depth_value)
 
-    # Image Coordinates(2D) to Camera Coordinates(3D)
-    def img_coord_to_cam_coord(self):
-        pass
+    # Image Coordinates(2D) to Camera Coordinates(3D) in meters (m)
+    def img_coord_to_cam_coord(self, inverse_projection_matrix, opts):
+        # If agent type is 'static', the reference point of image coordinate is the bottom center of the tracklet bounding box
+        if opts.agent_type == "static":
+            img_coord_pos = np.array([self.x3[0][0], (self.x3[1][0] + 0.5*self.x3[6][0]), 1.0]).reshape((3, 1))
+        else:
+            img_coord_pos = np.array([self.x3[0][0], self.x3[1][0], 1.0]).reshape((3, 1))
+        img_coord_vel = np.array([self.x3[3][0], self.x3[4][0], 1.0]).reshape((3, 1))
+
+        cam_coord_pos = np.matmul(inverse_projection_matrix, img_coord_pos)
+        cam_coord_vel = np.matmul(inverse_projection_matrix, img_coord_vel)
+
+        cam_coord_pos *= self.depth[-1]
+        cam_coord_vel *= self.depth[-1]
+
+        # Consider Robot Coordinates
+        cam_coord_pos = np.array([cam_coord_pos[2][0], -cam_coord_pos[0][0], -cam_coord_pos[1][0]]).reshape((3, 1))
+        cam_coord_vel = np.array([cam_coord_vel[2][0], -cam_coord_vel[0][0], -cam_coord_vel[1][0]]).reshape((3, 1))
+
+        # Camera Coordinate State
+        self.c3 = np.array([cam_coord_pos[0][0], cam_coord_pos[1][0], cam_coord_pos[2][0],
+                            cam_coord_vel[0][0], cam_coord_vel[1][0], cam_coord_vel[2][0]]).reshape((6, 1))
 
     # Camera Coordinates(3D) to Image Coordinates(2D)
     def cam_coord_to_img_coord(self):
-        pass
-
-    # Get 3D Position in Camera Coordinates (in meters)
-    def get_3d_cam_coord(self):
-        pass
+        raise NotImplementedError()
 
     # Get Roll-Pitch-Yaw
-    def compute_rpy(self):
-        pass
+    def compute_rpy(self, roll=0.0):
+        direction_vector = self.c3.reshape(6)[3:6].reshape((3, 1))
+
+        # Roll needs additional information
+        self.roll = roll
+
+        # Pitch
+        denum = np.sqrt(direction_vector[0][0] * direction_vector[0][0] + direction_vector[1][0] * direction_vector[1][0])
+        self.pitch = math.atan2(direction_vector[2][0], denum)
+
+        # Yaw
+        self.yaw = math.atan2(direction_vector[1][0], direction_vector[0][0])
 
     # Update Action Classification Results
     def update_action(self):
