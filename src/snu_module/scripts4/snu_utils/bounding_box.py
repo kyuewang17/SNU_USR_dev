@@ -41,6 +41,24 @@ def bbox_to_zx(bbox, velocity=None, depth=None):
             return np.array([u, v, depth, velocity[0], velocity[1], w, h]).reshape(7, 1)
 
 
+# Re-size BBOX
+def resize_bbox(bbox, x_ratio, y_ratio):
+    # Get Points
+    a, b, c, d = bbox[0], bbox[1], bbox[2], bbox[3]
+
+    # Set Coefficients
+    K_alpha_plus, K_alpha_minus = 0.5*(1+x_ratio), 0.5*(1-x_ratio)
+    K_beta_plus, K_beta_minus = 0.5*(1+y_ratio), 0.5*(1-y_ratio)
+
+    # Convert
+    _a = K_alpha_plus*a + K_alpha_minus*c
+    _b = K_beta_plus*b + K_beta_minus*d
+    _c = K_alpha_minus*a + K_alpha_plus*c
+    _d = K_beta_minus*b + K_beta_plus*d
+
+    return np.array([_a, _b, _c, _d])
+
+
 # Convert x3(z3) to x2(z2)
 def zx3_to_zx2(zx):
     return np.delete(zx, 2)

@@ -636,20 +636,20 @@ def wrap_tracks(trackers, odometry):
 
     # For each Tracklets,
     for _, tracker in enumerate(trackers):
-        # Get Tracklet Information
+        # Get Tracklet State
         track_state = tracker.states[-1]
         if len(tracker.states) > 1:
             track_prev_state = tracker.states[-2]
         else:
             # [x,y,dx,dy,w,h]
             track_prev_state = np.zeros(6).reshape((6, 1))
-        track_cam_coord_state = np.concatenate((tracker.cam_coord, tracker.cam_coord_vel))
+        track_cam_coord_state = tracker.c3
 
         # Initialize Track
         track = Track()
 
         # Tracklet ID
-        # important note: set the Tracklet ID to modulus of 256 since the type is < uint8 >
+        # important: set the Tracklet ID to modulus of 256 since the type is < uint8 >
         track.id = tracker.id % 256
 
         # Tracklet Object Type (1: Person // 2: Car)
@@ -667,16 +667,16 @@ def wrap_tracks(trackers, odometry):
         track_bbox = BoundingBox()
         track_bbox.x = np.uint32(track_state[0][0])
         track_bbox.y = np.uint32(track_state[1][0])
-        track_bbox.height = np.uint32(track_state[5][0])
-        track_bbox.width = np.uint32(track_state[4][0])
+        track_bbox.height = np.uint32(track_state[6][0])
+        track_bbox.width = np.uint32(track_state[5][0])
         track.bbox_pose = track_bbox
 
         # Bounding Box Velocity [bbox_velocity]
         track_d_bbox = BoundingBox()
-        track_d_bbox.x = np.uint32(track_state[2][0])
-        track_d_bbox.y = np.uint32(track_state[3][0])
-        track_d_bbox.height = np.uint32((track_state - track_prev_state)[5][0])
-        track_d_bbox.width = np.uint32((track_state - track_prev_state)[4][0])
+        track_d_bbox.x = np.uint32(track_state[3][0])
+        track_d_bbox.y = np.uint32(track_state[4][0])
+        track_d_bbox.height = np.uint32((track_state - track_prev_state)[6][0])
+        track_d_bbox.width = np.uint32((track_state - track_prev_state)[5][0])
         track.bbox_velocity = track_d_bbox
 
         # [pose]

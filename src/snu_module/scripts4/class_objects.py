@@ -260,6 +260,10 @@ class Tracklet(object):
         else:
             patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
 
+        # TODO: If Label is Human, then re-assign bbox area
+        if self.label == 1:
+            patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
+
         # Get Disparity Frame
         disparity_frame = sync_data_dict["disparity"].get_data()
 
@@ -315,7 +319,7 @@ class Tracklet(object):
             max_bin = depth_hist.argmax()
             depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
         else:
-            depth_value = self.depth[-1]
+            depth_value = self.x3p[2]
 
         self.depth.append(depth_value)
 

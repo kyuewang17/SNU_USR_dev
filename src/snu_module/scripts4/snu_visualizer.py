@@ -266,6 +266,9 @@ class visualizer(object):
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
+    # Visualize Top-view Tracklets
+    def visualize_top_view_tracklets(self, sensor_data, tracklets):
+        pass
 
 def main():
     pass

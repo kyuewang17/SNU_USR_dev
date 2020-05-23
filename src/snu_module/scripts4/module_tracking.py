@@ -113,7 +113,7 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
         matches_d2tc, unasso_det_indices, unasso_trkc_indices = \
             asso_resdets_trkcands(
                 sync_data_dict=sync_data_dict, residual_detections=detections,
-                trk_cands=trk_cands, fidx=fidx, cost_thresh=opts.tracker.association['cost_thresh_d2trkc']
+                trk_cands=trk_cands, cost_thresh=opts.tracker.association['cost_thresh_d2trkc']
             )
 
         # Update Associated Tracklet Candidates
@@ -222,7 +222,7 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
 
 
 # Associate Residual Detections with Tracklet Candidates
-def asso_resdets_trkcands(sync_data_dict, residual_detections, trk_cands, fidx, cost_thresh):
+def asso_resdets_trkcands(sync_data_dict, residual_detections, trk_cands, cost_thresh):
     # Unpack Residual Detections
     dets, confs, labels = \
         residual_detections["dets"], residual_detections["confs"], residual_detections["labels"]
