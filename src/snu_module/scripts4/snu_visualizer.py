@@ -6,6 +6,9 @@ SNU Integrated Module v3.0
 import cv2
 import numpy as np
 import copy
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 # Import Custom Modules
 import snu_utils.bounding_box as fbbox
@@ -189,6 +192,10 @@ class visualizer(object):
         self.DET_VIS_OBJ = vis_det_obj(vopts=self.vopts)
         self.TRK_ACL_VIS_OBJ = vis_trk_acl_obj(vopts=self.vopts)
 
+        # Top-view Max Axis
+        self.u_max_axis, self.v_max_axis = 0, 0
+        self.u_min_axis, self.v_min_axis = 0, 0
+
     # Visualize Image Sequences Only
     @staticmethod
     def visualize_modal_frames(sensor_data):
@@ -267,8 +274,66 @@ class visualizer(object):
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
     # Visualize Top-view Tracklets
-    def visualize_top_view_tracklets(self, sensor_data, tracklets):
-        pass
+    def visualize_top_view_tracklets(self, tracklets):
+        if len(tracklets) != 0:
+            # MatPlotLib Window Name
+            winname = "Top-View Tracklet Results"
+
+            # Initialize Empty numpy array for Top-view Coordinates
+            # 1st row -> Tracklet ID
+            # 2nd and 3rd row -> (-y) and (+x) Coordinates
+            top_view_coords = np.zeros((3, len(tracklets)))
+
+            # Update Top-view Coordinates
+            for trk_idx, trk in enumerate(tracklets):
+                # Initialize Temp Variable
+                tmp_val = np.zeros(3)
+
+                # Tracklet ID
+                tmp_val[0] = trk.id
+
+                # Tracklet Coordinates
+                tmp_val[1], tmp_val[2] = -trk.c3[1][0], trk.c3[0][0]
+
+                # Update Top-view Coordinates
+                top_view_coords[:, trk_idx] = tmp_val
+
+            # Get Maximum and Minimum Value of Axes
+            axis_max = np.amax(top_view_coords[1:], axis=1)
+            axis_min = np.amin(top_view_coords[1:], axis=1)
+
+            u_axis_max, v_axis_max = axis_max[0], axis_max[1]
+            u_axis_min, v_axis_min = axis_min[0], axis_min[1]
+
+            # Compare and Update Max/Min Axis
+            if u_axis_max >= self.u_max_axis:
+                self.u_max_axis = u_axis_max
+            if v_axis_max >= self.v_max_axis:
+                self.v_max_axis = v_axis_max
+            if u_axis_min <= self.u_min_axis:
+                self.u_min_axis = u_axis_min
+            if v_axis_min <= self.v_min_axis:
+                self.v_min_axis = v_axis_min
+
+            # Set Axis Range
+            plt.axis([self.u_min_axis, self.u_max_axis, self.v_min_axis, self.v_max_axis])
+            plt.ion()
+
+            # Show
+            plt.show()
+
+            # Draw Top-view Coordinates
+            plt.plot(top_view_coords[1].tolist(), top_view_coords[2].tolist(), "ro")
+
+            # Set u and v axis
+            plt.xlabel("-y direction")
+            plt.ylabel("+x direction")
+
+            # Set Title
+            plt.title(winname)
+
+
+
 
 def main():
     pass

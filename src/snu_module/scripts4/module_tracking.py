@@ -203,6 +203,9 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
             inverse_projection_matrix=color_P_inverse, opts=opts
         )
 
+        # Compute RPY
+        trk.compute_rpy(roll=0.0)
+
         # Message
         if trk_idx < len(trks)-1:
             add_tracklet_msg = "[%d]," % trk.id
