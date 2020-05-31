@@ -256,7 +256,7 @@ class detector_options(object):
 
         # Detection Arguments
         self.detection_args = {
-            "n_classes": 3,
+            "n_classes": 81,
             "input_h": 320, "input_w": 448,
         }
 
