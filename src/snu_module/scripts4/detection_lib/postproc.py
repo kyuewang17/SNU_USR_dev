@@ -83,7 +83,7 @@ class RefineDetPostProc(RefineDetPostProcBase):
             # boxes_s = boxes_s * self.img_size
             boxes_s[:, [0, 2]] *= self.input_w
             boxes_s[:, [1, 3]] *= self.input_h
-            labels_s += 1
+            # labels_s += 1
 
             # if len(boxes_s[0].size()) == 1:
             #     boxes_s[0] = torch.zeros((1, 4)).cuda()
@@ -205,9 +205,9 @@ def nms_cls_boxes_s(boxes_s, confs_s, n_classes, conf_threshold, nms_threshold):
 
         labels_css = torch.zeros(cls_confs_sc.shape).float().cuda()
         if coco and (c in coco_car):
-            labels_css += 1
+            labels_css += 1 + 1
         else:
-            labels_css += c
+            labels_css += c + 1
 
         cls_boxes_sl.append(cls_boxes_sc)
         cls_confs_sl.append(cls_confs_sc)
