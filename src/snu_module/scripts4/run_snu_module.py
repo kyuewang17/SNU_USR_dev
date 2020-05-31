@@ -142,13 +142,13 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             # # Draw Color Image Sequence
             # self.visualizer.visualize_modal_frames(self.color)
 
-            # # Draw Results
-            # result_frame_dict = self.visualizer(
-            #     sensor_data=self.color, tracklets=tracklets, detections=detections
-            # )
+            # Draw Results
+            result_frame_dict = self.visualizer(
+                sensor_data=self.color, tracklets=tracklets, detections=detections
+            )
 
-            # Top-view Result
-            self.visualizer.visualize_top_view_tracklets(tracklets=tracklets)
+            # # Top-view Result
+            # self.visualizer.visualize_top_view_tracklets(tracklets=tracklets)
 
             # Publish Tracks
             self.publish_tracks(tracklets=tracklets)

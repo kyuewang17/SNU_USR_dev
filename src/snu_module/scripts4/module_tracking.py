@@ -242,15 +242,20 @@ def asso_resdets_trkcands(sync_data_dict, residual_detections, trk_cands, cost_t
                 det_zx = snu_bbox.bbox_to_zx(det)
                 trk_cand_bbox, _ = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
-                # Consider IOU and L2-distance
+                # [1] IOU Similarity
                 iou_cost = snu_bbox.iou(det, trk_cand_bbox)
+
+                # [2] Height-Distance Similarity
+                h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
                 l2_distance = snu_gfuncs.l2_distance_dim2(
                     x1=det_zx[0], y1=det_zx[1],
                     x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
                 )
+                hd_cost = min(h_det/h_trkc, h_trkc/h_det) ** l2_distance
 
                 # Cost
-                cost_val = (iou_cost + 1e-12) / (l2_distance + 1e-12)
+                cost_val = iou_cost * hd_cost
+                # print(cost_val)
 
             # to Cost Matrix
             cost_matrix[det_idx, trk_cand_idx] = cost_val
@@ -283,7 +288,7 @@ def asso_dets_trks(sync_data_dict, detections, trks, cost_thresh):
         ((disparity_frame - d_min) / (d_max - d_min)) * 255
 
     # Concatenate
-    rgbd_frame = np.dstack((color_frame, normalized_disparity_frame))
+    rgbd_frame = np.dstack((color_frame, normalized_disparity_frame.astype(np.uint8)))
 
     # Calculate Cost Matrix
     for det_idx, det in enumerate(dets):
@@ -313,14 +318,17 @@ def asso_dets_trks(sync_data_dict, detections, trks, cost_thresh):
             # Get IOU
             iou_cost = snu_bbox.iou(det, trk_bbox)
 
-            # Get L2-distance (center distance)
+            # Get Height-Distance Similarity
+            h_det, h_trk = det_zx[3], trk.pred_states[-1][6]
             l2_distance = snu_gfuncs.l2_distance_dim2(
                 x1=det_zx[0], y1=det_zx[1],
                 x2=trk.pred_states[-1][0], y2=trk.pred_states[-1][1]
             )
+            hd_cost = min(h_det / h_trk, h_trk / h_det) ** l2_distance
 
             # Cost
-            cost_val = (iou_cost * hist_similarity + 1e-12) / (l2_distance + 1e-12)
+            cost_val = iou_cost * hist_similarity * hd_cost
+            # print(cost_val)
 
             # to Cost Matrix
             cost_matrix[det_idx, trk_idx] = cost_val

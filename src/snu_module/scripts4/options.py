@@ -316,19 +316,19 @@ class tracker_options(object):
 
             # Destroy Unassociated Tracklets with this amount of continuous unassociation
             # 'trk_destroy_age': 4,
-            'trk_destroy_age': 7,
+            'trk_destroy_age': 6,
 
             # Destroy Unassociated Tracklet Candidates with this amount of continuous unassociation
-            'trkc_destroy_age': 5,
+            'trkc_destroy_age': 2,
 
             # Association Cost Threshold
             # [1] DETECTION to TRACKLET
-            'cost_thresh_d2trk': 0.01,
+            'cost_thresh_d2trk': 0.05,
             # 'cost_thresh_d2trk': 0.,
 
             # [2] DETECTION to TRACKLET CANDIDATE (d2d)
-            # 'cost_thresh_d2trkc': 0.35,
-            'cost_thresh_d2trkc': 0.
+            'cost_thresh_d2trkc': 0.5,
+            # 'cost_thresh_d2trkc': 0.
         }
 
         # Disparity Modality Parameters
