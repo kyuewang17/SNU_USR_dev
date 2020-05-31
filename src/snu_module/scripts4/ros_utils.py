@@ -296,7 +296,7 @@ class ros_sensor_lidar(ros_sensor):
 
     # Get Data in millimeters
     def get_data_in_mm(self):
-        pass
+        return self.get_data() * (25 / 255.0) * 1000
 
     # # Update LiDAR Data
     # def update(self, xyz_arr, msg_header):
@@ -642,7 +642,7 @@ def wrap_tracks(trackers, odometry):
             track_prev_state = tracker.states[-2]
         else:
             # [x,y,dx,dy,w,h]
-            track_prev_state = np.zeros(6).reshape((6, 1))
+            track_prev_state = np.zeros(7).reshape((7, 1))
         track_cam_coord_state = tracker.c3
 
         # Initialize Track
@@ -659,7 +659,7 @@ def wrap_tracks(trackers, odometry):
         # 1: Stand, 2: Sit, 3: Lie
         # (publish if only tracklet object type is person)
         if tracker.label == 1:
-            track.posture = tracker.pose
+            track.posture = (tracker.pose if tracker.pose is not None else 0)
         else:
             track.posture = 0
 

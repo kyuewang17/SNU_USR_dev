@@ -121,14 +121,14 @@ class Tracklet(object):
         * Initialization from "TrackletCandidate" Class Object
 
         < Some Notations > (self)
-        - Observation (Detection) [u,v,du,dv,w,h] : z2 < 6x1 >
+        - Observation (Detection) [u,v,du,dv,w,h] : z2 < 6x1,, numpy array >
         - Observation BBOX [u,v,w,h] : z2_bbox
-        - 3D Observation [u,v,D,du,dv,w,h] : z3 < 7x1 >
+        - 3D Observation [u,v,D,du,dv,w,h] : z3 < 7x1, numpy array >
 
-        - 3D State on Image Coordinates : x3 < 7x1 >
+        - 3D State on Image Coordinates : x3 < 7x1, numpy array >
             - Kalman Filtering of "z3"
 
-        - 3D State on Camera Coordinates [X,Y,Z,dX,dY,dZ] : c3 < 6x1 >
+        - 3D State on Camera Coordinates [X,Y,Z,dX,dY,dZ] : c3 < 6x1, numpy array >
             - Projected via "x3"
 
         NOTE: If the 3D State on Camera Coordinate is not stable, then consider
@@ -274,9 +274,9 @@ class Tracklet(object):
 
         # Get and Process LiDAR Frame
         if sync_data_dict["lidar"].get_data() is not None:
-            lidar_frame = sync_data_dict["lidar"].get_data() / 255.0
+            # lidar_frame = sync_data_dict["lidar"].get_data() / 255.0
             # NOTE: Need to convert units into < millimeters >
-            # lidar_frame = sync_data_dict["lidar"].get_data_in_mm()
+            lidar_frame = sync_data_dict["lidar"].get_data_in_mm()
 
             # Get LiDAR Patch
             lidar_patch = snu_patch.get_patch(

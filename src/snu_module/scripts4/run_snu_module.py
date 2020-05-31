@@ -30,9 +30,6 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
     def __init__(self, opts):
         super(snu_module, self).__init__(opts)
 
-        # Initialize Tracklet and Tracklet Candidates
-        self.trks, self.trk_cands = [], []
-
         # Initialize Frame Index
         self.fidx = 0
 
@@ -70,9 +67,9 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             if all((k in sync_modal_list for k in sync_target_modal_list)):
                 self.is_all_synchronous = True
 
-    def publish_tracks(self):
+    def publish_tracks(self, tracklets):
         # Wrap Tracklets into ROS Topic Type
-        out_tracks = ros_utils.wrap_tracks(self.trks, self.odometry_msg)
+        out_tracks = ros_utils.wrap_tracks(tracklets, self.odometry_msg)
         self.tracks_pub.publish(out_tracks)
 
     def publish_snu_result_image(self, result_frame_dict):
@@ -145,13 +142,19 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             # # Draw Color Image Sequence
             # self.visualizer.visualize_modal_frames(self.color)
 
-            # Draw Results
-            result_frame_dict = self.visualizer(
-                sensor_data=self.color, tracklets=tracklets, detections=detections
-            )
+            # # Draw Results
+            # result_frame_dict = self.visualizer(
+            #     sensor_data=self.color, tracklets=tracklets, detections=detections
+            # )
 
-            # Publish Results
-            self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+            # Top-view Result
+            self.visualizer.visualize_top_view_tracklets(tracklets=tracklets)
+
+            # Publish Tracks
+            self.publish_tracks(tracklets=tracklets)
+
+            # # Publish SNU Result Image Results
+            # self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
 
 def main():
