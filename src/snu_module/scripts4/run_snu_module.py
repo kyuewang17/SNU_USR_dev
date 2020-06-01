@@ -22,7 +22,7 @@ from module_action import load_model as load_acl_model
 
 # Get Agent Type and Agent Name
 agent_type = "dynamic"
-agent_name = "snu-dynamic-3"
+agent_name = "snu-dynamic-5"
 
 
 # Define SNU Module Class
