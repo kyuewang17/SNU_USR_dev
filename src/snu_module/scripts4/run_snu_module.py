@@ -21,8 +21,8 @@ from module_action import load_model as load_acl_model
 
 
 # Get Agent Type and Agent Name
-agent_type = "rosbagfile"
-agent_name = "kyle"
+agent_type = "dynamic"
+agent_name = "snu-dynamic-3"
 
 
 # Define SNU Module Class
@@ -153,8 +153,8 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             # Publish Tracks
             self.publish_tracks(tracklets=tracklets)
 
-            # # Publish SNU Result Image Results
-            # self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+            # Publish SNU Result Image Results
+            self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
 
 def main():

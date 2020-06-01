@@ -10,7 +10,6 @@ import os
 import yaml
 import numpy as np
 import rospy
-from ros_numpy import point_cloud2 as pc2
 from cv_bridge import CvBridge, CvBridgeError
 
 # Import ROS Messages
