@@ -56,7 +56,7 @@ class snu_option_class(object):
             self.modal_switch_dict = {
                 "color": True,
                 "disparity": True,
-                "thermal": (True if agent_type == "dynamic" else False),
+                "thermal": (False if agent_type == "dynamic" else False),
                 "infrared": True,
                 "nightvision": True,
                 "lidar": True,
@@ -122,7 +122,7 @@ class sensor_options(object):
             # ROS Message
             "imgmsg_to_cv2_encoding": "8UC3",
             "rostopic_name": "/osr/image_color",
-            "camerainfo_rostopic_name": "/camera/color/camera_info",
+            "camerainfo_rostopic_name": "/osr/image_color_camerainfo",
 
             # Calibrated to Camera
             "calib_obj_cam": "color",
@@ -134,7 +134,7 @@ class sensor_options(object):
             "imgmsg_to_cv2_encoding": "16UC1",
             # "rostopic_name": "/osr/image_aligned_depth",
             "rostopic_name": "/osr/image_depth",
-            "camerainfo_rostopic_name": "/camera/depth/camera_info",
+            "camerainfo_rostopic_name": "/osr/image_depth_camerainfo",
 
             # Calibrated to Camera
             "calib_obj_cam": "color",
