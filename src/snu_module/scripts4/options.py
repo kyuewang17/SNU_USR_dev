@@ -38,44 +38,24 @@ static_cam_param_path = os.path.join(os.path.dirname(curr_file_path), "sensor_pa
 
 # Define Option Class
 class snu_option_class(object):
-    def __init__(self, agent_type=None, agent_name=None):
-        # Agent Type
-        if agent_type is None:
-            print("[WARNING] Agent Type is NOT DEFINED: setting it to 'ambiguous type'!")
-            self.agent_type = "ambiguous"
-            self.modal_switch_dict = {
-                "color": True,
-                "disparity": True,
-                "thermal": False,
-                "infrared": False,
-                "nightvision": False,
-                "lidar": False,
-            }
-        elif agent_type in ["static", "dynamic"]:
-            self.agent_type = agent_type
-            self.modal_switch_dict = {
-                "color": True,
-                "disparity": True,
-                "thermal": (False if agent_type == "dynamic" else False),
-                "infrared": True,
-                "nightvision": True,
-                "lidar": True,
-            }
-        elif agent_type == "rosbagfile":
-            self.agent_type = agent_type
-            self.modal_switch_dict = {
-                "color": True,
-                "disparity": True,
-                "thermal": False,
-                "infrared": False,
-                "nightvision": False,
-                "lidar": True,
-            }
-        else:
-            assert 0, "UNDEFINED AGENT TYPE!"
+    def __init__(self, cfg):
+        # Agent Type ( rosbagfile / Dynamic / Static )
+        agent_type = cfg.agent.type
+        assert (agent_type in ["rosbagfile", "static", "dynamic"]), "Agent Type Cannot be Type [%s]!" % agent_type
+        self.agent_type = agent_type
+
+        # Modal Switch Dictionary
+        self.modal_switch_dict = {
+            "color": cfg.sensors.color.is_valid,
+            "disparity": cfg.sensors.disparity.is_valid,
+            "thermal": cfg.sensors.thermal.is_valid,
+            "infrared": cfg.sensors.infrared.is_valid,
+            "nightvision": cfg.sensors.nightvision.is_valid,
+            "lidar": cfg.sensors.lidar.is_valid,
+        }
 
         # Agent Name
-        self.agent_name = agent_name
+        self.agent_name = cfg.agent.name
 
         # ROS Node Sleep Time
         self.node_sleep_time_for_sensor_sync = 0.01
@@ -85,30 +65,28 @@ class snu_option_class(object):
             os.path.join(os.path.dirname(curr_file_path), "sensor_params", agent_type)
 
         # Detector Options
-        self.detector = detector_options(modal_switch_dict=self.modal_switch_dict, device=0)
+        self.detector = detector_options(cfg=cfg)
 
         # Tracker Options
-        self.tracker = tracker_options()
+        self.tracker = tracker_options(cfg=cfg)
 
         # Action Classifier Options
-        self.aclassifier = aclassifier_options(modal_switch_dict=self.modal_switch_dict, device=0)
+        self.aclassifier = aclassifier_options(cfg=cfg)
 
         # Visualizer Options
-        self.visualization = visualizer_options(is_draw_detection=True,
-                                                is_draw_tracking=True,
-                                                is_draw_aclassification=True)
+        self.visualization = visualizer_options(cfg=cfg)
 
         # Sensor Options
-        self.sensors = sensor_options()
+        self.sensors = sensor_options(cfg=cfg)
         self.sensor_frame_rate = 10
 
         # Rostopic Message for Publisher
         self.publish_mesg = {
-            "tracks": "/osr/tracks",
-            "result_image": "/osr/snu_result_image",
+            "tracks": cfg.publisher.tracks,
+            "result_image": cfg.publisher.result_image,
 
-            "det_result_rostopic_name": "/osr/snu_det_result_image",
-            "trk_acl_result_rostopic_name": "/osr/snu_trk_acl_result_image",
+            "det_result_rostopic_name": cfg.publisher.det_result_image,
+            "trk_acl_result_rostopic_name": cfg.publisher.trk_acl_result_image,
         }
 
     # Update Camera Parameter
@@ -116,77 +94,76 @@ class snu_option_class(object):
 
 # Sensor Option Class (ROS message)
 class sensor_options(object):
-    def __init__(self):
+    def __init__(self, cfg):
         # D435i RGB Camera
         self.color = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "8UC3",
-            "rostopic_name": "/osr/image_color",
-            "camerainfo_rostopic_name": "/osr/image_color_camerainfo",
+            "imgmsg_to_cv2_encoding": cfg.sensors.color.encoding,
+            "rostopic_name": cfg.sensors.color.rostopic_name,
+            "camerainfo_rostopic_name": cfg.sensors.color.camerainfo_rostopic_name,
 
             # Calibrated to Camera
-            "calib_obj_cam": "color",
+            "calib_obj_cam": cfg.sensors.color.calibration_target_sensor,
         }
 
         # D435i Depth Camera
         self.disparity = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "16UC1",
-            # "rostopic_name": "/osr/image_aligned_depth",
-            "rostopic_name": "/osr/image_depth",
-            "camerainfo_rostopic_name": "/osr/image_depth_camerainfo",
+            "imgmsg_to_cv2_encoding": cfg.sensors.disparity.encoding,
+            "rostopic_name": cfg.sensors.disparity.rostopic_name,
+            "camerainfo_rostopic_name": cfg.sensors.disparity.camerainfo_rostopic_name,
 
             # Calibrated to Camera
-            "calib_obj_cam": "color",
+            "calib_obj_cam": cfg.sensors.disparity.calibration_target_sensor,
 
             # Disparity Image Clip Value
-            "clip_value": -1,
+            "clip_value": cfg.sensors.disparity.clip.value,
 
             # Disparity Image Clip Distance (in "millimeters")
             "clip_distance": {
-                "min": 1000,
-                "max": 15000,
+                "min": cfg.sensors.disparity.clip.min_distance,
+                "max": cfg.sensors.disparity.clip.max_distance,
             }
         }
 
         # Thermal Camera
         self.thermal = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "16UC1",
-            "rostopic_name": "/osr/image_thermal",
-            "camerainfo_rostopic_name": None,
+            "imgmsg_to_cv2_encoding": cfg.sensors.thermal.encoding,
+            "rostopic_name": cfg.sensors.thermal.rostopic_name,
+            "camerainfo_rostopic_name": cfg.sensors.thermal.camerainfo_rostopic_name,
 
             # Calibrated to Camera
-            "calib_obj_cam": "color",
+            "calib_obj_cam": cfg.sensors.thermal.calibration_target_sensor,
         }
 
         # Infrared Camera
         self.infrared = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "8UC1",
-            "rostopic_name": "/osr/image_ir",
-            "camerainfo_rostopic_name": None,
+            "imgmsg_to_cv2_encoding": cfg.sensors.infrared.encoding,
+            "rostopic_name": cfg.sensors.infrared.rostopic_name,
+            "camerainfo_rostopic_name": cfg.sensors.infrared.camerainfo_rostopic_name,
 
             # Calibrated to Camera
-            "calib_obj_cam": "color",
+            "calib_obj_cam": cfg.sensors.infrared.calibration_target_sensor,
         }
 
         # NightVision Camera
         self.nightvision = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "8UC3",
-            "rostopic_name": "/osr/image_nv1",
-            "camerainfo_rostopic_name": None,
+            "imgmsg_to_cv2_encoding": cfg.sensors.nightvision.encoding,
+            "rostopic_name": cfg.sensors.nightvision.rostopic_name,
+            "camerainfo_rostopic_name": cfg.sensors.nightvision.camerainfo_rostopic_name,
 
             # Calibrated to Camera
-            "calib_obj_cam": "color",
+            "calib_obj_cam": cfg.sensors.nightvision.calibration_target_sensor,
         }
 
         # LIDAR Point-cloud Image
         self.lidar = {
             # ROS Message
-            "imgmsg_to_cv2_encoding": "8UC3",
-            "rostopic_name": "/camera_lidar",
+            "imgmsg_to_cv2_encoding": cfg.sensors.lidar.encoding,
+            "rostopic_name": cfg.sensors.lidar.rostopic_name,
 
             # LiDAR Filtering Kernel
             "kernel": np.array([
@@ -205,51 +182,34 @@ class sensor_options(object):
             ]) * (1.0 / 25),
 
             # Calibrated to Camera
-            "calib_obj_cam": "color",
+            "calib_obj_cam": cfg.sensors.lidar.calibration_target_sensor,
         }
 
         # Odometry Message (Pass-through SNU module to ETRI module)
         self.odometry = {
-            "rostopic_name": "/robot_odom"
+            "rostopic_name": cfg.odometry_rostopic_name
         }
 
 
 # Detector Option Class
 class detector_options(object):
-    def __init__(self, modal_switch_dict, device=0):
-        # Assertion
-        assert (type(modal_switch_dict) == dict), "Argument 'modal_switch_dict' must be a <dict> type!"
+    def __init__(self, cfg):
+        # Get Model Path for Detector
+        self.model_dir = \
+            os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.agent.daytime)
 
-        # Load Detection Model Path regarding the Trained Modalities
-        if modal_switch_dict["thermal"] is True:
-            # Get Model path of RGB-T model for now...(on night)
-            self.model_dir = os.path.join(model_base_path, "detection_model_night_thermal")
-
-            # Set Actually Using Sensor Modalities
-            self.sensor_dict = {
-                "color": True,
-                "disparity": False,
-                "thermal": True,
-                "infrared": False,
-                "nightvision": False,
-                "lidar": False,
-            }
-        else:
-            # Get Model path of RGB model for now...(on day)
-            self.model_dir = os.path.join(model_base_path, "detection_model_day_rgb")
-
-            # Set Actually Using Sensor Modalities
-            self.sensor_dict = {
-                "color": True,
-                "disparity": True,
-                "thermal": False,
-                "infrared": False,
-                "nightvision": False,
-                "lidar": False,
-            }
+        # Set Actually Using Sensor Modalities
+        self.sensor_dict = {
+            "color": True,
+            "disparity": False,
+            "thermal": (False if cfg.agent.daytime == "day" else True),
+            "infrared": False,
+            "nightvision": False,
+            "lidar": False,
+        }
 
         # GPU-device
-        self.device = device
+        self.device = cfg.detector.device
 
         # Tiny Area Threshold
         self.tiny_area_threshold = 10
@@ -296,7 +256,7 @@ class detector_options(object):
 
 # Tracker Option Class
 class tracker_options(object):
-    def __init__(self):
+    def __init__(self, cfg):
         # Set Actually Using Sensor Modalities
         self.sensor_dict = {
             "color": True,
@@ -306,6 +266,9 @@ class tracker_options(object):
             "nightvision": False,
             "lidar": True,
         }
+
+        # Set Device for Tracking
+        self.device = cfg.tracker.device
 
         # Association-related Options
         self.association = {
@@ -354,40 +317,23 @@ class tracker_options(object):
 
 # Action Classifier Option Class
 class aclassifier_options(object):
-    def __init__(self, modal_switch_dict, device=0):
-        # Assertion
-        assert (type(modal_switch_dict) == dict), "Argument 'modal_switch_dict' must be a <dict> type!"
+    def __init__(self, cfg):
+        # Get Model Path for Action Classifier
+        self.model_dir = \
+            os.path.join(cfg.aclassifier.model_base_path, cfg.aclassifier.name, cfg.agent.daytime)
 
-        # Load Detection Model Path regarding the Trained Modalities
-        if modal_switch_dict["thermal"] is True:
-            # Get Model path of RGB-T model for now...(on night)
-            self.model_dir = os.path.join(model_base_path, "aclassifier_model/model_thermal_1ch_input.pt")
-
-            # Set Actually Using Sensor Modalities
-            self.sensor_dict = {
-                "color": True,
-                "disparity": False,
-                "thermal": True,
-                "infrared": False,
-                "nightvision": False,
-                "lidar": False,
-            }
-        else:
-            # Get Model path of RGB model for now...(on day)
-            self.model_dir = os.path.join(model_base_path, "aclassifier_model/model_test_RoboWorld2.pt")
-
-            # Set Actually Using Sensor Modalities
-            self.sensor_dict = {
-                "color": True,
-                "disparity": False,
-                "thermal": False,
-                "infrared": False,
-                "nightvision": False,
-                "lidar": False,
-            }
+        # Set Actually Using Sensor Modalities
+        self.sensor_dict = {
+            "color": True,
+            "disparity": False,
+            "thermal": (False if cfg.agent.daytime == "day" else True),
+            "infrared": False,
+            "nightvision": False,
+            "lidar": False,
+        }
 
         # GPU-device for Action Classification
-        self.device = device
+        self.device = cfg.aclassifier.device
 
         # Miscellaneous Parameters (for future usage)
         self.params = {}
@@ -395,11 +341,8 @@ class aclassifier_options(object):
 
 # Visualizer Option Class
 class visualizer_options(object):
-    def __init__(self, is_draw_detection, is_draw_tracking, is_draw_aclassification):
-        assert ((type(is_draw_detection) == bool) and
-                (type(is_draw_tracking) == bool) and
-                (type(is_draw_aclassification) == bool)), "Arguments must be Boolean (True/False)!"
-
+    def __init__(self, cfg):
+        # Set Fonts and Image Intervals, etc.
         self.font = cv2.FONT_HERSHEY_PLAIN
         self.font_size = 1.2
 
@@ -407,32 +350,32 @@ class visualizer_options(object):
         self.info_interval = 4
 
         self.detection = {
-            "is_draw": is_draw_detection,
+            "is_draw": cfg.visualization.detection.show,
 
             "is_show_label": None,
             "is_show_score": None,
             "is_show_fps": None,
 
             # (RGB) in our setting
-            "bbox_color": (255, 0, 0),
+            "bbox_color": cfg.visualization.detection.color,
 
             # Line-width
             "linewidth": 2,
         }
 
         self.tracking = {
-            "is_draw": is_draw_tracking,
+            "is_draw": cfg.visualization.tracking.show,
 
             "is_show_id": None,
             "is_show_3d_coord": None,
             "is_show_depth": None,
             "is_show_fps": None,
 
-            "bbox_color": (0, 0, 255),
+            "bbox_color": cfg.visualization.tracking.color,
 
             "linewidth": 2,
         }
 
         self.aclassifier = {
-            "is_draw": is_draw_aclassification,
+            "is_draw": cfg.visualization.aclassification.show,
         }

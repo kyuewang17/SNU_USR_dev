@@ -3,6 +3,7 @@ SNU Integrated Module v3.0
     - Action Classification
 
 """
+import os
 import cv2
 import numpy as np
 import torch
@@ -14,8 +15,19 @@ def load_model(opts):
     cuda_device_str = "cuda:" + str(opts.aclassifier.device)
     device = torch.device(cuda_device_str if torch.cuda.is_available() else "cpu")
 
+    # Find Model
+    pt_file_list = []
+    for f in os.listdir(opts.aclassifier.model_dir):
+        if f.endswith(".pt"):
+            pt_file_list.append(f)
+
+    if len(pt_file_list) == 1:
+        model_path = os.path.join(opts.aclassifier.model_dir, pt_file_list[0])
+    else:
+        assert 0, "Error"
+
     # Get Model
-    model = torch.load(opts.aclassifier.model_dir)
+    model = torch.load(model_path)
     model = model.to(device)
 
     return model

@@ -7,6 +7,8 @@ WRITE COMMENTS
 """
 import time
 import rospy
+import argparse
+import os
 
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from osr_msgs.msg import Tracks
@@ -19,9 +21,34 @@ import snu_visualizer
 from module_detection import load_model as load_det_model
 from module_action import load_model as load_acl_model
 
+# Load Config Module
+from config.config import cfg
+
+
+# Argument Parser
+parser = argparse.ArgumentParser(description="SNU Integrated Algorithm")
+parser.add_argument(
+    "--config",
+    default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
+    type=str, help="configuration file"
+)
+parser.add_argument(
+    "--agent_name", default="kyle", type=str,
+    help="agent name, overwrites agent name option from config"
+)
+parser.add_argument(
+    "--agent_type", default="", type=str,
+    help="agent type, overwrites agent type option from config"
+)
+parser.add_argument(
+    "--vis", action='store_true',
+    help="whether visualize result(OpenCV Windows), overwrites visualization option from config"
+)
+args = parser.parse_args()
+
 
 # Get Agent Type and Agent Name
-agent_type = "dynamic"
+agent_type = "rosbagfile"
 agent_name = "snu-dynamic-5"
 
 
@@ -158,8 +185,11 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
 
 
 def main():
+    # Load Customized Configuration File
+    cfg.merge_from_file(args.config)
+
     # Load Options
-    opts = options.snu_option_class(agent_type=agent_type, agent_name=agent_name)
+    opts = options.snu_option_class(cfg=cfg)
 
     # Initialize SNU Module
     snu_usr = snu_module(opts=opts)
