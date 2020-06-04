@@ -62,25 +62,17 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
             matched_conf, matched_label = detections['confs'][match[0]], detections['labels'][match[0]]
 
             matched_trk = trks[match[1]]
+            matched_trk.get_depth(sync_data_dict, opts)
 
-            # < Double-check for Label Consistency >
-            if matched_label != matched_trk.label:
-                unasso_det_indices.append(match[0]), unasso_trk_indices.append(match[1])
-                print("[TEST] Inconsistent Label Test!")
-            else:
-                # TODO: Depth Observation (Matched)
-                matched_trk.get_depth(sync_data_dict, opts)
-
-                # If passed, update Tracklet
-                matched_trk.update(fidx, matched_det, matched_conf)
-                trks[match[1]] = matched_trk
+            # If passed, update Tracklet
+            matched_trk.update(fidx, matched_det, matched_conf)
+            trks[match[1]] = matched_trk
             del matched_trk
 
         # Update Unassociated Tracklets
         for unasso_trk_idx in unasso_trk_indices:
             unasso_trk = trks[unasso_trk_idx]
 
-            # TODO: Depth Observation (Unmatched)
             unasso_trk.get_depth(sync_data_dict, opts)
 
             # Update

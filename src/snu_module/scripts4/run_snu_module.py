@@ -10,7 +10,7 @@ import rospy
 import argparse
 import os
 
-from sensor_msgs.msg import Image, CameraInfo, PointCloud2
+from sensor_msgs.msg import Image
 from osr_msgs.msg import Tracks
 
 import options

@@ -22,18 +22,21 @@ import cv2
 import os
 import numpy as np
 
-# Import Colormap
+# Import Colormap, Screen Geometry
 from snu_utils.general_functions import colormap, get_screen_geometry
+
+# Import Kalman Parameters
+from kalman_params import kparams
 
 # Current File Path
 curr_file_path = os.path.dirname(__file__)
 
-# Model Base Directory Path
-model_base_path = os.path.join(os.path.dirname(curr_file_path), "model")
-
 # Manual Multimodal Sensor Parameter Path
 # (might or might not be deleted later on....)
 static_cam_param_path = os.path.join(os.path.dirname(curr_file_path), "sensor_params")
+
+# Initialize Kalman Parameter Class
+kparam_class = kparams()
 
 
 # Define Option Class
@@ -277,6 +280,10 @@ class tracker_options(object):
 
         # Set Device for Tracking
         self.device = cfg.tracker.device
+
+        # Set base Kalman Parameters
+        kparam_class(agent_type=cfg.agent.type)
+        self.kparam_class = kparam_class
 
         # Association-related Options
         self.association = {

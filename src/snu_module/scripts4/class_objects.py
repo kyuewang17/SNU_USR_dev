@@ -106,8 +106,7 @@ class TrackletCandidate(object):
         tracklet = Tracklet(
             asso_dets=self.asso_dets, asso_det_confs=self.asso_det_confs, label=self.label,
             is_associated=self.is_associated, init_fidx=fidx, init_depth=depth, trk_id=trk_id,
-            colorbar=opts.tracker.tracklet_colors,
-            colorbar_refresh_period=opts.tracker.trk_color_refresh_period
+            tracker_opts=opts.tracker
         )
 
         return tracklet
@@ -116,7 +115,7 @@ class TrackletCandidate(object):
 # Tracklet Class
 class Tracklet(object):
     # Initialization
-    def __init__(self, asso_dets, asso_det_confs, label, is_associated, init_fidx, init_depth, trk_id, colorbar, colorbar_refresh_period):
+    def __init__(self, asso_dets, asso_det_confs, label, is_associated, init_fidx, init_depth, trk_id, tracker_opts):
         """
         * Initialization from "TrackletCandidate" Class Object
 
@@ -155,14 +154,14 @@ class Tracklet(object):
         self.depth = [init_depth]
 
         # Tracklet Visualization Color
-        self.color = colorbar[self.id % colorbar_refresh_period, :] * 255
+        self.color = tracker_opts.tracklet_colors[self.id % tracker_opts.trk_color_refresh_period, :] * 255
 
         # Initialize Tracklet Kalman Parameters
-        self.A = kparams.A  # State Transition Matrix (Motion Model)
-        self.H = kparams.H  # Unit Transformation Matrix
-        self.P = kparams.P  # Error Covariance Matrix
-        self.Q = kparams.Q  # State Covariance Matrix
-        self.R = kparams.R  # Measurement Covariance Matrix
+        self.A = tracker_opts.kparam_class.A  # State Transition Matrix (Motion Model)
+        self.H = tracker_opts.kparam_class.H  # Unit Transformation Matrix
+        self.P = tracker_opts.kparam_class.P  # Error Covariance Matrix
+        self.Q = tracker_opts.kparam_class.Q  # State Covariance Matrix
+        self.R = tracker_opts.kparam_class.R  # Measurement Covariance Matrix
 
         # Initialize Image Coordinate Observation Vector
         curr_z2_bbox = snu_bbox.bbox_to_zx(asso_dets[-1])
