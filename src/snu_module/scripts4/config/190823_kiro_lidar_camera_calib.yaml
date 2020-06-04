@@ -1,6 +1,8 @@
 agent:
     type: "rosbagfile"
+    name: "190823_kiro_lidar_camera_calib"
     daytime: "day"
+    screen_compensate: true
 
 sensors:
     color:

@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 # Import Colormap
-from snu_utils.general_functions import colormap
+from snu_utils.general_functions import colormap, get_screen_geometry
 
 # Current File Path
 curr_file_path = os.path.dirname(__file__)
@@ -59,6 +59,14 @@ class snu_option_class(object):
 
         # ROS Node Sleep Time
         self.node_sleep_time_for_sensor_sync = 0.01
+
+        # Screen Compensation
+        if cfg.agent.screen_compensate is True:
+            screen_geometry_dict = get_screen_geometry()
+            self.screen_imshow_x = int(screen_geometry_dict["margin_length"]["left_pixels"] * 1.1)
+            self.screen_imshow_y = int(screen_geometry_dict["margin_length"]["top_pixels"] * 1.1)
+        else:
+            self.screen_imshow_x, self.screen_imshow_y = None, None
 
         # Paths (e.g. models, parameters, etc.)
         self.sensor_param_base_path = \

@@ -11,7 +11,7 @@ import os
 from yacs.config import CfgNode as CN
 
 # Get NN Model Base Path
-model_base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
+model_base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 
 # Config Class Initialization
 __C = CN(new_allowed=False)
@@ -24,6 +24,7 @@ __C.agent = CN(new_allowed=False)
 __C.agent.type = "NULL"
 __C.agent.name = "NULL"
 __C.agent.daytime = "NULL"
+__C.agent.screen_compensate = False
 
 # ROS Odometry Message
 __C.odometry_rostopic_name = "/robot_odom"

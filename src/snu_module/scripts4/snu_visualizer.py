@@ -192,6 +192,11 @@ class visualizer(object):
         self.DET_VIS_OBJ = vis_det_obj(vopts=self.vopts)
         self.TRK_ACL_VIS_OBJ = vis_trk_acl_obj(vopts=self.vopts)
 
+        # Screen Geometry Imshow Position
+        self.screen_imshow_x = opts.screen_imshow_x
+        self.screen_imshow_y = opts.screen_imshow_y
+        self.det_window_moved, self.trk_acl_window_moved = False, False
+
         # Top-view Max Axis
         self.u_max_axis, self.v_max_axis = 0, 0
         self.u_min_axis, self.v_min_axis = 0, 0
@@ -231,6 +236,9 @@ class visualizer(object):
         # OpenCV Window Name
         winname = self.winname + "(%s)" % modal_type
 
+        # Initialize Visualize Frames
+        det_vis_frame, trk_acl_frame = None, None
+
         # Draw Detection Results
         if self.vopts.detection["is_draw"] is True:
             # Update Module Results
@@ -244,11 +252,15 @@ class visualizer(object):
             # Make NamedWindow
             cv2.namedWindow(det_winname)
 
+            # Move Window
+            if self.det_window_moved is False:
+                if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                    cv2.moveWindow(det_winname, self.screen_imshow_x, self.screen_imshow_y)
+                    self.det_window_moved = True
+
             # IMSHOW
             # If Visualization Frame is Color Modality, convert RGB to BGR
             cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
-        else:
-            det_vis_frame = None
 
         if self.vopts.tracking["is_draw"] is True or self.vopts.aclassifier["is_draw"] is True:
             # Update Module Results
@@ -262,14 +274,19 @@ class visualizer(object):
             # Make NamedWindow
             cv2.namedWindow(trk_acl_winname)
 
+            # Move Window
+            if self.trk_acl_window_moved is False:
+                if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                    cv2.moveWindow(trk_acl_winname, self.screen_imshow_x, self.screen_imshow_y)
+                    self.trk_acl_window_moved = True
+
             # IMSHOW
             # If Visualization Frame is Color Modality, convert RGB to BGR
             cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
-        else:
-            trk_acl_frame = None
 
-        # OpenCV Window Delay
-        cv2.waitKey(1)
+        if self.vopts.detection["is_draw"] is True or self.vopts.tracking["is_draw"] is True or \
+                self.vopts.aclassifier["is_draw"] is True:
+            cv2.waitKey(1)
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 

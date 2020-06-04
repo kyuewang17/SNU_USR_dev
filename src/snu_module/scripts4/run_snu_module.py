@@ -22,7 +22,7 @@ from module_detection import load_model as load_det_model
 from module_action import load_model as load_acl_model
 
 # Load Config Module
-from config.config import cfg
+from config import cfg
 
 
 # Argument Parser
@@ -33,28 +33,15 @@ parser.add_argument(
     type=str, help="configuration file"
 )
 parser.add_argument(
-    "--agent_name", default="kyle", type=str,
-    help="agent name, overwrites agent name option from config"
-)
-parser.add_argument(
-    "--agent_type", default="", type=str,
-    help="agent type, overwrites agent type option from config"
-)
-parser.add_argument(
-    "--vis", action='store_true',
-    help="whether visualize result(OpenCV Windows), overwrites visualization option from config"
+    "--ros_result_pub", action='store_true',
+    help="if False, do not visualize results even if the options are True"
 )
 args = parser.parse_args()
 
 
-# Get Agent Type and Agent Name
-agent_type = "rosbagfile"
-agent_name = "snu-dynamic-5"
-
-
 # Define SNU Module Class
 class snu_module(ros_utils.ros_multimodal_subscriber):
-    def __init__(self, opts):
+    def __init__(self, opts, ros_result_pub=True):
         super(snu_module, self).__init__(opts)
 
         # Initialize Frame Index
@@ -70,6 +57,9 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         self.tracks_pub = rospy.Publisher(
             opts.publish_mesg["tracks"], Tracks, queue_size=1
         )
+
+        # ROS SNU Result Publisher
+        self.is_snu_result_publish = ros_result_pub
         self.det_result_pub = rospy.Publisher(
             opts.publish_mesg["det_result_rostopic_name"], Image, queue_size=1
         )
@@ -181,7 +171,8 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             self.publish_tracks(tracklets=tracklets)
 
             # Publish SNU Result Image Results
-            self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+            if self.is_snu_result_publish is True:
+                self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
 
 def main():
@@ -192,7 +183,7 @@ def main():
     opts = options.snu_option_class(cfg=cfg)
 
     # Initialize SNU Module
-    snu_usr = snu_module(opts=opts)
+    snu_usr = snu_module(opts=opts, ros_result_pub=args.ros_result_pub)
 
     # Run SNU Module
     snu_usr(module_name="snu_module")
