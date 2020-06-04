@@ -32,16 +32,12 @@ parser.add_argument(
     default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
     type=str, help="configuration file"
 )
-parser.add_argument(
-    "--ros_result_pub", action='store_true',
-    help="if False, do not visualize results even if the options are True"
-)
 args = parser.parse_args()
 
 
 # Define SNU Module Class
 class snu_module(ros_utils.ros_multimodal_subscriber):
-    def __init__(self, opts, ros_result_pub=True):
+    def __init__(self, opts):
         super(snu_module, self).__init__(opts)
 
         # Initialize Frame Index
@@ -59,7 +55,6 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         )
 
         # ROS SNU Result Publisher
-        self.is_snu_result_publish = ros_result_pub
         self.det_result_pub = rospy.Publisher(
             opts.publish_mesg["det_result_rostopic_name"], Image, queue_size=1
         )
@@ -93,17 +88,19 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         for module, result_frame in result_frame_dict.items():
             if result_frame is not None:
                 if module == "det":
-                    self.det_result_pub.publish(
-                        self.pub_bridge.cv2_to_imgmsg(
-                            result_frame, "rgb8"
+                    if self.opts.detector.is_result_publish is True:
+                        self.det_result_pub.publish(
+                            self.pub_bridge.cv2_to_imgmsg(
+                                result_frame, "rgb8"
+                            )
                         )
-                    )
                 elif module == "trk_acl":
-                    self.trk_acl_result_pub.publish(
-                        self.pub_bridge.cv2_to_imgmsg(
-                            result_frame, "rgb8"
+                    if self.opts.tracker.is_result_publish is True:
+                        self.trk_acl_result_pub.publish(
+                            self.pub_bridge.cv2_to_imgmsg(
+                                result_frame, "rgb8"
+                            )
                         )
-                    )
                 else:
                     assert 0, "Undefined module!"
 
@@ -171,8 +168,7 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             self.publish_tracks(tracklets=tracklets)
 
             # Publish SNU Result Image Results
-            if self.is_snu_result_publish is True:
-                self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+            self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
 
 def main():
@@ -183,7 +179,7 @@ def main():
     opts = options.snu_option_class(cfg=cfg)
 
     # Initialize SNU Module
-    snu_usr = snu_module(opts=opts, ros_result_pub=args.ros_result_pub)
+    snu_usr = snu_module(opts=opts)
 
     # Run SNU Module
     snu_usr(module_name="snu_module")

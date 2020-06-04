@@ -34,10 +34,25 @@ sensors:
         rostopic_name: "/osr/camera_lidar"
         camerainfo_rostopic_name: "NULL"
 
-visualization:
-    detection:
-        show: false
-    tracking:
-        show: true
-    aclassification:
-        show: false
+detector:
+    name: "RefineDet"
+    device: 0
+    visualization:
+        is_draw: false
+        bbox_color: (255, 0, 0)
+    is_result_publish: true
+    result_rostopic_name: "/osr/snu_det_result_image"
+
+tracker:
+    name: "Custom"
+    device: 0
+    visualization:
+        is_draw: false
+    is_result_publish: true
+    result_rostopic_name: "/osr/snu_trk_acl_result_image"
+
+aclassifier:
+    name: "Custom"
+    device: 0
+    visualization:
+        is_draw: false

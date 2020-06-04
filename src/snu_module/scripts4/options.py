@@ -94,10 +94,9 @@ class snu_option_class(object):
         # Rostopic Message for Publisher
         self.publish_mesg = {
             "tracks": cfg.publisher.tracks,
-            "result_image": cfg.publisher.result_image,
 
-            "det_result_rostopic_name": cfg.publisher.det_result_image,
-            "trk_acl_result_rostopic_name": cfg.publisher.trk_acl_result_image,
+            "det_result_rostopic_name": cfg.detector.result_rostopic_name,
+            "trk_acl_result_rostopic_name": cfg.tracker.result_rostopic_name,
         }
 
     # Update Camera Parameter
@@ -222,6 +221,9 @@ class detector_options(object):
         # GPU-device
         self.device = cfg.detector.device
 
+        # Result Image Publish Flag
+        self.is_result_publish = cfg.detector.is_result_publish
+
         # Tiny Area Threshold
         self.tiny_area_threshold = 10
 
@@ -280,6 +282,9 @@ class tracker_options(object):
 
         # Set Device for Tracking
         self.device = cfg.tracker.device
+
+        # Result Image Publish Flag
+        self.is_result_publish = cfg.tracker.is_result_publish
 
         # Set base Kalman Parameters
         kparam_class(agent_type=cfg.agent.type)
@@ -365,32 +370,30 @@ class visualizer_options(object):
         self.info_interval = 4
 
         self.detection = {
-            "is_draw": cfg.visualization.detection.show,
+            "is_draw": cfg.detector.visualization.is_draw,
 
             "is_show_label": None,
             "is_show_score": None,
             "is_show_fps": None,
 
             # (RGB) in our setting
-            "bbox_color": cfg.visualization.detection.color,
+            "bbox_color": cfg.detector.visualization.bbox_color,
 
             # Line-width
             "linewidth": 2,
         }
 
         self.tracking = {
-            "is_draw": cfg.visualization.tracking.show,
+            "is_draw": cfg.tracker.visualization.is_draw,
 
             "is_show_id": None,
             "is_show_3d_coord": None,
             "is_show_depth": None,
             "is_show_fps": None,
 
-            "bbox_color": cfg.visualization.tracking.color,
-
             "linewidth": 2,
         }
 
         self.aclassifier = {
-            "is_draw": cfg.visualization.aclassification.show,
+            "is_draw": cfg.aclassifier.visualization.is_draw,
         }

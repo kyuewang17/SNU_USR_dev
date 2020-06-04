@@ -87,8 +87,7 @@ class vis_trk_acl_obj(vis_obj):
         # Initialize Tracklets (List for Tracklet Class)
         self.trks = []
 
-        # Custom Color and Object Linewidth Settings
-        self.color_code = vopts.tracking["bbox_color"]
+        # Object Linewidth Settings
         self.linewidth = vopts.tracking["linewidth"]
 
     # Update Tracklet Object
@@ -236,19 +235,24 @@ class visualizer(object):
         # OpenCV Window Name
         winname = self.winname + "(%s)" % modal_type
 
-        # Initialize Visualize Frames
-        det_vis_frame, trk_acl_frame = None, None
+        # Update Module Results
+        self.DET_VIS_OBJ.update_objects(detections)
 
-        # Draw Detection Results
+        # Draw Detection Results on Frame
+        det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
+            frame=copy.deepcopy(vis_frame), opencv_winname=winname
+        )
+
+        # Update Module Results
+        self.TRK_ACL_VIS_OBJ.update_objects(tracklets)
+
+        # Draw Tracking/Action Classification Results on Frame
+        trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
+            frame=copy.deepcopy(vis_frame), opencv_winname=winname
+        )
+
+        # Visualize Detection Results
         if self.vopts.detection["is_draw"] is True:
-            # Update Module Results
-            self.DET_VIS_OBJ.update_objects(detections)
-
-            # Draw Detection Results on Frame
-            det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
-                frame=copy.deepcopy(vis_frame), opencv_winname=winname
-            )
-
             # Make NamedWindow
             cv2.namedWindow(det_winname)
 
@@ -263,14 +267,6 @@ class visualizer(object):
             cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
 
         if self.vopts.tracking["is_draw"] is True or self.vopts.aclassifier["is_draw"] is True:
-            # Update Module Results
-            self.TRK_ACL_VIS_OBJ.update_objects(tracklets)
-
-            # Draw Tracking/Action Classification Results on Frame
-            trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
-                frame=copy.deepcopy(vis_frame), opencv_winname=winname
-            )
-
             # Make NamedWindow
             cv2.namedWindow(trk_acl_winname)
 

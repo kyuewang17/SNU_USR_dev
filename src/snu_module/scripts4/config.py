@@ -34,10 +34,6 @@ __C.odometry_rostopic_name = "/robot_odom"
 # --------------------- #
 __C.publisher = CN(new_allowed=False)
 __C.publisher.tracks = "/osr/tracks"
-__C.publisher.result_image = "/osr/snu_result_image"
-
-__C.publisher.det_result_image = "/osr/snu_det_result_image"
-__C.publisher.trk_acl_result_image = "/osr/snu_trk_acl_result_image"
 
 # ------------------ #
 # ROS Sensor Options #
@@ -108,6 +104,13 @@ __C.detector.name = "RefineDet"
 __C.detector.device = 0
 __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 
+__C.detector.visualization = CN(new_allowed=True)
+__C.detector.visualization.is_draw = True
+__C.detector.visualization.bbox_color = (255, 0, 0)
+
+__C.detector.is_result_publish = False
+__C.detector.result_rostopic_name = "/osr/snu_det_result_image"
+
 # ------------------------------- #
 # Multiple Target Tracker Options #
 # ------------------------------- #
@@ -115,6 +118,12 @@ __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 __C.tracker = CN(new_allowed=True)
 __C.tracker.name = "Custom"
 __C.tracker.device = 0
+
+__C.tracker.visualization = CN(new_allowed=True)
+__C.tracker.visualization.is_draw = True
+
+__C.tracker.is_result_publish = True
+__C.tracker.result_rostopic_name = "/osr/snu_trk_acl_result_image"
 
 # ----------------------------- #
 # Action Classification Options #
@@ -125,24 +134,9 @@ __C.aclassifier.name = "Custom"
 __C.aclassifier.device = 0
 __C.aclassifier.model_base_path = os.path.join(model_base_path, "aclassifier")
 
-# --------------------- #
-# Visualization Options #
-# --------------------- #
-__C.visualization = CN(new_allowed=True)
-
-# Detection
-__C.visualization.detection = CN(new_allowed=True)
-__C.visualization.detection.show = True
-__C.visualization.detection.color = (255, 0, 0)
-
-# Tracking
-__C.visualization.tracking = CN(new_allowed=True)
-__C.visualization.tracking.show = True
-__C.visualization.tracking.color = (0, 0, 255)
-
-# Action Classification
-__C.visualization.aclassification = CN(new_allowed=True)
-__C.visualization.aclassification.show = True
+# NOTE: For Action Classification, publishing result frame is done simultaneously with MOT result
+__C.aclassifier.visualization = CN(new_allowed=True)
+__C.aclassifier.visualization.is_draw = True
 
 
 if __name__ == "__main__":
