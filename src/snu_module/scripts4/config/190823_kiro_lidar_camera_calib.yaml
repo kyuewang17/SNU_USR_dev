@@ -50,7 +50,7 @@ tracker:
         is_draw: true
         top_view:
             is_draw: true
-            # map_size -> (horizontal length*2, depth_range)
+            # map_size -> (depth_range, horizontal length*2)
             map_size: (15000, 5000)
             trk_radius: 100
     is_result_publish: true
