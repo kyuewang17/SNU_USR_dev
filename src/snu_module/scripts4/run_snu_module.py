@@ -9,6 +9,7 @@ import time
 import rospy
 import argparse
 import os
+import cv2
 
 from sensor_msgs.msg import Image
 from osr_msgs.msg import Tracks
@@ -160,9 +161,6 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
             result_frame_dict = self.visualizer(
                 sensor_data=self.color, tracklets=tracklets, detections=detections
             )
-
-            # # Top-view Result
-            # self.visualizer.visualize_top_view_tracklets(tracklets=tracklets)
 
             # Publish Tracks
             self.publish_tracks(tracklets=tracklets)

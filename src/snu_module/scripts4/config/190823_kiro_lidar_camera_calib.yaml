@@ -47,7 +47,12 @@ tracker:
     name: "Custom"
     device: 0
     visualization:
-        is_draw: false
+        is_draw: true
+        top_view:
+            is_draw: true
+            # map_size -> (horizontal length*2, depth_range)
+            map_size: (15000, 5000)
+            trk_radius: 100
     is_result_publish: true
     result_rostopic_name: "/osr/snu_trk_acl_result_image"
 

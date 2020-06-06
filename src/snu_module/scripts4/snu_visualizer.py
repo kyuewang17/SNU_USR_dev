@@ -196,6 +196,13 @@ class visualizer(object):
         self.screen_imshow_y = opts.screen_imshow_y
         self.det_window_moved, self.trk_acl_window_moved = False, False
 
+        # Top-view Map (in mm)
+        self.top_view_map = np.ones(
+            shape=[opts.visualization.top_view["map_size"][0], opts.visualization.top_view["map_size"][1], 3],
+            dtype=np.uint8
+        )
+        self.top_view_window_moved = False
+
         # Top-view Max Axis
         self.u_max_axis, self.v_max_axis = 0, 0
         self.u_min_axis, self.v_min_axis = 0, 0
@@ -280,72 +287,71 @@ class visualizer(object):
             # If Visualization Frame is Color Modality, convert RGB to BGR
             cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
 
+        # Visualize Top-view Tracklets
+        if self.vopts.top_view["is_draw"] is True:
+            self.visualize_top_view_tracklets(tracklets=tracklets)
+
         if self.vopts.detection["is_draw"] is True or self.vopts.tracking["is_draw"] is True or \
-                self.vopts.aclassifier["is_draw"] is True:
+                self.vopts.aclassifier["is_draw"] is True or self.vopts.top_view["is_draw"] is True:
             cv2.waitKey(1)
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
     # Visualize Top-view Tracklets
+    # TODO: Cost-down Calculation
     def visualize_top_view_tracklets(self, tracklets):
-        if len(tracklets) != 0:
-            # MatPlotLib Window Name
-            winname = "Top-View Tracklet Results"
+        # Top-view Map Coordinate to Row/Column Axis Value
+        def cam_coord_to_top_view_coord(x, y):
+            row = int(self.top_view_map.shape[0] - y)
+            col = int(self.top_view_map.shape[1] / 2.0 + x)
+            return row, col
 
-            # Initialize Empty numpy array for Top-view Coordinates
-            # 1st row -> Tracklet ID
-            # 2nd and 3rd row -> (-y) and (+x) Coordinates
-            top_view_coords = np.zeros((3, len(tracklets)))
+        # Top-view OpenCV Plot Window Name
+        top_view_winname = "Top-View Tracklet Results"
 
-            # Update Top-view Coordinates
-            for trk_idx, trk in enumerate(tracklets):
-                # Initialize Temp Variable
-                tmp_val = np.zeros(3)
+        # For Drawing Top-view Tracklets
+        top_view_map = copy.deepcopy(self.top_view_map)
 
-                # Tracklet ID
-                tmp_val[0] = trk.id
+        # Draw Robot in the Top-view Map
+        robot_coord_row, robot_coord_col = cam_coord_to_top_view_coord(0, 0)
+        cv2.circle(
+            img=top_view_map, center=(robot_coord_row, robot_coord_col),
+            radius=int(top_view_map.shape[1]/100),
+            color=(0, 0, 0), thickness=cv2.FILLED
+        )
 
-                # Tracklet Coordinates
-                tmp_val[1], tmp_val[2] = -trk.c3[1][0], trk.c3[0][0]
+        # Draw Tracklet Coordinates to Top-view Map
+        for trk_idx, trk in enumerate(tracklets):
+            # Tracklet Coordinates < (-y) and (+x) Coordinates >
+            top_view_x, top_view_y = -trk.c3[1][0]*1000, trk.c3[0][0]*1000
 
-                # Update Top-view Coordinates
-                top_view_coords[:, trk_idx] = tmp_val
+            # Convert to Top-view Map Row/Column
+            top_view_row, top_view_col = \
+                cam_coord_to_top_view_coord(top_view_x, top_view_y)
 
-            # Get Maximum and Minimum Value of Axes
-            axis_max = np.amax(top_view_coords[1:], axis=1)
-            axis_min = np.amin(top_view_coords[1:], axis=1)
+            # Draw Tracklets as Circles
+            cv2.circle(
+                img=top_view_map, center=(top_view_col, top_view_row),
+                radius=100,
+                color=(trk.color[0], trk.color[1], trk.color[2]), thickness=cv2.FILLED
+            )
 
-            u_axis_max, v_axis_max = axis_max[0], axis_max[1]
-            u_axis_min, v_axis_min = axis_min[0], axis_min[1]
+        # Reshape Image
+        scale_percent = 5
+        width = int(top_view_map.shape[1] * scale_percent / 100)
+        height = int(top_view_map.shape[0] * scale_percent / 100)
+        resized_top_view_map = cv2.resize(
+            top_view_map, (width, height), interpolation=cv2.INTER_AREA
+        )
 
-            # Compare and Update Max/Min Axis
-            if u_axis_max >= self.u_max_axis:
-                self.u_max_axis = u_axis_max
-            if v_axis_max >= self.v_max_axis:
-                self.v_max_axis = v_axis_max
-            if u_axis_min <= self.u_min_axis:
-                self.u_min_axis = u_axis_min
-            if v_axis_min <= self.v_min_axis:
-                self.v_min_axis = v_axis_min
+        # Plot as OpenCV Window
+        cv2.namedWindow(top_view_winname)
+        if self.top_view_window_moved is False:
+            cv2.moveWindow(top_view_winname, self.screen_imshow_x, self.screen_imshow_y)
+            self.top_view_window_moved = True
+        cv2.imshow(top_view_winname, cv2.cvtColor(resized_top_view_map, cv2.COLOR_RGB2BGR))
 
-            # Set Axis Range
-            plt.axis([self.u_min_axis, self.u_max_axis, self.v_min_axis, self.v_max_axis])
-            plt.ion()
-
-            # Show
-            plt.show()
-
-            # Draw Top-view Coordinates
-            plt.plot(top_view_coords[1].tolist(), top_view_coords[2].tolist(), "ro")
-
-            # Set u and v axis
-            plt.xlabel("-y direction")
-            plt.ylabel("+x direction")
-
-            # Set Title
-            plt.title(winname)
-
-
+        cv2.waitKey(1)
 
 
 def main():

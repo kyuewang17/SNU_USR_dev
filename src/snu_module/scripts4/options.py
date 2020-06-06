@@ -397,3 +397,11 @@ class visualizer_options(object):
         self.aclassifier = {
             "is_draw": cfg.aclassifier.visualization.is_draw,
         }
+
+        self.top_view = {
+            "is_draw": cfg.tracker.visualization.top_view.is_draw,
+
+            "map_size": cfg.tracker.visualization.top_view.map_size,
+
+            "trk_radius": cfg.tracker.visualization.top_view.trk_radius,
+        }

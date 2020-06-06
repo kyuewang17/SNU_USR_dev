@@ -122,6 +122,11 @@ __C.tracker.device = 0
 __C.tracker.visualization = CN(new_allowed=True)
 __C.tracker.visualization.is_draw = True
 
+__C.tracker.visualization.top_view = CN(new_allowed=True)
+__C.tracker.visualization.top_view.is_draw = False
+__C.tracker.visualization.top_view.map_size = (20000, 20000)
+__C.tracker.visualization.top_view.trk_radius = 100
+
 __C.tracker.is_result_publish = True
 __C.tracker.result_rostopic_name = "/osr/snu_trk_acl_result_image"
 
