@@ -140,10 +140,10 @@ class snu_algorithms(object):
             sync_data_dict=sync_data_dict, opts=opts
         )
 
-        # # SNU Action Classification Module
-        # self.usr_action_classification(
-        #     sync_data_dict=sync_data_dict, opts=opts
-        # )
+        # SNU Action Classification Module
+        self.usr_action_classification(
+            sync_data_dict=sync_data_dict, opts=opts
+        )
 
         # trk_time = "Frame # (%08d) || DET fps:[%3.3f] | TRK fps:[%3.3f]" \
         #            % (self.fidx, 1/self.module_time_dict["det"], 1/self.module_time_dict["trk"])

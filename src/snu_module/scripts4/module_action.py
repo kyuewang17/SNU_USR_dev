@@ -95,5 +95,10 @@ def aclassify(model, sync_data_dict, trackers, opts):
     return trackers
 
 
+# Test Action Classification (for snu-osr-pil computer)
+def test_aclassifier_snu_osr_pil():
+    pass
+
+
 if __name__ == "__main__":
     pass

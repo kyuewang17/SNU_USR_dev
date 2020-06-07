@@ -26,54 +26,60 @@ from cv_bridge import CvBridge
 opts_dict = {
     # Target Paths, bag file name, etc.
     "paths": {
-        # Current File's Directory
-        "curr_script_dir": os.path.dirname(__file__),
+        "curr_script": os.path.dirname(__file__),
 
-        # Rosbag File Base Directory
-        "rosbag_file_base_dir": "/mnt/usb-USB_3.0_Device_0_000000004858-0:0-part1/",
-        
-        # Rosbag File Name
-        "rosbag_filename": "190823_kiro_lidar_camera_calib.bag",
+        # Bag File Root Path
+        # "bag_file_base_path": "/home/kyle/bag_files_temp/candidate_bags/0926_snu_result/",
+        "bag_file_base_path": "./",
+
+        # Bag File Name
+        # "bag_file": "2019-09-27-10-15-00.bag",
+
+        # "bag_file": "kiro_all.bag",
+        # "bag_file": "2019-09-26-17-19-40.bag",
+        # "bag_file": "2019-09-27-(1).bag",
+        # "bag_file": "2019-09-27-(2).bag",
+
+        "bag_file": "2019-11-28-11-55-42_movig_agent_rainy_day.bag",
+
+
+        # Bag Files (use this format when unbagging multiple bag files in a loop)
+        # "bag_files": {
+        #     "moving_agent": "2019-09-26-17-19-40.bag",
+        #     "depth_exp_not_moving": "2019-09-27-10-15-00.bag",
+        #     "depth_exp_moving": "2019-09-27-10-20-12.bag",
+        # },
     },
 
-    # Image Topics
-    "image_topics": {
-        "color": {
-            "topic_name": "/osr/image_color",
-            "msg_encoding": "8UC3",
-        },
-
-        "disparity": {
-            "topic_name": "/osr/image_depth",
-            "msg_encoding": "16UC1",
-        },
-
-        "thermal": {
-            "topic_name": "/osr/image_thermal",
-            "msg_encoding": "16UC1",
-        },
-
-        "infrared": {
-            "topic_name": "/osr/image_infrared",
-            "msg_encoding": "8UC1",
-        },
-
-        "nightvision": {
-            "topic_name": "/osr/image_nv1",
-            "msg_encoding": "8UC3",
-        },
-
-        "lidar": {
-            "topic_name": "/camera_lidar",
-            "msg_encoding": "8UC3",
-        },
-    },
+    # Image topics
+    # "image_topics": {
+    #     "rgb_image": "/osr/snu_result_image",
+    #     "thermal_image": "/osr/image_thremal",
+    #     # "depth_image": "/osr/image_depth",
+    #     # "aligned_depth_image": "/osr/image_aligned_depth",
+    # },
 
     # Camera Parameter Topics
     "cam_param_topics": {
-        "color": "/camera/color/camera_info",
-        "disparity": "/camera/depth/camera_info",
+        # "rgb_camera_params": "/osr/image_color_camerainfo",
+        # "depth_camera_params": "/osr/image_depth_camerainfo",
     },
+
+    # Image topics (for kiro_all.bag)
+    "image_topics": {
+        "rgb_image": "/osr/image_color",
+        "thermal_image": "/osr/image_thremal",
+        # "depth_image": "/osr/image_depth",
+    },
+    #
+    # # Camera Parameter Topics (for kiro_all.bag)
+    # "cam_param_topics": {
+    #     "rgb_camera_params": "/camera/color/camera_info",
+    #     "depth_camera_params": "/camera/color/camera_info",
+    # },
+
+    # ETC Options
+    "ETC": {},
 }
 
 # Save Flag (for code test)
@@ -93,13 +99,14 @@ def bag2imseq(bag_file_path):
     bridge = CvBridge()
 
     # Set Current bag imseq save directory (make directory if not exist)
-    folder_name = "__image_sequence__[BAG_FILE]_[" + opts_dict["paths"]["rosbag_filename"].split(".")[0] + "]"
-    output_save_dir = os.path.join(opts_dict["paths"]["rosbag_file_base_dir"], folder_name)
+    folder_name = "__image_sequence__[BAG_FILE]_[" + opts_dict["paths"]["bag_file"].split(".")[0] + "]"
+    output_save_dir = os.path.join(opts_dict["paths"]["bag_file_base_path"], folder_name)
     if os.path.isdir(output_save_dir) is False:
         os.mkdir(output_save_dir)
 
     # Read Message from bag file by Camera Parameter Topics
     for modal_cam_param_type, topic_name in opts_dict["cam_param_topics"].items():
+        print '[' + str(loop_count) + ''
         # Camera Parameter Save Message
         print "Saving camera parameters: [%s]" % modal_cam_param_type
 
@@ -110,12 +117,12 @@ def bag2imseq(bag_file_path):
         file_base_name = "%s__" % modal_cam_param_type
 
         # Set Sub-directory for camera parameters
-        if modal_cam_param_type.__contains__("color") is True:
-            output_cam_param_save_dir = os.path.join(output_save_dir, "color_cam_params")
+        if modal_cam_param_type.__contains__("rgb") is True:
+            output_cam_param_save_dir = os.path.join(output_save_dir, "rgb_cam_params")
             if os.path.isdir(output_cam_param_save_dir) is False:
                 os.mkdir(output_cam_param_save_dir)
-        elif modal_cam_param_type.__contains__("disparity") is True:
-            output_cam_param_save_dir = os.path.join(output_save_dir, "disparity_cam_params")
+        elif modal_cam_param_type.__contains__("depth") is True:
+            output_cam_param_save_dir = os.path.join(output_save_dir, "depth_cam_params")
             if os.path.isdir(output_cam_param_save_dir) is False:
                 os.mkdir(output_cam_param_save_dir)
         else:
@@ -125,7 +132,7 @@ def bag2imseq(bag_file_path):
         for topic, msg, t in bag.read_messages(topics=topic_name):
             # Break after looped once
             if loop_count > 0:
-                break
+                continue
 
             # Distortion Parameter
             D = np.array(msg.D).reshape((1, 5))
@@ -155,13 +162,6 @@ def bag2imseq(bag_file_path):
     # Read Message from bag file by Image Topics
     set_file_path = os.path.join(output_save_dir, "video.txt")
     set_file = open(set_file_path, "w")
-
-    for
-
-
-
-
-
     for modal, topic_name in opts_dict["image_topics"].items():
         # Frame Index Count Init
         fidx_count = 0
@@ -172,23 +172,18 @@ def bag2imseq(bag_file_path):
         if os.path.isdir(modal_save_dir) is False:
             os.mkdir(modal_save_dir)
 
-        #
-
-        if modal.__contains__("disparity") is True:
+        if modal.__contains__("depth") is True:
             if modal.__contains__("aligned") is True:
                 # Aligned
-                disparity_file_path = os.path.join(modal_save_dir, "aligned_disparity_ndarray.npz")
+                depth_file_path = os.path.join(modal_save_dir, "aligned_depth_ndarray.npz")
             else:
                 # Raw
-                disparity_file_path = os.path.join(modal_save_dir, "depth_disparity.npz")
+                depth_file_path = os.path.join(modal_save_dir, "depth_ndarray.npz")
         else:
-            disparity_file_path = None
+            depth_file_path = None
 
         # List for npz data (init)
         npz_data = []
-
-        # Allow these modals to be saved as image format (0~255, uint8 precision data)
-        img_format_modals =
 
         # Topic-wise bag file read
         for topic, msg, t in bag.read_messages(topics=topic_name):
@@ -227,7 +222,7 @@ def bag2imseq(bag_file_path):
                 # else:
                 # assert 0, "Unexpected Modal %s" % modal
 
-        # For Disparity Image, save npz data
+        # For Depth Image, save npz data
         if is_save is True:
             if modal.__contains__("depth"):
                 if modal.__contains__("aligned") is True:
@@ -235,8 +230,8 @@ def bag2imseq(bag_file_path):
                 else:
                     print "Processing 'npz' file for raw depth...!"
 
-                if os.path.exists(disparity_file_path) is False:
-                    np.savez(disparity_file_path, *npz_data)
+                if os.path.exists(depth_file_path) is False:
+                    np.savez(depth_file_path, *npz_data)
 
         # Sleep for modal change
         time.sleep(1)
@@ -251,7 +246,7 @@ def main():
     # Iterate through all bag files in the dictionary
 
     # Adjoin Bag File Path
-    bag_file_path = os.path.join(opts_dict["paths"]["rosbag_file_base_dir"], opts_dict["paths"]["rosbag_filename"])
+    bag_file_path = os.path.join(opts_dict["paths"]["bag_file_base_path"], opts_dict["paths"]["bag_file"])
 
     # bag2imseq
     bag2imseq(bag_file_path)

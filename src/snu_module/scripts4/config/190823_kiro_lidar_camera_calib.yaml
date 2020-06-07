@@ -49,7 +49,7 @@ tracker:
     visualization:
         is_draw: true
         top_view:
-            is_draw: true
+            is_draw: false
             # map_size -> (depth_range, horizontal length*2)
             map_size: (15000, 5000)
             trk_radius: 100
@@ -60,4 +60,4 @@ aclassifier:
     name: "Custom"
     device: 0
     visualization:
-        is_draw: false
+        is_draw: true

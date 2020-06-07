@@ -158,7 +158,7 @@ class vis_trk_acl_obj(vis_obj):
 
                     # Put Result Text in the frame
                     cv2.putText(frame, pose_word,
-                                (min(int(trk.x[0] + (trk.x[4] / 2)), W - 1), min(int(trk.x[1] + (trk.x[5] / 2)), H - 1)),
+                                (min(int(trk.x3[0] + (trk.x3[5] / 2)), W - 1), min(int(trk.x3[1] + (trk.x3[6] / 2)), H - 1)),
                                 font, 1.5, (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
         # Set OpenCV Window Name
