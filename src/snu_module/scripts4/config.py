@@ -75,7 +75,7 @@ __C.sensors.thermal.calibration_target_sensor = "color"
 __C.sensors.infrared = CN(new_allowed=True)
 __C.sensors.infrared.is_valid = True
 __C.sensors.infrared.encoding = "8UC1"
-__C.sensors.infrared.rostopic_name = "/osr/image_infrared"
+__C.sensors.infrared.rostopic_name = "/osr/image_ir"
 __C.sensors.infrared.camerainfo_rostopic_name = "NULL"
 __C.sensors.infrared.calibration_target_sensor = "color"
 

@@ -54,7 +54,7 @@ opts_dict = {
         },
 
         "infrared": {
-            "topic_name": "/osr/image_infrared",
+            "topic_name": "/osr/image_ir",
             "msg_encoding": "8UC1",
         },
 
@@ -156,99 +156,87 @@ def bag2imseq(bag_file_path):
     set_file_path = os.path.join(output_save_dir, "video.txt")
     set_file = open(set_file_path, "w")
 
-    for
-
-
-
-
-
-    for modal, topic_name in opts_dict["image_topics"].items():
+    for modal, modal_dict in opts_dict["image_topics"].items():
         # Frame Index Count Init
         fidx_count = 0
 
-        # Set Current Modal Save Sub-directory (make directory if not exist)
+        # Get Current Modal ROS Topic Name and Message Encoding
+        topic_name = modal_dict["topic_name"]
+        msg_encoding = modal_dict["msg_encoding"]
+
+        # Set Current Modal Save Sub-directory
         modal_save_dir = os.path.join(output_save_dir, modal)
-        # print(modal_save_dir)
         if os.path.isdir(modal_save_dir) is False:
             os.mkdir(modal_save_dir)
-
-        #
-
-        if modal.__contains__("disparity") is True:
-            if modal.__contains__("aligned") is True:
-                # Aligned
-                disparity_file_path = os.path.join(modal_save_dir, "aligned_disparity_ndarray.npz")
-            else:
-                # Raw
-                disparity_file_path = os.path.join(modal_save_dir, "depth_disparity.npz")
         else:
-            disparity_file_path = None
+            print("Image Sequence of Modal [%s] already exists..! (Proceeding to next Modal)" % modal)
+            continue
 
-        # List for npz data (init)
+        # List for *.npz data (initialization)
         npz_data = []
 
-        # Allow these modals to be saved as image format (0~255, uint8 precision data)
-        img_format_modals =
-
-        # Topic-wise bag file read
+        # Topic-wise Bag File Read
         for topic, msg, t in bag.read_messages(topics=topic_name):
-            # print '[' + str(fidx_count) + ']'
             # Increase Frame Index Count
             fidx_count += 1
 
-            # Convert 'Time' Instance to Seconds
+            # Convert 'Time' to Seconds
             stamp_secs = t.to_sec()
 
-            # Convert Image Message to cv2
-            frame = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            # Convert Image Message to Numpy Array (to use OpenCV functions)
+            frame = bridge.imgmsg_to_cv2(msg, desired_encoding=msg_encoding)
 
-            # Save Image (flag ==>> Test)
+            # Save Frame Images
+            if msg_encoding not in ["8UC1", "8UC3"]:
+                npz_data.append(frame)
+
+            curr_frame_file_path = os.path.join(modal_save_dir, "%09d__time[%s].png" % (fidx_count, str(stamp_secs)))
+            set_file.write("%09d\n" % fidx_count)
+            if os.path.exists(curr_frame_file_path) is False:
+                if fidx_count % 10 == 0:
+                    frame_save_msg = \
+                        "Saving Modal [%s] frame (fidx: %09d)" % (modal, fidx_count)
+                    print(frame_save_msg)
+            else:
+                assert 0, "This case should not happen!"
+
             if is_save is True:
-                # Save Message
-                print "Saving modal [%s]...{fidx: %09d}" % (modal, fidx_count)
+                cv2.imwrite(curr_frame_file_path, frame)
 
-                # --> RGB : save as png format
-                #     Depth : save as numpy "*.npz" file (save as ndarray)
-                # if modal.__contains__("rgb") is True:
-                # (from bag file)
-                # frame = frame[:, :, [2, 1, 0]]
+        # Save Modal Frames
+        # For Non-uint8 Modals, directly store numpy array as a file
+        if msg_encoding not in ["8UC1", "8UC3"]:
+            # Set Non-uint8 modal file names
+            modal_file_path = os.path.join(
+                modal_save_dir, "%s_ndarray.npz" % modal
+            )
+            if os.path.exists(modal_file_path) is False:
+                if is_save is True:
+                    np.savez(modal_file_path, *npz_data)
+            else:
+                print("Modal [%s] npz file for file [%s] already exists...! Skipping and Trying next modal..!" % (modal, opts_dict["paths"]["rosbag_filename"].split(".")[0]))
+                time.sleep(2)
+                continue
 
-                curr_frame_file_path = os.path.join(modal_save_dir, "%09d.png" % fidx_count)
-                print(curr_frame_file_path)
-                set_file.write("%09d\n" % fidx_count)
-                if os.path.exists(curr_frame_file_path) is False:
-                    cv2.imwrite(curr_frame_file_path, frame)
-                else:
-                    print('error: save img')
+        # Sleep for Modal Change
+        time.sleep(3)
 
-                # elif modal.__contains__("depth") is True:
-                #     # Store image frame to npz_data list
-                #     npz_data.append(frame)
-                # else:
-                # assert 0, "Unexpected Modal %s" % modal
-
-        # For Disparity Image, save npz data
-        if is_save is True:
-            if modal.__contains__("depth"):
-                if modal.__contains__("aligned") is True:
-                    print "Processing 'npz' file for aligned depth...!"
-                else:
-                    print "Processing 'npz' file for raw depth...!"
-
-                if os.path.exists(disparity_file_path) is False:
-                    np.savez(disparity_file_path, *npz_data)
-
-        # Sleep for modal change
-        time.sleep(1)
-    
     set_file.close()
-    # Close bag file
     bag.close()
 
 
 # Main Function
 def main():
-    # Iterate through all bag files in the dictionary
+    # Parse Modals and Topics First (print)
+    for modal, modal_dict in opts_dict["image_topics"].items():
+        topic_print_msg = "Modal [%s] TOPIC NAME: ( %s )" % (modal, modal_dict["topic_name"])
+        print(topic_print_msg)
+    for modal, camerainfo_topic_name in opts_dict["cam_param_topics"].items():
+        topic_print_msg = "Camera Info of Modal [%s] TOPIC NAME: ( %s )" % (modal, camerainfo_topic_name)
+        print(topic_print_msg)
+
+    # Sleep
+    time.sleep(5)
 
     # Adjoin Bag File Path
     bag_file_path = os.path.join(opts_dict["paths"]["rosbag_file_base_dir"], opts_dict["paths"]["rosbag_filename"])
