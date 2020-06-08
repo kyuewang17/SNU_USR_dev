@@ -177,12 +177,125 @@ def detect_old(framework, imgStruct_dict, opts, is_default_device=True):
         return det_results
 
 
-def standalone_detector(detection_model):
-    pass
+def standalone_detector():
+    import time
+    import cv2
+    import argparse
+    from config import cfg
+    from options import snu_option_class
+
+    # Save Detection Results Options
+    is_save_det_results = True
+
+    # Set Image Sequence Base Path
+    imseq_base_path = "/mnt/usb-USB_3.0_Device_0_000000004858-0:0-part1"
+    color_imseq_dir = os.path.join(
+        imseq_base_path, "__image_sequence__[BAG_FILE]_[190823_kiro_lidar_camera_calib]", "color"
+    )
+    if os.path.isdir(color_imseq_dir) is False:
+        assert 0, "[%s] is not a directory!" % imseq_base_path
+
+    parser = argparse.ArgumentParser(description="StandAlone Detection Algorithm")
+    parser.add_argument(
+        "--config",
+        default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
+        type=str, help="configuration file"
+    )
+    args = parser.parse_args()
+
+    # Merge Parsed cfg
+    cfg.merge_from_file(args.config)
+
+    # Load Option with Configuration
+    opts = snu_option_class(cfg=cfg)
+
+    # Load Detection Model
+    detector_framework = load_model(opts=opts)
+
+    # Select GPU Device for Detection Model
+    device = opts.detector.device
+
+    # Iterate through Color Frame Sequence Path
+    color_frame_list = sorted(os.listdir(color_imseq_dir))
+
+    # Read Sample Image (first frame)
+    sample_color_frame = cv2.imread(os.path.join(color_imseq_dir, color_frame_list[0]))
+    color_size = (sample_color_frame.shape[0], sample_color_frame.shape[1])
+    input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
+
+    img_size = color_size
+
+    # Initialize List of Numpy Array for Storing Frame-wise
+    detection_result_list = []
+
+    for frame_idx, frame_name in enumerate(color_frame_list):
+        # Message
+        if frame_idx % 10 == 0:
+            det_msg = "Run Detector at Frame: [%06d / %06d]" % (frame_idx, len(color_frame_list))
+            print(det_msg)
+
+        # Get Full Path String of Current Frame Image
+        frame_path = os.path.join(color_imseq_dir, frame_name)
+
+        # Load Frame with cv2
+        color_frame = cv2.imread(frame_path)
+
+        # To PyTorch
+        img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
+        img = img.permute(2, 0, 1).unsqueeze(dim=0).float().cuda(device) / 255.0
+
+        # Feed-forward
+        _, result_dict = detector_framework.forward({"img": img}, train=False)
+
+        # Get Result BBOX, Confidence, and Labels
+        boxes, confs, labels = result_dict["boxes_l"][0], result_dict["confs_l"][0], result_dict["labels_l"][0]
+
+        boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
+        boxes[:, [1, 3]] *= (float(img_size[0]) / float(input_size[0]))
+
+        # Get BBOX, Confidence, Labels
+        dets, confs, labels = \
+            boxes.detach().cpu().numpy(), confs.detach().cpu().numpy(), labels.detach().cpu().numpy()
+
+        # Remove Too Small Detections
+        keep_indices = []
+        for det_idx, det in enumerate(dets):
+            if det[2] * det[3] >= opts.detector.tiny_area_threshold:
+                keep_indices.append(det_idx)
+        dets = dets[keep_indices, :]
+        confs = confs[keep_indices, :]
+        labels = labels[keep_indices, :]
+
+        curr_frame_detection_result_array = np.zeros((dets.shape[0], 7))
+        for det_idx, det in enumerate(dets):
+            curr_frame_detection_result_array[det_idx, :] = np.array(
+                [
+                 frame_idx,
+                 det[0], det[1], det[2], det[3],
+                 confs[det_idx, 0],
+                 labels[det_idx, 0]
+                ]
+            )
+        detection_result_list.append(curr_frame_detection_result_array)
+
+    # Make Save File
+    if is_save_det_results is True:
+        det_result_filename = "det_result.txt"
+        det_result_file_path = os.path.join(os.path.dirname(color_imseq_dir), det_result_filename)
+
+        if os.path.isfile(det_result_file_path) is True:
+            print("[WARNING] Overwriting Detection Result File...!")
+            time.sleep(3)
+
+        # Open(make) Save File
+        with open(det_result_file_path, "w") as f:
+            for fidx, detection_result_array in enumerate(detection_result_list):
+                if detection_result_array.shape[0] != 0:
+                    print("Saving Detection at Frame: [%06d]" % fidx)
+                    for d in detection_result_array:
+                        f.write("%s %s %s %s %s %s %s\n" % (d[0], d[1], d[2], d[3], d[4], d[5], d[6]))
+
 
 
 if __name__ == "__main__":
-    # Load Model (framework)
-    detection_model = []
-
-    standalone_detector(detection_model)
+    standalone_detector()
