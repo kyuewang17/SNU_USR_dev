@@ -1,0 +1,63 @@
+agent:
+    type: "static"
+    name: "snu-fixed-03"
+    daytime: "day"
+    screen_compensate: false
+
+sensors:
+    color:
+        is_valid: true
+        rostopic_name: "/osr/image_color"
+        camerainfo_rostopic_name: "/osr/image_color_camerainfo"
+    disparity:
+        is_valid: true
+        rostopic_name: "/osr/image_aligned_depth"
+        camerainfo_rostopic_name: "/osr/image_depth_camerainfo"
+        clip:
+            value: -1
+            min_distance: 1000
+            max_distance: 15000
+    thermal:
+        is_valid: true
+        rostopic_name: "/osr/image_thermal"
+        camerainfo_rostopic_name: "NULL"
+    infrared:
+        is_valid: true
+        rostopic_name: "/osr/image_ir"
+        camerainfo_rostopic_name: "NULL"
+    nightvision:
+        is_valid: true
+        rostopic_name: "/osr/image_nv1"
+        camerainfo_rostopic_name: "NULL"
+    lidar:
+        is_valid: false
+        rostopic_name: "/osr/camera_lidar"
+        camerainfo_rostopic_name: "NULL"
+
+detector:
+    name: "RefineDet"
+    device: 0
+    visualization:
+        is_draw: false
+        bbox_color: (255, 0, 0)
+    is_result_publish: true
+    result_rostopic_name: "/osr/snu_det_result_image"
+
+tracker:
+    name: "Custom"
+    device: 0
+    visualization:
+        is_draw: true
+        top_view:
+            is_draw: false
+            # map_size -> (depth_range, horizontal length*2)
+            map_size: (15000, 5000)
+            trk_radius: 100
+    is_result_publish: true
+    result_rostopic_name: "/osr/snu_trk_acl_result_image"
+
+aclassifier:
+    name: "Custom"
+    device: 0
+    visualization:
+        is_draw: true
