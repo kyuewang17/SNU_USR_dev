@@ -30,7 +30,7 @@ from config import cfg
 parser = argparse.ArgumentParser(description="SNU Integrated Algorithm")
 parser.add_argument(
     "--config",
-    default=os.path.join(os.path.dirname(__file__), "config", "osr-snu-fixed-03.yaml"),
+    default=os.path.join(os.path.dirname(__file__), "config", "curr_agent", "config.yaml"),
     type=str, help="configuration file"
 )
 args = parser.parse_args()
