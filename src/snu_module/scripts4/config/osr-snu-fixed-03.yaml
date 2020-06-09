@@ -1,7 +1,7 @@
 agent:
     type: "static"
     name: "snu-fixed-03"
-    daytime: "all"
+    daytime: "day"
     screen_compensate: false
 
 sensors:
