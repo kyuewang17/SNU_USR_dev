@@ -106,6 +106,7 @@ __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 
 __C.detector.visualization = CN(new_allowed=True)
 __C.detector.visualization.is_draw = True
+__C.detector.visualization.is_show = True
 __C.detector.visualization.bbox_color = (255, 0, 0)
 
 __C.detector.is_result_publish = False
@@ -121,6 +122,7 @@ __C.tracker.device = 0
 
 __C.tracker.visualization = CN(new_allowed=True)
 __C.tracker.visualization.is_draw = True
+__C.tracker.visualization.is_show = True
 
 __C.tracker.visualization.top_view = CN(new_allowed=True)
 __C.tracker.visualization.top_view.is_draw = False
@@ -142,6 +144,7 @@ __C.aclassifier.model_base_path = os.path.join(model_base_path, "aclassifier")
 # NOTE: For Action Classification, publishing result frame is done simultaneously with MOT result
 __C.aclassifier.visualization = CN(new_allowed=True)
 __C.aclassifier.visualization.is_draw = True
+__C.aclassifier.visualization.is_show = True
 
 
 if __name__ == "__main__":
