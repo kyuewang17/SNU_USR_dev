@@ -18,3 +18,6 @@
 /src/snu_module/scripts4/build/
 /src/snu_module/scripts4/detection_lib/_C.so
 /src/snu_module/scripts4/detection.egg-info/
+
+# Current Agent YAML file
+/src/snu_module/scripts4/config/curr_agent/config.yaml
