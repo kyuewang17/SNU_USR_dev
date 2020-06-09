@@ -1,6 +1,6 @@
 agent:
     type: "static"
-    name: "snu-fixed-03"
+    name: "snu-fixed-02"
     daytime: "day"
     screen_compensate: false
 
