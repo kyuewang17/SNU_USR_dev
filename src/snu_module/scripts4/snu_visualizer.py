@@ -259,7 +259,7 @@ class visualizer(object):
         )
 
         # Visualize Detection Results
-        if self.vopts.detection["is_draw"] is True:
+        if self.vopts.detection["is_show"] is True:
             # Make NamedWindow
             cv2.namedWindow(det_winname)
 
@@ -273,7 +273,7 @@ class visualizer(object):
             # If Visualization Frame is Color Modality, convert RGB to BGR
             cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
 
-        if self.vopts.tracking["is_draw"] is True or self.vopts.aclassifier["is_draw"] is True:
+        if self.vopts.tracking["is_show"] is True or self.vopts.aclassifier["is_show"] is True:
             # Make NamedWindow
             cv2.namedWindow(trk_acl_winname)
 
@@ -288,11 +288,11 @@ class visualizer(object):
             cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
 
         # Visualize Top-view Tracklets
-        if self.vopts.top_view["is_draw"] is True:
+        if self.vopts.top_view["is_show"] is True:
             self.visualize_top_view_tracklets(tracklets=tracklets)
 
-        if self.vopts.detection["is_draw"] is True or self.vopts.tracking["is_draw"] is True or \
-                self.vopts.aclassifier["is_draw"] is True or self.vopts.top_view["is_draw"] is True:
+        if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
+                self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True:
             cv2.waitKey(1)
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}

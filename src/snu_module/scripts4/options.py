@@ -371,6 +371,7 @@ class visualizer_options(object):
 
         self.detection = {
             "is_draw": cfg.detector.visualization.is_draw,
+            "is_show": cfg.detector.visualization.is_show,
 
             "is_show_label": None,
             "is_show_score": None,
@@ -385,6 +386,7 @@ class visualizer_options(object):
 
         self.tracking = {
             "is_draw": cfg.tracker.visualization.is_draw,
+            "is_show": cfg.tracker.visualization.is_show,
 
             "is_show_id": None,
             "is_show_3d_coord": None,
@@ -396,10 +398,12 @@ class visualizer_options(object):
 
         self.aclassifier = {
             "is_draw": cfg.aclassifier.visualization.is_draw,
+            "is_show": cfg.aclassifier.visualization.is_show,
         }
 
         self.top_view = {
             "is_draw": cfg.tracker.visualization.top_view.is_draw,
+            "is_show": cfg.tracker.visualization.top_view.is_show,
 
             "map_size": cfg.tracker.visualization.top_view.map_size,
 
