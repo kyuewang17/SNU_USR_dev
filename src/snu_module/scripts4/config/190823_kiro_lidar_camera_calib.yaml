@@ -39,6 +39,7 @@ detector:
     device: 0
     visualization:
         is_draw: false
+        is_show: false
         bbox_color: (255, 0, 0)
     is_result_publish: true
     result_rostopic_name: "/osr/snu_det_result_image"
@@ -48,6 +49,7 @@ tracker:
     device: 0
     visualization:
         is_draw: true
+        is_show: true
         top_view:
             is_draw: false
             # map_size -> (depth_range, horizontal length*2)
@@ -61,3 +63,4 @@ aclassifier:
     device: 0
     visualization:
         is_draw: true
+        is_show: true
