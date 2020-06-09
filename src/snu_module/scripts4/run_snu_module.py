@@ -30,7 +30,7 @@ from config import cfg
 parser = argparse.ArgumentParser(description="SNU Integrated Algorithm")
 parser.add_argument(
     "--config",
-    default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
+    default=os.path.join(os.path.dirname(__file__), "config", "osr-snu-fixed-03.yaml"),
     type=str, help="configuration file"
 )
 args = parser.parse_args()
@@ -129,9 +129,9 @@ class snu_module(ros_utils.ros_multimodal_subscriber):
         rospy.init_node(module_name, anonymous=True)
 
         # ROS Sensor Modal Synchronization Target List
-        sync_target_modal_list = ["color", "disparity", "thermal"]  # 190823_kiro_lidar_camera_calib.bag
+        # sync_target_modal_list = ["color", "disparity", "thermal"]  # 190823_kiro_lidar_camera_calib.bag
         # sync_target_modal_list = ["color", "disparity", "thermal", "lidar"]  # kiro_rosbag.bag
-        # sync_target_modal_list = ["color", "disparity", "thermal", "infrared", "nightvision"]
+        sync_target_modal_list = ["color", "disparity", "thermal", "infrared", "nightvision"]
 
         while not rospy.is_shutdown():
             rospy.sleep(self.opts.node_sleep_time_for_sensor_sync)
