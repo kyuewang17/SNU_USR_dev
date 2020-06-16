@@ -1,0 +1,8 @@
+classes= 80
+train  = /home/pjreddie/data/coco/trainvalno5k.txt
+valid  = coco_testdev
+#valid = data/coco_val_5k.list
+names = /home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/data/coco.names
+backup = /home/pjreddie/backup/
+eval=coco
+
