@@ -53,7 +53,7 @@ class snu_algorithms(object):
 
         # Activate Module
         dets = snu_det.detect(
-            framework=self.det_framework, sync_data_dict=detection_sensor_data,
+            detector=self.det_framework, sync_data_dict=detection_sensor_data,
             opts=opts
         )
         confs, labels = dets[:, 4:5], dets[:, 5:6]

@@ -100,7 +100,7 @@ __C.sensors.lidar.calibration_target_sensor = "color"
 # ---------------- #
 # TODO: Add options/parameters that can be easily modified while impacting the overall performance
 __C.detector = CN(new_allowed=True)
-__C.detector.name = "RefineDet"
+__C.detector.name = "YOLOv4"#"RefineDet"
 __C.detector.device = 0
 __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 

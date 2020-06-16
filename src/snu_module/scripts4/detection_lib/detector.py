@@ -1,16 +1,104 @@
+import os
+import time
 import math
 import itertools
+import numpy as np
+import cv2
 import torch
 import torch.nn as nn
+from detection_lib.darknet import darknet
+from .backbone import RefineDetResNet34
+from .postproc import RefineDetPostProc
 from .__base__ import DetectorBase
 from .__module__ import FirstTCB, TCB
 
 
-class RefineDet(DetectorBase):
+class YOLOv4(DetectorBase):
     def __init__(self, global_args, network_args):
-        super(RefineDet, self).__init__(global_args, network_args)
-        self.input_h = float(global_args['input_h'])
-        self.input_w = float(global_args['input_w'])
+        super(YOLOv4, self).__init__(global_args, network_args)
+        self.net_width = network_args['net_width']
+        self.net_height = network_args['net_height']
+        self.meta_path = network_args['meta_path']
+        self.hier_thresh = network_args['hier_thresh']
+        self.nms_thresh = network_args['nms_thresh']
+        self.thresh = network_args['thresh']
+        self.net = None
+        self.meta = None
+
+        self.name2number_map = {
+            # 'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorcycle': 4,
+            'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorbike': 4,
+            'airplane': 5, 'bus': 6, 'train': 7, 'truck': 8, 'boat': 9, 'traffic light': 10,
+            'fire hydrant': 11, 'stop sign': 12, 'parking meter': 13, 'bench': 14, 'bird': 15,
+            'cat': 16, 'dog': 17, 'horse': 18, 'sheep': 19, 'cow': 20, 'elephant': 21, 'bear': 22,
+            'zebra': 23, 'giraffe': 24, 'backpack': 25, 'umbrella': 26, 'handbag': 27,
+            'tie': 28, 'suitcase': 29, 'frisbee': 30, 'skis': 31, 'snowboard': 32,
+            'sports ball': 33, 'kite': 34, 'baseball bat': 35, 'baseball glove': 36,
+            'skateboard': 37, 'surfboard': 38, 'tennis racket': 39, 'bottle': 40,
+            'wine glass': 41, 'cup': 42, 'fork': 43, 'knife': 44, 'spoon': 45, 'bowl': 46,
+            'banana': 47, 'apple': 48, 'sandwich': 49, 'orange': 50, 'broccoli': 51,
+            'carrot': 52, 'hot dog': 53, 'pizza': 54, 'donut': 55, 'cake': 56,
+            'chair': 57, 'couch': 58, 'potted plant': 59, 'bed': 60, 'dining table': 61,
+            'toilet': 62, 'tv': 63, 'laptop': 64, 'mouse': 65, 'remote': 66, 'keyboard': 67,
+            'cell phone': 68, 'microwave': 69, 'oven': 70, 'toaster': 71, 'sink': 72,
+            'refrigerator': 73, 'book': 74, 'clock': 75, 'vase': 76, 'scissors': 77,
+            'teddy bear': 78, 'hair drier': 79, 'toothbrush': 80
+        }
+        self.name2number_map_reduced = {
+            'background':0, 'person':1, 'car':2, 'bike':3
+        }
+        
+    def build(self):
+        self.meta = darknet.lib.get_metadata(self.meta_path.encode('utf-8'))
+
+    def forward(self, img):
+        # s_t = time.time()
+        # img_path = '/home/mipal/Desktop/test.jpeg'
+        # img = darknet.load_image(img_path, 0, 0)
+        # print(img.data)
+        # print(type(img.data), img.data.shape)
+        img = img.numpy()
+        img = cv2.resize(img, (self.net_width, self.net_height), interpolation=cv2.INTER_LINEAR)
+        img = img.transpose(2, 0, 1)
+        img_arr = np.ascontiguousarray(img.flat, dtype=np.float32) / 255.0
+        img_data = img_arr.ctypes.data_as(darknet.POINTER(darknet.c_float))
+        img_strt = darknet.IMAGE(img.shape[2], img.shape[1], img.shape[0], img_data)
+        # print(darknet.network_width(self.net), darknet.network_height(self.net))
+        # print(img.shape)
+        # exit()
+        box_infos = darknet.detect_image(
+            self.net, self.meta, img_strt, self.thresh, 
+            self.hier_thresh, self.nms_thresh, False)
+        # darknet.free_image(img)
+        
+        boxes, confs, labels = list(), list(), list()
+        for box_info in box_infos:
+            boxes.append(box_info[2])
+            confs.append(box_info[1])
+            labels.append(self.name2number_map_reduced[box_info[0]])
+
+        boxes = np.array(boxes)
+        boxes[:, 0:2] = boxes[:, 0:2] - boxes[:, 2:4] / 2.0
+        boxes[:, 2:4] = boxes[:, 0:2] + boxes[:, 2:4] 
+        confs = np.expand_dims(np.array(confs), axis=1)
+        labels = np.expand_dims(np.array(labels), axis=1)
+        # cv2.waitKey(0)
+        # print("inf_time:", time.time() - s_t)
+        return boxes, confs, labels
+
+    def load(self, load_dir):
+        config_path = os.path.join(load_dir, 'yolov4.cfg')
+        weight_path = os.path.join(load_dir, 'yolov4.weights')
+        self.net = darknet.load_net_custom(
+            config_path.encode('utf-8'), weight_path.encode('utf-8'), 0, 1)
+
+
+class RefineDet(DetectorBase):
+    def __init__(self, detection_args, network_args):
+        super(RefineDet, self).__init__(detection_args, network_args)
+        self.n_classes = detection_args['n_classes']
+        self.input_h = float(detection_args['input_h'])
+        self.input_w = float(detection_args['input_w'])
 
         self.is_bnorm = network_args['is_bnorm']
         self.tch_ch = network_args['tcb_ch']
@@ -26,10 +114,13 @@ class RefineDet(DetectorBase):
         self.is_anch_clip = network_args['is_anch_clip']
 
         # self.pos_anch_thresh = network_args['pos_anch_thresh']
+        self.backbone = RefineDetResNet34(detection_args, network_args['backbone_args'])
+        self.postproc = RefineDetPostProc(detection_args, network_args['postproc_args'])
         self.anchors = None
 
     def build(self):
         self.anchors = self.__create_anchor_boxes__()
+        self.backbone.build()
 
         net = dict()
         net['arm_loc_nets'], net['arm_conf_nets'] = self.__create_arm__()
@@ -38,10 +129,11 @@ class RefineDet(DetectorBase):
         self.net = nn.ModuleDict(net)
         # TODO: initialization
 
-    def forward(self, fmap_dict):
-        # forward_features : dict {c1,c2,c3,c4}
-        fmap_list = [fmap_dict['0'], fmap_dict['1'], fmap_dict['2'], fmap_dict['3']]
+    def forward(self, img):
+        self.train(False)
+        img = img.float().cuda(self.device).permute(2, 0, 1).unsqueeze(dim=0) / 255.0
 
+        fmap_list = self.backbone.forward(img)
         p4 = self.net['tcb_nets'][3](fmap_list[3])
         p3 = self.net['tcb_nets'][2](fmap_list[2], p4)
         p2 = self.net['tcb_nets'][1](fmap_list[1], p3)
@@ -51,12 +143,27 @@ class RefineDet(DetectorBase):
         arm_loc, arm_conf = self.__forward_arm_head__(fmap_list)
         odm_loc, odm_conf = self.__forward_odm_head__(pyramid_fmap_list)
         # refined_anchors, anch_ignore_flags = self.__refine_arm_anchors__(arm_predictions)
-        return {'arm_loc': arm_loc, 'arm_conf': arm_conf, 'odm_loc': odm_loc, 'odm_conf': odm_conf}
+        
+        boxes_l, confs_l, labels_l = self.postproc.process(
+            arm_loc, arm_conf, odm_loc, odm_conf, self.anchors)
+        boxes = boxes_l[0].detach().cpu().numpy() 
+        confs = confs_l[0].detach().cpu().numpy()
+        labels = labels_l[0].detach().cpu().numpy()
+        return boxes, confs, labels
 
     def cuda(self, device=0):
         self.net.cuda(device)
+        self.backbone.cuda(device)
         self.anchors = self.anchors.cuda(device)
         self.device = device
+
+    def load(self, load_dir):
+        super(RefineDet, self).load(os.path.join(load_dir, "detector.pth"))
+        self.backbone.load(os.path.join(load_dir, "backbone.pth"))
+
+    def train(self, mode):
+        self.backbone.train(mode)
+        self.net.train(mode)
 
     def __forward_arm_head__(self, fmap_list):
         """
