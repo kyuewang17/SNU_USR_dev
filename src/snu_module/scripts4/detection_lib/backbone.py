@@ -20,17 +20,8 @@ class RefineDetResNet34(BackboneBase):
 
     def forward(self, img):
         img = (img - self.mean) / self.std
-
-        fmap_dict = dict()
         feature0 = self.net['stage0'](img)
-        fmap_dict['0'] = feature0
-
         feature1 = self.net['stage1'](feature0)
-        fmap_dict['1'] = feature1
-
         feature2 = self.net['stage2'](feature1)
-        fmap_dict['2'] = feature2
-
         feature3 = self.net['stage3'](feature2)
-        fmap_dict['3'] = feature3
-        return fmap_dict
+        return [feature0, feature1, feature2, feature3]

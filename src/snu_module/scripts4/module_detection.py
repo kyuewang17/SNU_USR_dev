@@ -8,46 +8,33 @@ import copy
 import numpy as np
 import scipy.misc
 import torch
-from detection_lib.backbone import RefineDetResNet34
-from detection_lib.detector import RefineDet
-from detection_lib.postproc import RefineDetPostProc
-from detection_lib.framework import OneStageFramework
+from detection_lib.detector import RefineDet, YOLOv4
 from detection_lib import util
 
 thermal_camera_params = util.ThermalHeuristicCameraParams()
 
+detector_dict = {
+    "refinedet": RefineDet,
+    "yolov4": YOLOv4,
+}
+
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align
-
-
+cnt = 0
 def load_model(opts, is_default_device=True):
-    model_dir = opts.detector.model_dir
-    if is_default_device is True:
-        device = 0
-    else:
-        device = opts.detector.device
+    device = 0 if is_default_device else opts.detector.device 
 
-    backbone_path = os.path.join(model_dir, 'backbone.pth')
-    detector_path = os.path.join(model_dir, 'detector.pth')
+    detection_args = opts.detector.detection_args
+    detector_args = opts.detector.detector_args
 
-    backbone = RefineDetResNet34(opts.detector.detection_args, opts.detector.backbone_args)
-    detector = RefineDet(opts.detector.detection_args, opts.detector.detector_args)
-    backbone.build()
+    detector = detector_dict[detector_args["name"]](
+        detection_args, detector_args)
     detector.build()
-
-    backbone.cuda(device)
     detector.cuda(device)
-    backbone.load(backbone_path)
-    detector.load(detector_path)
-
-    postproc = RefineDetPostProc(opts.detector.detection_args, opts.detector.postproc_args, detector.anchors)
-    framework = OneStageFramework(
-        opts.detector.detection_args,
-        network_dict={'backbone': backbone, 'detector': detector},
-        postproc_dict={'detector': postproc})
-    return framework
+    detector.load(opts.detector.model_dir)
+    return detector
 
 
-def detect(framework, sync_data_dict, opts, is_default_device=True):
+def detect(detector, sync_data_dict, opts, is_default_device=True):
     """
     [MEMO]
     -> Develop this code more~
@@ -55,6 +42,7 @@ def detect(framework, sync_data_dict, opts, is_default_device=True):
     """
     # Select GPU Device for Detector Model
     device = (0 if is_default_device is True else opts.detector.device)
+    torch.autograd.set_grad_enabled(False)
 
     # Get Color and Thermal Image Frame
     """
@@ -71,6 +59,12 @@ def detect(framework, sync_data_dict, opts, is_default_device=True):
     color_frame = (sync_data_dict["color"].frame if "color" in sync_data_dict.keys() else None)
     thermal_frame = (sync_data_dict["thermal"].frame if "thermal" in sync_data_dict.keys() else None)
 
+    ######## by JIS (maybe...?) #########
+    # global cnt
+    # scipy.misc.imsave(os.path.join('/home/mipal/Project/MUIN/png_img/',str(cnt)+'.png'), color_frame)
+    # cnt += 1
+    #####################################
+    
     # Get Color Frame Size
     color_size = (color_frame.shape[0], color_frame.shape[1])
     input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
@@ -85,26 +79,14 @@ def detect(framework, sync_data_dict, opts, is_default_device=True):
     else:
         raise NotImplementedError
 
-    img = img.permute(2, 0, 1).unsqueeze(dim=0).float().cuda(device) / 255.0
-
-    # Feed-forward
-    _, result_dict = framework.forward({"img": img}, train=False)
-
-    # Get Result BBOX, Confidence, and Labels
-    boxes, confs, labels = result_dict["boxes_l"][0], result_dict["confs_l"][0], result_dict["labels_l"][0]
-
+    # Feed-forward / Get BBOX, Confidence, Labels
+    # result_dict = darknet.inference_(framework, img)
+    boxes, confs, labels = detector.forward(img)
     boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
     boxes[:, [1, 3]] *= (float(img_size[0]) / float(input_size[0]))
 
     # Copy Before Conversion
-    if opts.detector.sensor_dict["thermal"] is True:
-        thermal_boxes = boxes.cpu().numpy()
-    else:
-        thermal_boxes = None
-
-    # Get BBOX, Confidence, Labels
-    boxes, confs, labels = \
-        boxes.detach().cpu().numpy(), confs.detach().cpu().numpy(), labels.detach().cpu().numpy()
+    thermal_boxes = boxes.copy() if opts.detector.sensor_dict["thermal"] else None
 
     # Detection Results
     det_results = np.concatenate([boxes, confs, labels], axis=1)
@@ -177,125 +159,12 @@ def detect_old(framework, imgStruct_dict, opts, is_default_device=True):
         return det_results
 
 
-def standalone_detector():
-    import time
-    import cv2
-    import argparse
-    from config import cfg
-    from options import snu_option_class
-
-    # Save Detection Results Options
-    is_save_det_results = True
-
-    # Set Image Sequence Base Path
-    imseq_base_path = "/mnt/usb-USB_3.0_Device_0_000000004858-0:0-part1"
-    color_imseq_dir = os.path.join(
-        imseq_base_path, "__image_sequence__[BAG_FILE]_[190823_kiro_lidar_camera_calib]", "color"
-    )
-    if os.path.isdir(color_imseq_dir) is False:
-        assert 0, "[%s] is not a directory!" % imseq_base_path
-
-    parser = argparse.ArgumentParser(description="StandAlone Detection Algorithm")
-    parser.add_argument(
-        "--config",
-        default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
-        type=str, help="configuration file"
-    )
-    args = parser.parse_args()
-
-    # Merge Parsed cfg
-    cfg.merge_from_file(args.config)
-
-    # Load Option with Configuration
-    opts = snu_option_class(cfg=cfg)
-
-    # Load Detection Model
-    detector_framework = load_model(opts=opts)
-
-    # Select GPU Device for Detection Model
-    device = opts.detector.device
-
-    # Iterate through Color Frame Sequence Path
-    color_frame_list = sorted(os.listdir(color_imseq_dir))
-
-    # Read Sample Image (first frame)
-    sample_color_frame = cv2.imread(os.path.join(color_imseq_dir, color_frame_list[0]))
-    color_size = (sample_color_frame.shape[0], sample_color_frame.shape[1])
-    input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
-
-    img_size = color_size
-
-    # Initialize List of Numpy Array for Storing Frame-wise
-    detection_result_list = []
-
-    for frame_idx, frame_name in enumerate(color_frame_list):
-        # Message
-        if frame_idx % 10 == 0:
-            det_msg = "Run Detector at Frame: [%06d / %06d]" % (frame_idx, len(color_frame_list))
-            print(det_msg)
-
-        # Get Full Path String of Current Frame Image
-        frame_path = os.path.join(color_imseq_dir, frame_name)
-
-        # Load Frame with cv2
-        color_frame = cv2.imread(frame_path)
-
-        # To PyTorch
-        img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
-        img = img.permute(2, 0, 1).unsqueeze(dim=0).float().cuda(device) / 255.0
-
-        # Feed-forward
-        _, result_dict = detector_framework.forward({"img": img}, train=False)
-
-        # Get Result BBOX, Confidence, and Labels
-        boxes, confs, labels = result_dict["boxes_l"][0], result_dict["confs_l"][0], result_dict["labels_l"][0]
-
-        boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
-        boxes[:, [1, 3]] *= (float(img_size[0]) / float(input_size[0]))
-
-        # Get BBOX, Confidence, Labels
-        dets, confs, labels = \
-            boxes.detach().cpu().numpy(), confs.detach().cpu().numpy(), labels.detach().cpu().numpy()
-
-        # Remove Too Small Detections
-        keep_indices = []
-        for det_idx, det in enumerate(dets):
-            if det[2] * det[3] >= opts.detector.tiny_area_threshold:
-                keep_indices.append(det_idx)
-        dets = dets[keep_indices, :]
-        confs = confs[keep_indices, :]
-        labels = labels[keep_indices, :]
-
-        curr_frame_detection_result_array = np.zeros((dets.shape[0], 7))
-        for det_idx, det in enumerate(dets):
-            curr_frame_detection_result_array[det_idx, :] = np.array(
-                [
-                 frame_idx,
-                 det[0], det[1], det[2], det[3],
-                 confs[det_idx, 0],
-                 labels[det_idx, 0]
-                ]
-            )
-        detection_result_list.append(curr_frame_detection_result_array)
-
-    # Make Save File
-    if is_save_det_results is True:
-        det_result_filename = "det_result.txt"
-        det_result_file_path = os.path.join(os.path.dirname(color_imseq_dir), det_result_filename)
-
-        if os.path.isfile(det_result_file_path) is True:
-            print("[WARNING] Overwriting Detection Result File...!")
-            time.sleep(3)
-
-        # Open(make) Save File
-        with open(det_result_file_path, "w") as f:
-            for fidx, detection_result_array in enumerate(detection_result_list):
-                if detection_result_array.shape[0] != 0:
-                    print("Saving Detection at Frame: [%06d]" % fidx)
-                    for d in detection_result_array:
-                        f.write("%s %s %s %s %s %s %s\n" % (d[0], d[1], d[2], d[3], d[4], d[5], d[6]))
-
+def standalone_detector(detection_model):
+    pass
 
 
 if __name__ == "__main__":
-    standalone_detector()
+    # Load Model (framework)
+    detection_model = []
+
+    standalone_detector(detection_model)

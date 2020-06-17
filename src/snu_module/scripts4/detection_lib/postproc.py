@@ -5,26 +5,20 @@ from . import util as util
 
 
 class RefineDetPostProc(RefineDetPostProcBase):
-    def process(self, output_dict, data_dict):
-        refine_anchors, ignore_flags_refined_anchor = self.__refine_arm_anchors__(output_dict, self.anchors)
+    def process(self, arm_loc, arm_conf, odm_loc, odm_conf, anchors):
+        refine_anchors, ignore_flags_refined_anchor = \
+            self.__refine_arm_anchors__(arm_loc, arm_conf, anchors)
 
         # r1, r2, r3 : [#batch * tensor(shape=(self.max_boxes,4))],
         # [#batch * tensor(shape=(self.max_boxes,1))], [#batch * tensor(shape=(self.max_boxes,1))]
-        r1, r2, r3 = self.detect([output_dict['odm_loc'], output_dict['odm_conf']],
-                                 refine_anchors, ignore_flags_refined_anchor)
+        boxes_l, confs_l, labels_l = self.detect(
+            [odm_loc, odm_conf], refine_anchors, ignore_flags_refined_anchor)
+        return boxes_l, confs_l, labels_l
 
-        result_dict = dict()
-        result_dict['boxes_l'] = r1
-        result_dict['confs_l'] = r2
-        result_dict['labels_l'] = r3
-        return result_dict
-
-    def __refine_arm_anchors__(self, output_dict, anchors):
+    def __refine_arm_anchors__(self, arm_loc, arm_conf, anchors):
         """
         Refine anchores and get ignore flag for refined anchores using outputs of ARM.
         """
-        arm_loc = output_dict['arm_loc']
-        arm_conf = output_dict['arm_conf']
         # Detach softmax of confidece predictions to block backpropation.
         arm_score = func.softmax(arm_conf.detach(), -1)
         # Adjust anchors with arm_loc.
@@ -160,7 +154,6 @@ def nms_cls_boxes_s(boxes_s, confs_s, n_classes, conf_threshold, nms_threshold):
     cls_boxes_sl = list()
     cls_confs_sl = list()
     cls_labels_sl = list()
-
     if n_classes == 80:
         coco = True
     else:
@@ -205,14 +198,12 @@ def nms_cls_boxes_s(boxes_s, confs_s, n_classes, conf_threshold, nms_threshold):
 
         labels_css = torch.zeros(cls_confs_sc.shape).float().cuda()
         if coco and (c in coco_car):
-            labels_css += 1 + 1
+            labels_css += 2
         else:
-            labels_css += c + 1
-
+            labels_css += c+1
         cls_boxes_sl.append(cls_boxes_sc)
         cls_confs_sl.append(cls_confs_sc)
         cls_labels_sl.append(labels_css)
-
     if len(cls_boxes_sl) > 0:
         boxes_s = torch.cat(cls_boxes_sl, dim=0)
         confs_s = torch.cat(cls_confs_sl, dim=0)
@@ -221,7 +212,6 @@ def nms_cls_boxes_s(boxes_s, confs_s, n_classes, conf_threshold, nms_threshold):
         boxes_s = torch.zeros((1, 4)).float().cuda()
         confs_s = torch.zeros((1, 1)).float().cuda()
         labels_s = torch.zeros((1, 1)).float().cuda()
-
     # cls_boxes_s, cls_confs_s, cls_labels_s = cls_boxes_s[:30], cls_confs_s[:30], cls_labels_s[:30]
     # print(cls_boxes_s.shape, cls_confs_s.shape)
     # print(torch.cat([cls_boxes_s, cls_confs_s, cls_labels_s], dim=1))

@@ -241,29 +241,40 @@ class detector_options(object):
 
         # Detector Arguments
         # ( what is the difference between 'detection_args' ?!?! )
+        # Detector Arguments
+        # ( what is the difference between 'detection_args' ?!?! )
         self.detector_args = {
-            "is_bnorm": False, "tcb_ch": 256,
-            'fmap_chs': [128, 256, 512, 128],
-            'fmap_sizes': [40, 20, 10, 5], 'fmap_steps': [8, 16, 32, 64],
-            'anch_scale': [0.1, 0.2], 'anch_min_sizes': [32, 64, 128, 256],
-            'anch_max_sizes': [], 'anch_aspect_ratios': [[2], [2], [2], [2]],
-            'n_boxes_list': [3, 3, 3, 3], 'is_anch_clip': True,
-        }
+            "name": "yolov4",
+            "net_width": 448, "net_height": 320,
+            "thresh": 0.5, "hier_thresh": 0.5, "nms_thresh": 0.45,
+            "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
 
-        # Post-processing Arguments
-        self.postproc_args = {
-            'n_infer_rois': 300, 'device': 0, 'only_infer': True,
-            # 'conf_thresh' ==>> Classification(2nd threshold)
-            # 'nms_thresh': 0.45, 'conf_thresh': 0.3,
-            # 'nms_thresh': 0.5, 'conf_thresh': 0.83,
-            'nms_thresh': 0.5, 'conf_thresh': 0.4,
-            # 'nms_thresh': 0.5, 'conf_thresh': 0.6,
-            # 'pos_anchor_threshold ==>> Objectness(1st threshold)
-            'max_boxes': 200, 'pos_anchor_threshold': 0.2,
-            # 'max_boxes': 200, 'pos_anchor_threshold': 0.0001,
-            'anch_scale': [0.1, 0.2],
-            # dynamic edit (191016)!
-            'max_w': 1000,
+            # "name": "refinedet",
+            # "is_bnorm": False, "tcb_ch": 256,
+            # 'fmap_chs': [128, 256, 512, 128],
+            # "fmap_sizes": [40, 20, 10, 5], "fmap_steps": [8, 16, 32, 64],
+            # "anch_scale": [0.1, 0.2], "anch_min_sizes": [32, 64, 128, 256],
+            # "anch_max_sizes": [], "anch_aspect_ratios": [[2], [2], [2], [2]],
+            # "n_boxes_list": [3, 3, 3, 3], "is_anch_clip": True,
+            # "backbone_args": {
+            #     "name": "res34level4",
+            #     "pretrained": False,
+            # },
+            # "postproc_args": {
+            #     "name": "refinedet",
+            #     'n_infer_rois': 300, 'device': 0, 'only_infer': True,
+            #     # 'conf_thresh' ==>> Classification(2nd threshold)
+            #     # 'nms_thresh': 0.45, 'conf_thresh': 0.3,
+            #     # 'nms_thresh': 0.5, 'conf_thresh': 0.83,
+            #     'nms_thresh': 0.5, 'conf_thresh': 0.4,
+            #     # 'nms_thresh': 0.5, 'conf_thresh': 0.6,
+            #     # 'pos_anchor_threshold ==>> Objectness(1st threshold)
+            #     'max_boxes': 200, 'pos_anchor_threshold': 0.2,
+            #     # 'max_boxes': 200, 'pos_anchor_threshold': 0.0001,
+            #     'anch_scale': [0.1, 0.2],
+            #     # dynamic edit (191016)!
+            #     'max_w': 1000,
+            # }
         }
 
 
