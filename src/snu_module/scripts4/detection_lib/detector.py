@@ -72,10 +72,15 @@ class YOLOv4(DetectorBase):
         # darknet.free_image(img)
         
         boxes, confs, labels = list(), list(), list()
-        for box_info in box_infos:
-            boxes.append(box_info[2])
-            confs.append(box_info[1])
-            labels.append(self.name2number_map_reduced[box_info[0]])
+        if len(box_infos) == 0 :
+            boxes.append((0.0, 0.0, 0.0, 0.0))
+            confs.append(float(1.0))
+            labels.append(self.name2number_map_reduced['background'])
+        else:    
+            for box_info in box_infos:
+                boxes.append(box_info[2])
+                confs.append(box_info[1])
+                labels.append(self.name2number_map_reduced[box_info[0]])
 
         boxes = np.array(boxes)
         boxes[:, 0:2] = boxes[:, 0:2] - boxes[:, 2:4] / 2.0
