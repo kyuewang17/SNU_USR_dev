@@ -61,15 +61,6 @@
     - yaml
     - numpy, numba, scipy, FilterPy, sklearn, yacs
     
-~~- Build Detection Module (tentative, for current detector model: **RefineDet** \[[Paper](https://arxiv.org/abs/1711.06897)\])
-    - Setting Requirements (_as far as we know_...)
-        - gcc 5.4.0\
-        (note that on gcc 8.x, the module does not build)
-        - PyTorch 1.0 ~ 1.2
-        - CUDA 9.0 ~ 10.1
-    - Build Steps
-        1. Run [detection_setup.py](/src/snu_module/scripts4/detection_setup.py) using the Anaconda environments\
-        `>> python detection_setup.py build develop`
    
 - Build Detection Module (tentative, for current detector model: **yolo v4** \[[Paper](https://arxiv.org/abs/2004.10934)\])
     - Setting Requirements (_as far as we know_...)
