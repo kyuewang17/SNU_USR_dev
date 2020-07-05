@@ -21,3 +21,6 @@
 
 # Current Agent YAML file
 /src/snu_module/scripts4/config/curr_agent/config.yaml
+
+# Ignore YOLOv4 Weights
+/src/snu_module/models/detector/YOLOv4/day/*.weights
