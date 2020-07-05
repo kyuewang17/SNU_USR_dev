@@ -47,15 +47,15 @@ __C.sensors.color = CN(new_allowed=True)
 __C.sensors.color.is_valid = True
 __C.sensors.color.encoding = "8UC3"
 __C.sensors.color.rostopic_name = "/osr/image_color"
-__C.sensors.color.camerainfo_rostopic_name = "/camera/color/camera_info"
+__C.sensors.color.camerainfo_rostopic_name = "/osr/image_color_camerainfo"
 __C.sensors.color.calibration_target_sensor = "color"
 
 
 __C.sensors.disparity = CN(new_allowed=True)
 __C.sensors.disparity.is_valid = True
 __C.sensors.disparity.encoding = "16UC1"
-__C.sensors.disparity.rostopic_name = "/osr/image_depth"
-__C.sensors.disparity.camerainfo_rostopic_name = "/camera/depth/camera_info"
+__C.sensors.disparity.rostopic_name = "/osr/image_aligned_depth"
+__C.sensors.disparity.camerainfo_rostopic_name = "/osr/image_depth_camerainfo"
 __C.sensors.disparity.calibration_target_sensor = "color"
 
 __C.sensors.disparity.clip = CN(new_allowed=False)
@@ -76,7 +76,7 @@ __C.sensors.infrared = CN(new_allowed=True)
 __C.sensors.infrared.is_valid = True
 __C.sensors.infrared.encoding = "8UC1"
 __C.sensors.infrared.rostopic_name = "/osr/image_ir"
-__C.sensors.infrared.camerainfo_rostopic_name = "NULL"
+__C.sensors.infrared.camerainfo_rostopic_name = "/osr/image_ir_camerainfo"
 __C.sensors.infrared.calibration_target_sensor = "color"
 
 
@@ -90,8 +90,8 @@ __C.sensors.nightvision.calibration_target_sensor = "color"
 
 __C.sensors.lidar = CN(new_allowed=True)
 __C.sensors.lidar.is_valid = True
-__C.sensors.lidar.encoding = "8UC3"
-__C.sensors.lidar.rostopic_name = "/osr/camera_lidar"
+__C.sensors.lidar.encoding = "NULL"
+__C.sensors.lidar.rostopic_name = "/osr/lidar_pointcloud"
 __C.sensors.lidar.camerainfo_rostopic_name = "NULL"
 __C.sensors.lidar.calibration_target_sensor = "color"
 
