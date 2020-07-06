@@ -8,15 +8,12 @@ import numpy as np
 import datetime
 
 import module_detection as snu_det
-import module_tracking_v4 as snu_trk
+import module_tracking as snu_trk
 import module_action as snu_acl
 
 
 class snu_algorithms(object):
-    def __init__(self, frameworks, opts):
-        # Load Options
-        self.opts = opts
-
+    def __init__(self, frameworks):
         # Load Detection Model
         self.det_framework = frameworks["det"]
 
@@ -24,7 +21,10 @@ class snu_algorithms(object):
         self.acl_framework = frameworks["acl"]
 
         # Initialize Tracklet and Tracklet Candidates
-        self.snu_mot = snu_trk.SNU_MOT(opts=opts)
+        self.trks, self.trk_cands = [], []
+
+        # Initialize Maximum Tracklet ID
+        self.max_trk_id = -1
 
         # Initialize Detections
         self.detections = {}
@@ -40,21 +40,21 @@ class snu_algorithms(object):
         }
 
     # Detection Module
-    def usr_object_detection(self, sync_data_dict, logger):
+    def usr_object_detection(self, sync_data_dict, logger, opts):
         # Start Time
         START_TIME = datetime.datetime.now()
 
         # Parse-out Required Sensor Modalities
         # TODO: Integrate this for all 3 modules
         detection_sensor_data = {}
-        for modal, modal_switch in self.opts.detector.sensor_dict.items():
+        for modal, modal_switch in opts.detector.sensor_dict.items():
             if modal_switch is True:
                 detection_sensor_data[modal] = sync_data_dict[modal]
 
         # Activate Module
         dets = snu_det.detect(
             detector=self.det_framework, sync_data_dict=detection_sensor_data,
-            opts=self.opts
+            opts=opts
         )
         confs, labels = dets[:, 4:5], dets[:, 5:6]
         dets = dets[:, 0:4]
@@ -62,7 +62,7 @@ class snu_algorithms(object):
         # Remove Too Small Detections
         keep_indices = []
         for det_idx, det in enumerate(dets):
-            if det[2] * det[3] >= self.opts.detector.tiny_area_threshold:
+            if det[2] * det[3] >= opts.detector.tiny_area_threshold:
                 keep_indices.append(det_idx)
         dets = dets[keep_indices, :]
         confs = confs[keep_indices, :]
@@ -75,21 +75,27 @@ class snu_algorithms(object):
         self.module_time_dict["det"] = (END_TIME - START_TIME).total_seconds()
 
     # Multiple Target Tracking Module
-    def usr_multiple_target_tracking(self, sync_data_dict, logger):
+    def usr_multiple_target_tracking(self, sync_data_dict, logger, opts):
         # Start Time
         START_TIME = datetime.datetime.now()
 
         # Parse-out Required Sensor Modalities
         tracking_sensor_data = {}
-        for modal, modal_switch in self.opts.tracker.sensor_dict.items():
+        for modal, modal_switch in opts.tracker.sensor_dict.items():
             if modal_switch is True:
                 tracking_sensor_data[modal] = sync_data_dict[modal]
 
         # Activate Module
-        self.snu_mot(
-            sync_data_dict=sync_data_dict, fidx=self.fidx,
-            detections=self.detections
+        self.trks, self.trk_cands = snu_trk.tracker(
+            sync_data_dict=tracking_sensor_data, fidx=self.fidx,
+            detections=self.detections, max_trk_id=self.max_trk_id,
+            opts=opts, trks=self.trks, trk_cands=self.trk_cands
         )
+
+        # Update Maximum Tracklet ID
+        for trk in self.trks:
+            if trk.id > self.max_trk_id:
+                self.max_trk_id = trk.id
 
         # Stop Time
         END_TIME = datetime.datetime.now()
@@ -97,22 +103,21 @@ class snu_algorithms(object):
         self.module_time_dict["trk"] = (END_TIME - START_TIME).total_seconds()
 
     # Action Classification Module
-    def usr_action_classification(self, sync_data_dict, logger):
+    def usr_action_classification(self, sync_data_dict, logger, opts):
         START_TIME = datetime.datetime.now()
 
         # Parse-out Required Sensor Modalities
         aclassify_sensor_data = {}
-        for modal, modal_switch in self.opts.aclassifier.sensor_dict.items():
+        for modal, modal_switch in opts.aclassifier.sensor_dict.items():
             if modal_switch is True:
                 aclassify_sensor_data[modal] = sync_data_dict[modal]
 
         # Activate Module
-        trks = snu_acl.aclassify(
+        self.trks = snu_acl.aclassify(
             model=self.acl_framework,
             sync_data_dict=aclassify_sensor_data,
-            trackers=self.snu_mot.trks, opts=self.opts
+            trackers=self.trks, opts=opts
         )
-        self.snu_mot.trks = trks
 
         END_TIME = datetime.datetime.now()
 
@@ -125,23 +130,22 @@ class snu_algorithms(object):
 
         # SNU Object Detector Module
         self.usr_object_detection(
-            sync_data_dict=sync_data_dict, logger=logger
+            sync_data_dict=sync_data_dict, logger=logger, opts=opts
         )
 
         # SNU Multiple Target Tracker Module
         self.usr_multiple_target_tracking(
-            sync_data_dict=sync_data_dict, logger=logger
+            sync_data_dict=sync_data_dict, logger=logger, opts=opts
         )
 
         # SNU Action Classification Module
         self.usr_action_classification(
-            sync_data_dict=sync_data_dict, logger=logger
+            sync_data_dict=sync_data_dict, logger=logger, opts=opts
         )
 
         # NOTE: DO NOT USE PYTHON PRINT FUNCTION, USE "LOGGING" INSTEAD
-        # NOTE: (2) Due to ROS, LOGGING Module Does not work properly!
         # trk_time = "Frame # (%08d) || DET fps:[%3.3f] | TRK fps:[%3.3f]" \
         #            % (self.fidx, 1/self.module_time_dict["det"], 1/self.module_time_dict["trk"])
         # print(trk_time)
 
-        return self.snu_mot.trks, self.detections, self.module_time_dict
+        return self.trks, self.detections, self.module_time_dict

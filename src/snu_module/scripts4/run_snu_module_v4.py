@@ -30,6 +30,7 @@ parser = argparse.ArgumentParser(description="SNU Integrated Algorithm", prog="S
 parser.add_argument(
     "--config", "-C",
     default=os.path.join(os.path.dirname(__file__), "config", "curr_agent", "config.yaml"),
+    # default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
     type=str, help="Configuration YAML file"
 )
 args = parser.parse_args()
@@ -62,17 +63,6 @@ class snu_module(ros_utils.coverage):
         # Initialize Logger Variable
         self.logger = set_logger(logging_level=logging.INFO)
 
-        # Initialize Modal Classes
-        self.color = ros_utils.ros_sensor_image(modal_type="color")
-        self.disparity = ros_utils.ros_sensor_image(modal_type="disparity")
-        self.thermal = ros_utils.ros_sensor_image(modal_type="thermal")
-        self.infrared = ros_utils.ros_sensor_image(modal_type="infrared")
-        self.nightvision = ros_utils.ros_sensor_image(modal_type="nightvision")
-        self.lidar = ros_utils.ros_sensor_lidar(modal_type="lidar")
-
-        # Odometry (Pass-through Variable)
-        self.odometry = None
-
         # Initialize Frame Index
         self.fidx = 0
 
@@ -81,51 +71,14 @@ class snu_module(ros_utils.coverage):
 
         # Declare ROS Synchronization Switch Dictionary
         self.ros_sync_switch_dict = {
-            "color": True, "color_camerainfo": True,
-            "disparity": False, "aligned_disparity": True, "disparity_camerainfo": False,
-            "thermal": False,
-            "infrared": False, "infrared_camerainfo": False,
-            "nightvision": False,
+            "color": True,
+            "disparity": False, "aligned_disparity": True,
+            "thermal": True,
+            "infrared": True,
+            "nightvision": True,
             "pointcloud": False,
             "odometry": False,
         }
-
-    def update_all_modal_data(self, sync_data):
-        sync_stamp = sync_data[0]
-        sync_frame_dict = sync_data[1]
-        sync_camerainfo_dict = sync_data[2]
-        sync_pc_odom_dict = sync_data[3]
-
-        # Update Modal Frames
-        self.color.update_data(frame=sync_frame_dict["color"], stamp=sync_stamp)
-        self.color.update_sensor_params_rostopic(msg=sync_camerainfo_dict["color"])
-
-        self.disparity.update_data(frame=sync_frame_dict["aligned_disparity"], stamp=sync_stamp)
-        self.disparity.update_raw_data(raw_data=sync_frame_dict["disparity"])
-        self.disparity.update_sensor_params_rostopic(msg=sync_camerainfo_dict["disparity"])
-
-        self.thermal.update_data(frame=sync_frame_dict["thermal"], stamp=sync_stamp)
-
-        self.infrared.update_data(frame=sync_frame_dict["infrared"], stamp=sync_stamp)
-        self.infrared.update_sensor_params_rostopic(msg=sync_camerainfo_dict["infrared"])
-
-        self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
-
-        self.lidar.update_data(lidar_pc_msg=sync_pc_odom_dict["pointcloud"], stamp=sync_stamp)
-
-        # Get Odometry
-        self.odometry = sync_pc_odom_dict["odometry"]
-
-    def gather_all_modal_data(self):
-        sensor_data = {
-            "color": self.color,
-            "disparity": self.disparity,
-            "thermal": self.thermal,
-            "infrared": self.infrared,
-            "nightvision": self.nightvision,
-            "lidar": self.lidar
-        }
-        return sensor_data
 
     def gather_all_sensor_parameters_via_files(self):
         raise NotImplementedError()
@@ -141,7 +94,7 @@ class snu_module(ros_utils.coverage):
         time.sleep(0.5)
 
         # Initialize SNU Algorithm Class
-        snu_usr = snu_algorithms.snu_algorithms(frameworks=frameworks)
+        snu_usr = snu_algorithms.snu_algorithms(frameworks=frameworks, opts=self.opts)
         self.logger.info("SNU Algorithm Loaded...!")
         time.sleep(1.5)
 
@@ -191,8 +144,8 @@ class snu_module(ros_utils.coverage):
                 # Publish SNU Result Image Results
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
-                # Rospy Sleep
-                rospy.sleep(0.01)
+                # # Rospy Sleep
+                # rospy.sleep(0.01)
 
             # Rospy Spin
             rospy.spin()

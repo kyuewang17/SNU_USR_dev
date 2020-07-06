@@ -1,5 +1,5 @@
 """
-SNU Integrated Module v3.0
+SNU Integrated Module v4.0
     - Option Class
         - Module Options
             - Object Detection

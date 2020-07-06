@@ -32,8 +32,34 @@ class coverage(object):
         # Load Options
         self.opts = opts
 
+        # Initialize Modal Classes
+        self.color = ros_sensor_image(modal_type="color")
+        self.disparity = ros_sensor_image(modal_type="disparity")
+        self.thermal = ros_sensor_image(modal_type="thermal")
+        self.infrared = ros_sensor_image(modal_type="infrared")
+        self.nightvision = ros_sensor_image(modal_type="nightvision")
+        self.lidar = ros_sensor_lidar(modal_type="lidar")
+
+        # Odometry (Pass-through Variable)
+        self.odometry = None
+
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
+
+        # Subscriber for Color CameraInfo
+        self.color_camerainfo_sub = rospy.Subscriber(
+            opts.sensors.color["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.color_camerainfo_callback
+        )
+
+        # Subscriber for Disparity CameraInfo
+        self.disparity_camerainfo_sub = rospy.Subscriber(
+            opts.sensors.disparity["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.disparity_camerainfo_callback
+        )
+
+        # Subscriber for Infrared CameraInfo
+        self.infrared_camerainfo_sub = rospy.Subscriber(
+            opts.sensors.infrared["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.infrared_camerainfo_callback
+        )
 
         # ROS Publisher
         self.tracks_pub = rospy.Publisher(
@@ -48,12 +74,27 @@ class coverage(object):
             opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
         )
 
+    # Color CameraInfo Callback Function
+    def color_camerainfo_callback(self, msg):
+        if self.color.sensor_params is None:
+            self.color.update_sensor_params_rostopic(msg=msg)
+
+    # Disparity Camerainfo Callback Function
+    def disparity_camerainfo_callback(self, msg):
+        if self.disparity.sensor_params is None:
+            self.disparity.update_sensor_params_rostopic(msg=msg)
+
+    # Infrared Camerainfo Callback Function
+    def infrared_camerainfo_callback(self, msg):
+        if self.infrared.sensor_params is None:
+            self.infrared.update_sensor_params_rostopic(msg=msg)
+
     # Publish Tracks
     def publish_tracks(self, tracklets, odometry_msg):
         out_tracks = wrap_tracks(trackers=tracklets, odometry=odometry_msg)
         self.tracks_pub.publish(out_tracks)
 
-    # Publish SNU Result Image (DET / TRK + ACL)
+    # Publish SNU Result Image ( DET / TRK + ACL )
     def publish_snu_result_image(self, result_frame_dict):
         for module, result_frame in result_frame_dict.items():
             if result_frame is not None:
@@ -73,6 +114,42 @@ class coverage(object):
                         )
                 else:
                     assert 0, "Undefined Module!"
+
+    def update_all_modal_data(self, sync_data):
+        sync_stamp = sync_data[0]
+        sync_frame_dict = sync_data[1]
+        sync_pc_odom_dict = sync_data[2]
+
+        # Update Modal Frames
+        self.color.update_data(frame=sync_frame_dict["color"], stamp=sync_stamp)
+
+        self.disparity.update_data(frame=sync_frame_dict["aligned_disparity"], stamp=sync_stamp)
+        self.disparity.update_raw_data(raw_data=sync_frame_dict["disparity"])
+
+        self.thermal.update_data(frame=sync_frame_dict["thermal"], stamp=sync_stamp)
+
+        self.infrared.update_data(frame=sync_frame_dict["infrared"], stamp=sync_stamp)
+
+        self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
+
+        self.lidar.update_data(lidar_pc_msg=sync_pc_odom_dict["pointcloud"], stamp=sync_stamp)
+
+        # Get Odometry
+        self.odometry = sync_pc_odom_dict["odometry"]
+
+    def gather_all_modal_data(self):
+        sensor_data = {
+            "color": self.color,
+            "disparity": self.disparity,
+            "thermal": self.thermal,
+            "infrared": self.infrared,
+            "nightvision": self.nightvision,
+            "lidar": self.lidar
+        }
+        return sensor_data
+
+    def gather_all_sensor_parameters_via_files(self):
+        raise NotImplementedError()
 
 
 # Sensor Parameter Base Class
@@ -247,8 +324,8 @@ class ros_sensor_image(ros_sensor):
         # Return Concatenated ROS Sensor Image Class
         return ros_sensor_image(concat_modal_type, concat_frame, self.timestamp)
 
-    def get_data(self):
-        if self.processed_frame is not None:
+    def get_data(self, is_processed=True):
+        if self.processed_frame is not None and is_processed is True:
             return self.processed_frame
         else:
             return self.frame
@@ -304,15 +381,11 @@ class snu_SyncSubscriber(SyncSubscriber):
                 "color": self.sync_color, "disparity": self.sync_depth, "aligned_disparity": self.sync_aligned_depth,
                 "thermal": self.sync_thermal, "infrared": self.sync_ir, "nightvision": self.sync_nv1
             }
-            result_sync_camerainfo_dict = {
-                "color": self.sync_color_camerainfo, "disparity": self.sync_depth_camerainfo,
-                "infrared": self.sync_ir_camerainfo
-            }
             result_sync_pc_odom_dict = {
                 "pointcloud": self.sync_pointcloud, "odometry": self.sync_odometry
             }
             self.lock_flag.release()
-            return self.sync_stamp, result_sync_frame_dict, result_sync_camerainfo_dict, result_sync_pc_odom_dict
+            return self.sync_stamp, result_sync_frame_dict, result_sync_pc_odom_dict
 
 
 # Function for Publishing SNU Module Result to ETRI Module

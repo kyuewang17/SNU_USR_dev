@@ -11,7 +11,7 @@ sensors:
         camerainfo_rostopic_name: "/camera/color/camera_info"
     disparity:
         is_valid: true
-        rostopic_name: "/osr/image_depth"
+        rostopic_name: "/osr/image_aligned_depth"
         camerainfo_rostopic_name: "/camera/depth/camera_info"
         clip:
             value: -1
@@ -23,7 +23,7 @@ sensors:
         camerainfo_rostopic_name: "NULL"
     infrared:
         is_valid: true
-        rostopic_name: "/osr/image_infrared"
+        rostopic_name: "/osr/image_ir"
         camerainfo_rostopic_name: "NULL"
     nightvision:
         is_valid: true
@@ -31,15 +31,15 @@ sensors:
         camerainfo_rostopic_name: "NULL"
     lidar:
         is_valid: true
-        rostopic_name: "/osr/camera_lidar"
+        rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
 detector:
-    name: "RefineDet"
+    name: "YOLOv4"
     device: 0
     visualization:
-        is_draw: false
-        is_show: false
+        is_draw: true
+        is_show: true
         bbox_color: (255, 0, 0)
     is_result_publish: true
     result_rostopic_name: "/osr/snu_det_result_image"
@@ -52,6 +52,7 @@ tracker:
         is_show: true
         top_view:
             is_draw: false
+            is_show: false
             # map_size -> (depth_range, horizontal length*2)
             map_size: (15000, 5000)
             trk_radius: 100
@@ -63,4 +64,4 @@ aclassifier:
     device: 0
     visualization:
         is_draw: true
-        is_show: true
+        is_show: false
