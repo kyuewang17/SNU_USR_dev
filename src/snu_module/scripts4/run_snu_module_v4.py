@@ -130,8 +130,11 @@ class snu_module(ros_utils.coverage):
                 # SNU USR Integrated Algorithm Call
                 tracklets, detections, module_time_dict = snu_usr(
                     sync_data_dict=self.gather_all_modal_data(),
-                    logger=self.logger, fidx=self.fidx, opts=self.opts
+                    logger=self.logger, fidx=self.fidx
                 )
+
+                # # Draw Color Image Sequence
+                # self.visualizer.visualize_modal_frames(self.color)
 
                 # Draw Results
                 result_frame_dict = self.visualizer(

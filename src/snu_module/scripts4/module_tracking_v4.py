@@ -168,7 +168,7 @@ class SNU_MOT(object):
 
         # Associate Using Hungarian Algorithm
         matches, unmatched_det_indices, unmatched_trk_indices = \
-            associate(cost_matrix, cost_thresh, dets, self.trks)
+            self.associate(cost_matrix, cost_thresh, dets, self.trks)
 
         # Update Associated Tracklets
         for match in matches:
@@ -245,7 +245,7 @@ class SNU_MOT(object):
 
         # Associate using Hungarian Algorithm
         matches, unmatched_det_indices, unmatched_trk_cand_indices = \
-            associate(
+            self.associate(
                 cost_matrix=cost_matrix, cost_thresh=cost_thresh,
                 workers=dets, works=self.trk_cands
             )

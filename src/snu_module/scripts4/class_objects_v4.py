@@ -131,8 +131,20 @@ class TrackletCandidate(object_instance):
             self.z.append(snu_bbox.bbox_to_zx(bbox, velocity))
 
     # Initialize Tracklet Class from TrackletCandidate
-    def init_tracklet(self):
-        pass
+    def init_tracklet(self, disparity_frame, trk_id, fidx, opts):
+        # Get Rough Depth
+        depth = self.get_rough_depth(disparity_frame, opts)
+
+        # Tracklet Initialization Dictionary
+        init_trk_dict = {
+            "asso_dets": self.asso_dets, "asso_confs": self.asso_confs, "label": self.label,
+            "is_associated": self.is_associated, "init_depth": depth
+        }
+
+        # Initialize Tracklet
+        tracklet = Tracklet(trk_id, fidx, opts.tracker, **init_trk_dict)
+
+        return tracklet
 
 
 class Tracklet(object_instance):

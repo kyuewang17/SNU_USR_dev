@@ -119,7 +119,7 @@ class snu_algorithms(object):
         self.module_time_dict["acl"] = (END_TIME - START_TIME).total_seconds()
 
     # Call as Function
-    def __call__(self, sync_data_dict, logger, fidx, opts):
+    def __call__(self, sync_data_dict, logger, fidx):
         # Update Frame Index
         self.fidx = fidx
 

@@ -404,3 +404,10 @@ class visualizer_options(object):
 
             "trk_radius": cfg.tracker.visualization.top_view.trk_radius,
         }
+
+    def correct_flag_options(self):
+        if self.detection["is_draw"] is False:
+            self.detection["is_show"] = False
+
+        if self.tracking["is_draw"] is False:
+            self.tracking["is_show"] = False

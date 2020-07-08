@@ -243,20 +243,26 @@ class visualizer(object):
         winname = self.winname + "(%s)" % modal_type
 
         # Update Module Results
-        self.DET_VIS_OBJ.update_objects(detections)
+        if self.vopts.detection["is_draw"] is True:
+            self.DET_VIS_OBJ.update_objects(detections)
 
-        # Draw Detection Results on Frame
-        det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
-            frame=copy.deepcopy(vis_frame), opencv_winname=winname
-        )
+            # Draw Detection Results on Frame
+            det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
+                frame=copy.deepcopy(vis_frame), opencv_winname=winname
+            )
+        else:
+            det_vis_frame, det_winname = None, None
 
         # Update Module Results
-        self.TRK_ACL_VIS_OBJ.update_objects(tracklets)
+        if self.vopts.tracking["is_draw"] is True:
+            self.TRK_ACL_VIS_OBJ.update_objects(tracklets)
 
-        # Draw Tracking/Action Classification Results on Frame
-        trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
-            frame=copy.deepcopy(vis_frame), opencv_winname=winname
-        )
+            # Draw Tracking/Action Classification Results on Frame
+            trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
+                frame=copy.deepcopy(vis_frame), opencv_winname=winname
+            )
+        else:
+            trk_acl_frame, trk_acl_winname = None, None
 
         # Visualize Detection Results
         if self.vopts.detection["is_show"] is True:
