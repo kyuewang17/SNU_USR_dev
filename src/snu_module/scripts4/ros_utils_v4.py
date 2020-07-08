@@ -23,12 +23,12 @@ from rospy.numpy_msg import numpy_msg
 from tf.transformations import quaternion_from_euler
 
 # Import KIRO's Synchronized Subscriber
-from snu_utils.sync_subscriber import SyncSubscriber
+from utils.sync_subscriber import SyncSubscriber
 
 
 # RUN SNU Module Coverage Class Source
 class coverage(object):
-    def __init__(self, opts):
+    def __init__(self, opts, is_sensor_param_file=True):
         # Load Options
         self.opts = opts
 
@@ -46,20 +46,21 @@ class coverage(object):
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
 
-        # Subscriber for Color CameraInfo
-        self.color_camerainfo_sub = rospy.Subscriber(
-            opts.sensors.color["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.color_camerainfo_callback
-        )
+        if is_sensor_param_file is False:
+            # Subscriber for Color CameraInfo
+            self.color_camerainfo_sub = rospy.Subscriber(
+                opts.sensors.color["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.color_camerainfo_callback
+            )
 
-        # Subscriber for Disparity CameraInfo
-        self.disparity_camerainfo_sub = rospy.Subscriber(
-            opts.sensors.disparity["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.disparity_camerainfo_callback
-        )
+            # Subscriber for Disparity CameraInfo
+            self.disparity_camerainfo_sub = rospy.Subscriber(
+                opts.sensors.disparity["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.disparity_camerainfo_callback
+            )
 
-        # Subscriber for Infrared CameraInfo
-        self.infrared_camerainfo_sub = rospy.Subscriber(
-            opts.sensors.infrared["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.infrared_camerainfo_callback
-        )
+            # Subscriber for Infrared CameraInfo
+            self.infrared_camerainfo_sub = rospy.Subscriber(
+                opts.sensors.infrared["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.infrared_camerainfo_callback
+            )
 
         # ROS Publisher
         self.tracks_pub = rospy.Publisher(
@@ -147,9 +148,6 @@ class coverage(object):
             "lidar": self.lidar
         }
         return sensor_data
-
-    def gather_all_sensor_parameters_via_files(self):
-        raise NotImplementedError()
 
 
 # Sensor Parameter Base Class

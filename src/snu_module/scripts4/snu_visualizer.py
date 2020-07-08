@@ -11,7 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 # Import Custom Modules
-import snu_utils.bounding_box as fbbox
+import utils.bounding_box as fbbox
 
 
 # Define Base Visualization Object

@@ -15,7 +15,7 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from rospy.numpy_msg import numpy_msg
 
-import snu_utils.general_functions as gfuncs
+import utils.general_functions as gfuncs
 
 
 # Get Computer Screen Geometry

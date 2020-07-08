@@ -7,11 +7,11 @@ SNU Integrated Module v2.0
 import numpy as np
 
 # Import Source Modules
-import snu_utils.patch as ptch
-import snu_utils.bounding_box as fbbox
-import snu_utils.general_functions as gfuncs
-import snu_utils.data_association_old as fasso
-import snu_utils.histogram as fhist
+import utils.patch as ptch
+import utils.bounding_box as fbbox
+import utils.general_functions as gfuncs
+import utils.data_association_old as fasso
+import utils.histogram as fhist
 from class_objects_old import TrackletCandidate, Tracklet
 
 

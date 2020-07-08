@@ -4,16 +4,28 @@ SNU Integrated Module v4.0
 
 
 """
-import numpy as np
-import datetime
-
 import module_detection as snu_det
 import module_tracking_v4 as snu_trk
 import module_action as snu_acl
 
+from utils.profiling import Timer
 
-class snu_algorithms(object):
+
+class algorithms(object):
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "Algorithm"
+
+    def __len__(self):
+        raise NotImplementedError()
+
+
+class snu_algorithms(algorithms):
     def __init__(self, frameworks, opts):
+        super(snu_algorithms, self).__init__()
+
         # Load Options
         self.opts = opts
 
@@ -32,17 +44,24 @@ class snu_algorithms(object):
         # Initialize Frame Index
         self.fidx = None
 
-        # Initialize Module Time Dictionary
-        self.module_time_dict = {
-            "det": 0.0,
-            "trk": 0.0,
-            "acl": 0.0,
+        # Initialize Module FPS Dictionary
+        self.fps = {
+            "det": None,
+            "trk": None,
+            "acl": None,
         }
+
+    def __repr__(self):
+        return "SNU-Integrated-Algorithm"
+
+    def __len__(self):
+        return len(self.get_tracklets())
 
     # Detection Module
     def usr_object_detection(self, sync_data_dict, logger):
         # Start Time
-        START_TIME = datetime.datetime.now()
+        det_fps_timer = Timer(convert="FPS")
+        det_fps_timer.reset()
 
         # Parse-out Required Sensor Modalities
         # TODO: Integrate this for all 3 modules
@@ -68,16 +87,16 @@ class snu_algorithms(object):
         confs = confs[keep_indices, :]
         labels = labels[keep_indices, :]
 
-        # Stop Time
-        END_TIME = datetime.datetime.now()
-
         self.detections = {"dets": dets, "confs": confs, "labels": labels}
-        self.module_time_dict["det"] = (END_TIME - START_TIME).total_seconds()
+
+        # End Time
+        self.fps["det"] = det_fps_timer.elapsed
 
     # Multiple Target Tracking Module
     def usr_multiple_target_tracking(self, sync_data_dict, logger):
         # Start Time
-        START_TIME = datetime.datetime.now()
+        trk_fps_timer = Timer(convert="FPS")
+        trk_fps_timer.reset()
 
         # Parse-out Required Sensor Modalities
         tracking_sensor_data = {}
@@ -91,14 +110,14 @@ class snu_algorithms(object):
             detections=self.detections
         )
 
-        # Stop Time
-        END_TIME = datetime.datetime.now()
-
-        self.module_time_dict["trk"] = (END_TIME - START_TIME).total_seconds()
+        # End Time
+        self.fps["trk"] = trk_fps_timer.elapsed
 
     # Action Classification Module
     def usr_action_classification(self, sync_data_dict, logger):
-        START_TIME = datetime.datetime.now()
+        # Start Time
+        acl_fps_timer = Timer(convert="FPS")
+        acl_fps_timer.reset()
 
         # Parse-out Required Sensor Modalities
         aclassify_sensor_data = {}
@@ -110,13 +129,18 @@ class snu_algorithms(object):
         trks = snu_acl.aclassify(
             model=self.acl_framework,
             sync_data_dict=aclassify_sensor_data,
-            trackers=self.snu_mot.trks, opts=self.opts
+            trackers=self.get_tracklets(), opts=self.opts
         )
         self.snu_mot.trks = trks
 
-        END_TIME = datetime.datetime.now()
+        # End Time
+        self.fps["acl"] = acl_fps_timer.elapsed
 
-        self.module_time_dict["acl"] = (END_TIME - START_TIME).total_seconds()
+    def get_tracklets(self):
+        return self.snu_mot.trks
+
+    def get_algorithm_fps(self):
+        return self.fps
 
     # Call as Function
     def __call__(self, sync_data_dict, logger, fidx):
@@ -144,4 +168,4 @@ class snu_algorithms(object):
         #            % (self.fidx, 1/self.module_time_dict["det"], 1/self.module_time_dict["trk"])
         # print(trk_time)
 
-        return self.snu_mot.trks, self.detections, self.module_time_dict
+        return self.snu_mot.trks, self.detections, self.fps

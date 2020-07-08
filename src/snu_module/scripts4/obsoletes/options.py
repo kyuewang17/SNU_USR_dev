@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 # Import Colormap, Screen Geometry
-from snu_utils.general_functions import colormap, get_screen_geometry
+from utils.general_functions import colormap, get_screen_geometry
 
 # Import Kalman Parameters
 from kalman_params import kparams

@@ -58,13 +58,18 @@ def set_logger(logging_level=logging.INFO):
 class snu_module(ros_utils.coverage):
     def __init__(self, opts):
         # Load Options
-        super(snu_module, self).__init__(opts=opts)
+        super(snu_module, self).__init__(
+            opts=opts, is_sensor_param_file=self.sensor_parameter_file_check()
+        )
 
         # Initialize Logger Variable
         self.logger = set_logger(logging_level=logging.INFO)
 
         # Initialize Frame Index
         self.fidx = 0
+
+        # Synchronized Timestamp of Multimodal Sensors
+        self.sync_stamp = None
 
         # Declare SNU Visualizer
         self.visualizer = snu_visualizer.visualizer(opts=opts)
@@ -79,6 +84,9 @@ class snu_module(ros_utils.coverage):
             "pointcloud": False,
             "odometry": False,
         }
+
+    def sensor_parameter_file_check(self):
+        return False
 
     def gather_all_sensor_parameters_via_files(self):
         raise NotImplementedError()
@@ -115,12 +123,13 @@ class snu_module(ros_utils.coverage):
                 # Make Synchronized Data
                 sync_ss.make_sync_data()
 
-                # Get Synchronized Data
+                # Get Synchronized Data and Timestamp
                 sync_data = sync_ss.get_sync_data()
                 if sync_data is None:
                     continue
                 else:
                     self.update_all_modal_data(sync_data=sync_data)
+                self.sync_stamp = sync_data[0]
 
                 # Increase Frame Index
                 self.fidx += 1
@@ -128,7 +137,7 @@ class snu_module(ros_utils.coverage):
                 print("Fidx: {}".format(self.fidx))
 
                 # SNU USR Integrated Algorithm Call
-                tracklets, detections, module_time_dict = snu_usr(
+                tracklets, detections, fps_dict = snu_usr(
                     sync_data_dict=self.gather_all_modal_data(),
                     logger=self.logger, fidx=self.fidx
                 )
@@ -154,7 +163,7 @@ class snu_module(ros_utils.coverage):
             rospy.spin()
 
         except KeyboardInterrupt:
-            print("Shutdown SNU Module...!  [See You Next Time]")
+            print("Shutdown SNU Module...!")
 
 
 def main():

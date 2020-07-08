@@ -10,10 +10,10 @@ import numpy as np
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
 
 # Import Custom Modules
-import snu_utils.patch as snu_patch
-import snu_utils.bounding_box as snu_bbox
-import snu_utils.general_functions as snu_gfuncs
-import snu_utils.histogram as snu_hist
+import utils.patch as snu_patch
+import utils.bounding_box as snu_bbox
+import utils.general_functions as snu_gfuncs
+import utils.histogram as snu_hist
 
 # Import Class Objects
 from class_objects import TrackletCandidate, Tracklet

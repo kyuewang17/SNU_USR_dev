@@ -61,7 +61,7 @@ SNU Integrated Module v2.5
 # Import Modules
 import cv2
 import datetime
-import snu_utils.general_functions as gfuncs
+import utils.general_functions as gfuncs
 
 # Import Data Structure Module
 from data_struct import *

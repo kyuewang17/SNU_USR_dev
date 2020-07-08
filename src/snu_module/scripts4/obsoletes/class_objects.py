@@ -15,10 +15,10 @@ import numpy as np
 import filterpy.kalman.kalman_filter as kalmanfilter
 
 # Import Custom Modules
-import snu_utils.bounding_box as snu_bbox
+import utils.bounding_box as snu_bbox
 import kalman_params as kparams
-import snu_utils.patch as snu_patch
-import snu_utils.histogram as snu_hist
+import utils.patch as snu_patch
+import utils.histogram as snu_hist
 
 
 # Tracklet Candidate Class
