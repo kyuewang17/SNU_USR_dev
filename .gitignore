@@ -24,3 +24,7 @@
 
 # Ignore YOLOv4 Weights
 /src/snu_module/models/detector/YOLOv4/day/*.weights
+
+# Ignore Auto-Save Results
+/src/snu_module/sample_results/
+/src/snu_module/sample_results/*

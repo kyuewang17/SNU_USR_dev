@@ -16,7 +16,7 @@ import utils.general_functions as snu_gfuncs
 import utils.histogram as snu_hist
 
 # Import Class Objects
-from class_objects import TrackletCandidate, Tracklet
+from class_objects_v4 import TrackletCandidate, Tracklet
 
 
 class SNU_MOT(object):

@@ -139,6 +139,9 @@ class snu_algorithms(algorithms):
     def get_tracklets(self):
         return self.snu_mot.trks
 
+    def get_detections(self):
+        return self.detections
+
     def get_algorithm_fps(self):
         return self.fps
 

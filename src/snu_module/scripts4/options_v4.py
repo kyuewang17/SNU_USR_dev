@@ -367,6 +367,7 @@ class visualizer_options(object):
         self.detection = {
             "is_draw": cfg.detector.visualization.is_draw,
             "is_show": cfg.detector.visualization.is_show,
+            "auto_save": cfg.detector.visualization.auto_save,
 
             "is_show_label": None,
             "is_show_score": None,
@@ -382,6 +383,7 @@ class visualizer_options(object):
         self.tracking = {
             "is_draw": cfg.tracker.visualization.is_draw,
             "is_show": cfg.tracker.visualization.is_show,
+            "auto_save": cfg.tracker.visualization.auto_save,
 
             "is_show_id": None,
             "is_show_3d_coord": None,
@@ -390,6 +392,13 @@ class visualizer_options(object):
 
             "linewidth": 2,
         }
+
+        # TODO: Change this Working Method
+        if self.detection["auto_save"] is True or self.tracking["auto_save"] is True:
+            sample_result_base_dir = \
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results")
+            if os.path.isdir(sample_result_base_dir) is False:
+                os.mkdir(sample_result_base_dir)
 
         self.aclassifier = {
             "is_draw": cfg.aclassifier.visualization.is_draw,

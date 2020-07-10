@@ -147,7 +147,7 @@ class snu_module(ros_utils.coverage):
 
                 # Draw Results
                 result_frame_dict = self.visualizer(
-                    sensor_data=self.color, tracklets=tracklets, detections=detections
+                    sensor_data=self.color, tracklets=tracklets, detections=detections, fidx=self.fidx
                 )
 
                 # Publish Tracks

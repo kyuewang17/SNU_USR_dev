@@ -107,6 +107,7 @@ __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 __C.detector.visualization = CN(new_allowed=True)
 __C.detector.visualization.is_draw = True
 __C.detector.visualization.is_show = True
+__C.detector.visualization.auto_save = False
 __C.detector.visualization.bbox_color = (255, 0, 0)
 
 __C.detector.is_result_publish = False
@@ -123,6 +124,7 @@ __C.tracker.device = 0
 __C.tracker.visualization = CN(new_allowed=True)
 __C.tracker.visualization.is_draw = True
 __C.tracker.visualization.is_show = True
+__C.tracker.visualization.auto_save = False
 
 __C.tracker.visualization.top_view = CN(new_allowed=True)
 __C.tracker.visualization.top_view.is_draw = False

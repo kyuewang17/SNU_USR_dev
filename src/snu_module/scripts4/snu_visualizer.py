@@ -6,9 +6,7 @@ SNU Integrated Module v3.0
 import cv2
 import numpy as np
 import copy
-import matplotlib
-# matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
+import os
 
 # Import Custom Modules
 import utils.bounding_box as fbbox
@@ -207,18 +205,36 @@ class visualizer(object):
         self.u_max_axis, self.v_max_axis = 0, 0
         self.u_min_axis, self.v_min_axis = 0, 0
 
+    # Save Image Frame
+    @staticmethod
+    def save_frame(save_base_dir, frame, fidx, modal):
+        assert os.path.isdir(save_base_dir)
+
+        modal_save_dir = os.path.join(save_base_dir, modal)
+        if os.path.isdir(modal_save_dir) is False:
+            os.mkdir(modal_save_dir)
+
+        frame_filename = "{:08d}".format(fidx)
+        frame_filepath = os.path.join(modal_save_dir, frame_filename + ".png")
+        if os.path.isfile(frame_filepath) is True:
+            frame_filename += "_X_"
+            frame_filepath = os.path.join(modal_save_dir, frame_filename + ".png")
+
+        # OpenCV Save Image
+        cv2.imwrite(frame_filepath, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
     # Visualize Image Sequences Only
     @staticmethod
     def visualize_modal_frames(sensor_data):
-        if sensor_data is not None:
-            # Get Visualization Sensor Data Modality
-            modal_type = sensor_data.modal_type
+        if sensor_data.frame is not None:
+            # Get Modal Type Name
+            modal_type = "{}".format(sensor_data)
 
             # Get Image Frame
             vis_frame = sensor_data.frame
 
             # OpenCV Window Name
-            winname = "[%s]" % modal_type
+            winname = "[{}]".format(modal_type)
 
             # Make NamedWindow
             cv2.namedWindow(winname)
@@ -232,7 +248,7 @@ class visualizer(object):
             cv2.waitKey(1)
 
     # Functional Visualizer Call
-    def __call__(self, sensor_data, tracklets, detections, _check_run_time=False):
+    def __call__(self, sensor_data, tracklets, detections, fidx, _check_run_time=False):
         # Get Visualization Sensor Data Modality
         modal_type = sensor_data.modal_type
 
@@ -250,6 +266,18 @@ class visualizer(object):
             det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
                 frame=copy.deepcopy(vis_frame), opencv_winname=winname
             )
+
+            if self.vopts.detection["auto_save"] is True:
+                auto_save_detection_base_dir = \
+                    os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results", "detections")
+                if os.path.isdir(auto_save_detection_base_dir) is False:
+                    os.mkdir(auto_save_detection_base_dir)
+
+                if detections["dets"].tolist() != [0, 0, 0, 0]:
+                    self.save_frame(
+                        save_base_dir=auto_save_detection_base_dir, frame=det_vis_frame,
+                        fidx=fidx, modal=sensor_data.modal_type
+                    )
         else:
             det_vis_frame, det_winname = None, None
 
@@ -261,6 +289,18 @@ class visualizer(object):
             trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
                 frame=copy.deepcopy(vis_frame), opencv_winname=winname
             )
+
+            if self.vopts.tracking["auto_save"] is True:
+                auto_save_tracklet_base_dir = \
+                    os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results", "tracklets")
+                if os.path.isdir(auto_save_tracklet_base_dir) is False:
+                    os.mkdir(auto_save_tracklet_base_dir)
+
+                if len(tracklets) != 0:
+                    self.save_frame(
+                        save_base_dir=auto_save_tracklet_base_dir, frame=det_vis_frame,
+                        fidx=fidx, modal=sensor_data.modal_type
+                    )
         else:
             trk_acl_frame, trk_acl_winname = None, None
 
