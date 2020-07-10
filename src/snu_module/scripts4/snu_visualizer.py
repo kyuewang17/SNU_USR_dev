@@ -273,7 +273,7 @@ class visualizer(object):
                 if os.path.isdir(auto_save_detection_base_dir) is False:
                     os.mkdir(auto_save_detection_base_dir)
 
-                if detections["dets"].tolist() != [0, 0, 0, 0]:
+                if len(detections["dets"].tolist()) != 0:
                     self.save_frame(
                         save_base_dir=auto_save_detection_base_dir, frame=det_vis_frame,
                         fidx=fidx, modal=sensor_data.modal_type
