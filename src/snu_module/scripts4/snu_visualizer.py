@@ -298,7 +298,7 @@ class visualizer(object):
 
                 if len(tracklets) != 0:
                     self.save_frame(
-                        save_base_dir=auto_save_tracklet_base_dir, frame=det_vis_frame,
+                        save_base_dir=auto_save_tracklet_base_dir, frame=trk_acl_frame,
                         fidx=fidx, modal=sensor_data.modal_type
                     )
         else:
