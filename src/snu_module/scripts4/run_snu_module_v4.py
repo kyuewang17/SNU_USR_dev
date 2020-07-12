@@ -78,11 +78,9 @@ class snu_module(ros_utils.coverage):
         self.ros_sync_switch_dict = {
             "color": True,
             "disparity": False, "aligned_disparity": True,
-            "thermal": False,
-            "infrared": False,
-            "nightvision": False,
-            "pointcloud": False,
-            "odometry": False,
+            "thermal": True,
+            "infrared": True,
+            "nightvision": True,
         }
 
     def sensor_parameter_file_check(self):
@@ -151,13 +149,13 @@ class snu_module(ros_utils.coverage):
                 )
 
                 # Publish Tracks
-                self.publish_tracks(tracklets=tracklets, odometry_msg=self.odometry)
+                self.publish_tracks(tracklets=tracklets, odometry_msg=self.odometry_msg)
 
                 # Publish SNU Result Image Results
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
                 # # Rospy Sleep
-                # rospy.sleep(0.1)
+                rospy.sleep(0.1)
 
             # Rospy Spin
             rospy.spin()

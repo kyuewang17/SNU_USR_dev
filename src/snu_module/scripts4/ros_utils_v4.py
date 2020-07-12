@@ -32,6 +32,12 @@ class coverage(object):
         # Load Options
         self.opts = opts
 
+        # Initialize Point Cloud ROS Message Variable
+        self.pc_msg = None
+
+        # Odometry (Pass-through Variable)
+        self.odometry_msg = None
+
         # Initialize Modal Classes
         self.color = ros_sensor_image(modal_type="color")
         self.disparity = ros_sensor_image(modal_type="disparity")
@@ -40,11 +46,18 @@ class coverage(object):
         self.nightvision = ros_sensor_image(modal_type="nightvision")
         self.lidar = ros_sensor_lidar(modal_type="lidar")
 
-        # Odometry (Pass-through Variable)
-        self.odometry = None
-
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
+
+        # Subscriber for Point Cloud
+        self.pc_sub = rospy.Subscriber(
+            opts.sensors.lidar["rostopic_name"], PointCloud2, self.point_cloud_callback
+        )
+
+        # Subscriber for Odometry
+        self.odom_sub = rospy.Subscriber(
+            opts.sensors.odometry["rostopic_name"], Odometry, self.odometry_callback
+        )
 
         if is_sensor_param_file is False:
             # Subscriber for Color CameraInfo
@@ -74,6 +87,14 @@ class coverage(object):
         self.trk_acl_result_pub = rospy.Publisher(
             opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
         )
+
+    # Point Cloud Callback Function
+    def point_cloud_callback(self, msg):
+        self.pc_msg = msg
+
+    # Odometry Callback Function
+    def odometry_callback(self, msg):
+        self.odometry_msg = msg
 
     # Color CameraInfo Callback Function
     def color_camerainfo_callback(self, msg):
@@ -119,7 +140,6 @@ class coverage(object):
     def update_all_modal_data(self, sync_data):
         sync_stamp = sync_data[0]
         sync_frame_dict = sync_data[1]
-        sync_pc_odom_dict = sync_data[2]
 
         # Update Modal Frames
         self.color.update_data(frame=sync_frame_dict["color"], stamp=sync_stamp)
@@ -133,10 +153,7 @@ class coverage(object):
 
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
-        self.lidar.update_data(lidar_pc_msg=sync_pc_odom_dict["pointcloud"], stamp=sync_stamp)
-
-        # Get Odometry
-        self.odometry = sync_pc_odom_dict["odometry"]
+        self.lidar.update_data(lidar_pc_msg=self.pc_msg, stamp=self.pc_msg.header.stamp)
 
     def gather_all_modal_data(self):
         sensor_data = {
@@ -359,9 +376,12 @@ class ros_sensor_lidar(ros_sensor):
         # TODO: Convert LiDAR PointCloud2 ROS Message to XYZ format
         raise NotImplementedError()
 
-    def update_data(self, lidar_pc_msg, stamp):
+    def update_data(self, lidar_pc_msg, stamp=None):
         self.lidar_pc_msg = lidar_pc_msg
-        self.update_stamp(stamp=stamp)
+        if stamp is not None:
+            self.update_stamp(stamp=stamp)
+        else:
+            self.update_stamp(stamp=lidar_pc_msg.header.stamp)
 
 
 # Synchronized Subscriber (from KIRO, SNU Adaptation)
@@ -379,11 +399,8 @@ class snu_SyncSubscriber(SyncSubscriber):
                 "color": self.sync_color, "disparity": self.sync_depth, "aligned_disparity": self.sync_aligned_depth,
                 "thermal": self.sync_thermal, "infrared": self.sync_ir, "nightvision": self.sync_nv1
             }
-            result_sync_pc_odom_dict = {
-                "pointcloud": self.sync_pointcloud, "odometry": self.sync_odometry
-            }
             self.lock_flag.release()
-            return self.sync_stamp, result_sync_frame_dict, result_sync_pc_odom_dict
+            return self.sync_stamp, result_sync_frame_dict
 
 
 # Function for Publishing SNU Module Result to ETRI Module

@@ -25,8 +25,6 @@ class SyncSubscriber(object):
         self.enable_aligned_depth = ros_sync_switch_dict["aligned_disparity"]
         self.enable_nv1 = ros_sync_switch_dict["nightvision"]
         self.enable_thermal = ros_sync_switch_dict["thermal"]
-        self.enable_pointcloud = ros_sync_switch_dict["pointcloud"]
-        self.enable_odometry = ros_sync_switch_dict["odometry"]
 
         self.bridge = CvBridge()
 
@@ -37,8 +35,6 @@ class SyncSubscriber(object):
         self.lock_aligned_depth = threading.Lock()
         self.lock_nv1 = threading.Lock()
         self.lock_thermal = threading.Lock()
-        self.lock_pointcloud = threading.Lock()
-        self.lock_odometry = threading.Lock()
 
         self.dict_color = {}
         self.dict_depth = {}
@@ -46,8 +42,6 @@ class SyncSubscriber(object):
         self.dict_aligned_depth = {}
         self.dict_nv1 = {}
         self.dict_thermal = {}
-        self.dict_pointcloud = {}
-        self.dict_odometry = {}
 
         self.sub_color = rospy.Subscriber(opts.sensors.color["rostopic_name"], Image, self.callback_image_color) if self.enable_color else None
         self.sub_depth = rospy.Subscriber("/osr/image_depth", Image, self.callback_image_depth) if self.enable_depth else None
@@ -55,8 +49,6 @@ class SyncSubscriber(object):
         self.sub_aligned_depth = rospy.Subscriber(opts.sensors.disparity["rostopic_name"], Image, self.callback_image_aligned_depth) if self.enable_aligned_depth else None
         self.sub_nv1 = rospy.Subscriber(opts.sensors.nightvision["rostopic_name"], Image, self.callback_image_nv1) if self.enable_nv1 else None
         self.sub_thermal = rospy.Subscriber(opts.sensors.thermal["rostopic_name"], Image, self.callback_image_thermal) if self.enable_thermal else None
-        self.sub_pointcloud = rospy.Subscriber(opts.sensors.lidar["rostopic_name"], PointCloud2, self.callback_pointcloud) if self.enable_pointcloud else None
-        self.sub_odometry = rospy.Subscriber(opts.sensors.odometry["rostopic_name"], Odometry, self.callback_odometry) if self.enable_odometry else None
 
         # self.sub_color = rospy.Subscriber("/osr/image_color", Image, self.callback_image_color) if self.enable_color else None
         # self.sub_depth = rospy.Subscriber("/osr/image_depth", Image, self.callback_image_depth) if self.enable_depth else None
@@ -78,8 +70,6 @@ class SyncSubscriber(object):
         self.sync_aligned_depth = None
         self.sync_nv1 = None
         self.sync_thermal = None
-        self.sync_pointcloud = None
-        self.sync_odometry = None
 
     def __del__(self):
         del self.dict_color
@@ -88,8 +78,6 @@ class SyncSubscriber(object):
         del self.dict_aligned_depth
         del self.dict_nv1
         del self.dict_thermal
-        del self.dict_pointcloud
-        del self.dict_odometry
 
     def callback_image_color(self, data):
         try:
@@ -160,16 +148,6 @@ class SyncSubscriber(object):
         except CvBridgeError as e:
             print(e)
 
-    def callback_pointcloud(self, data):
-        self.lock_pointcloud.acquire()
-        self.dict_pointcloud[data.header.stamp] = data
-        self.lock_pointcloud.release()
-
-    def callback_odometry(self, data):
-        self.lock_odometry.acquire()
-        self.dict_odometry[data.header.stamp] = data
-        self.lock_odometry.release()
-
     def make_sync_data(self):
         if self.enable_color:
             self.lock_color.acquire()
@@ -213,33 +191,15 @@ class SyncSubscriber(object):
         else:
             keys_thermal = []
 
-        if self.enable_pointcloud:
-            self.lock_pointcloud.acquire()
-            keys_pointcloud = self.dict_pointcloud.keys()
-            self.lock_pointcloud.release()
-        else:
-            keys_pointcloud = []
-
-        if self.enable_odometry:
-            self.lock_odometry.acquire()
-            keys_odometry = self.dict_odometry.keys()
-            self.lock_odometry.release()
-        else:
-            keys_odometry = []
-
-        mergeset = list(set(keys_color) | set(keys_depth) | set(keys_ir) | set(keys_aligned_depth) | set(keys_nv1) | set(keys_thermal) |
-                        set(keys_pointcloud) | set(keys_odometry))
+        mergeset = list(set(keys_color) | set(keys_depth) | set(keys_ir) | set(keys_aligned_depth) | set(keys_nv1) | set(keys_thermal))
         keys_color = mergeset if not self.enable_color else keys_color
         keys_depth = mergeset if not self.enable_depth else keys_depth
         keys_ir = mergeset if not self.enable_ir else keys_ir
         keys_aligned_depth = mergeset if not self.enable_aligned_depth else keys_aligned_depth
         keys_nv1 = mergeset if not self.enable_nv1 else keys_nv1
         keys_thermal = mergeset if not self.enable_thermal else keys_thermal
-        keys_pointcloud = mergeset if not self.enable_pointcloud else keys_pointcloud
-        keys_odometry = mergeset if not self.enable_odometry else keys_odometry
 
-        common_keys = list(set(keys_color) & set(keys_depth) & set(keys_ir) & set(keys_aligned_depth) & set(keys_nv1) & set(keys_thermal) &
-                           set(keys_pointcloud) & set(keys_odometry))
+        common_keys = list(set(keys_color) & set(keys_depth) & set(keys_ir) & set(keys_aligned_depth) & set(keys_nv1) & set(keys_thermal))
         if common_keys is not None and len(common_keys) > 0:
             common_keys.sort()
             key_value = common_keys[-1]
@@ -286,20 +246,6 @@ class SyncSubscriber(object):
             else:
                 self.sync_thermal = None
 
-            if self.enable_pointcloud:
-                self.lock_pointcloud.acquire()
-                self.sync_pointcloud = self.dict_pointcloud[key_value]
-                self.lock_pointcloud.release()
-            else:
-                self.sync_pointcloud = None
-
-            if self.enable_odometry:
-                self.lock_odometry.acquire()
-                self.sync_odometry = self.dict_odometry[key_value]
-                self.lock_odometry.release()
-            else:
-                self.sync_odometry = None
-
             self.lock_flag.acquire()
             self.sync_stamp = key_value
             self.sync_flag = True
@@ -311,8 +257,6 @@ class SyncSubscriber(object):
             [self.dict_aligned_depth.pop(v) for v in keys_aligned_depth] if self.enable_aligned_depth else None
             [self.dict_nv1.pop(v) for v in keys_nv1] if self.enable_nv1 else None
             [self.dict_thermal.pop(v) for v in keys_thermal] if self.enable_thermal else None
-            [self.dict_pointcloud.pop(v) for v in keys_pointcloud] if self.enable_pointcloud else None
-            [self.dict_odometry.pop(v) for v in keys_odometry] if self.enable_odometry else None
         else:
             self.lock_flag.acquire()
             self.sync_stamp = -1
@@ -322,7 +266,7 @@ class SyncSubscriber(object):
     def get_sync_data(self):
         self.lock_flag.acquire()
         result = (self.sync_flag, self.sync_stamp, self.sync_color, self.sync_depth, self.sync_ir, self.sync_aligned_depth,
-                  self.sync_nv1, self.sync_thermal, self.sync_pointcloud, self.sync_odometry)
+                  self.sync_nv1, self.sync_thermal)
         self.lock_flag.release()
         return result
 
