@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # ROS modules
-PKG = 'auro_calibration'
-import roslib; roslib.load_manifest(PKG)
+# PKG = 'auro_calibration'
+# import roslib; roslib.load_manifest(PKG)
 import rosbag
 import rospy
 import tf2_ros
@@ -175,3 +175,4 @@ if __name__ == '__main__':
 
     # Start subscriber
     listener(image_color, velodyne_points, camera_lidar)
+
