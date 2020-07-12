@@ -332,7 +332,7 @@ class SNU_MOT(object):
                 )
 
         # Associate Residual Detections with Tracklet Candidates
-        if len(self.trk_cands) != 0:
+        if len(self.trk_cands) == 0:
             # Initialize New Tracklet Candidates
             for det_idx, det in enumerate(detections["dets"]):
                 new_trk_cand = TrackletCandidate(
