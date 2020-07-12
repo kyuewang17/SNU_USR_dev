@@ -28,7 +28,7 @@ class SNU_MOT(object):
         self.trks, self.trk_cands = [], []
 
         # Max Tracklet ID
-        self.max_trk_id = None
+        self.max_trk_id = 0
 
         # Frame Index
         self.fidx = None
@@ -350,14 +350,12 @@ class SNU_MOT(object):
         new_trks = self.generate_new_tracklets(sync_data_dict=sync_data_dict, new_trks=new_trks)
 
         # Append New Tracklets and Update Maximum Tracklet ID
-        max_trk_id = -1
         for new_trk in new_trks:
-            if new_trk.id >= max_trk_id:
-                max_trk_id = new_trk.id
+            if new_trk.id >= self.max_trk_id:
+                self.max_trk_id = new_trk.id
             self.trks.append(new_trk)
             del new_trk
         del new_trks
-        self.max_trk_id = max_trk_id
 
         # Get Pseudo-inverse of Projection Matrix
         color_P_inverse = sync_data_dict["color"].sensor_params.pinv_projection_matrix

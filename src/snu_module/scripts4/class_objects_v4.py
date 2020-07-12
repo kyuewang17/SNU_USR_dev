@@ -174,7 +174,10 @@ class Tracklet(object_instance):
 
         # Initialize Image Coordinate Observation Vector
         curr_z2_bbox = snu_bbox.bbox_to_zx(kwargs["asso_dets"][-1])
-        prev_z2_bbox = snu_bbox.bbox_to_zx(kwargs["asso_dets"][-2])
+        if len(kwargs["asso_dets"]) > 1:
+            prev_z2_bbox = snu_bbox.bbox_to_zx(kwargs["asso_dets"][-2])
+        else:
+            prev_z2_bbox = np.vstack((curr_z2_bbox[0:2], np.zeros((2, 1))))
         init_observation = snu_bbox.bbox_to_zx(
             bbox=kwargs["asso_dets"][-1],
             velocity=(curr_z2_bbox - prev_z2_bbox)[0:2].reshape(2),

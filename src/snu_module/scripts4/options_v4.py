@@ -289,12 +289,12 @@ class tracker_options(object):
         self.association = {
             # Tracklet Candidate to Tracklet Association age (for Tracklet Initialization)
             # bug when set to even number
-            'trk_init_age': 4,
-            # 'trk_init_age': 1,
-
+            # 'trk_init_age': 2,
+            'trk_init_age': 1,
+            #
             # Destroy Unassociated Tracklets with this amount of continuous unassociation
             # 'trk_destroy_age': 4,
-            'trk_destroy_age': 6,
+            'trk_destroy_age': 2,
 
             # Destroy Unassociated Tracklet Candidates with this amount of continuous unassociation
             'trkc_destroy_age': 2,
