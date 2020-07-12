@@ -193,6 +193,7 @@ class visualizer(object):
         self.screen_imshow_x = opts.screen_imshow_x
         self.screen_imshow_y = opts.screen_imshow_y
         self.det_window_moved, self.trk_acl_window_moved = False, False
+        self.general_window_moved = False
 
         # Top-view Map (in mm)
         self.top_view_map = np.ones(
@@ -224,20 +225,61 @@ class visualizer(object):
         cv2.imwrite(frame_filepath, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
     # Visualize Image Sequences Only
-    @staticmethod
-    def visualize_modal_frames(sensor_data):
-        if sensor_data.frame is not None:
+    def visualize_modal_frames(self, sensor_data):
+        # Get Modal Frame
+        vis_frame = sensor_data.get_data()
+
+        if vis_frame is not None:
             # Get Modal Type Name
             modal_type = "{}".format(sensor_data)
-
-            # Get Image Frame
-            vis_frame = sensor_data.frame
 
             # OpenCV Window Name
             winname = "[{}]".format(modal_type)
 
             # Make NamedWindow
             cv2.namedWindow(winname)
+
+            if self.general_window_moved is False:
+                if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                    cv2.moveWindow(winname, self.screen_imshow_x, self.screen_imshow_y)
+                    self.general_window_moved = True
+
+            # IMSHOW
+            if modal_type == "color":
+                cv2.imshow(winname, cv2.cvtColor(vis_frame, cv2.COLOR_RGB2BGR))
+            else:
+                cv2.imshow(winname, vis_frame)
+
+            cv2.waitKey(1)
+
+    # Visualize Image Sequence with Point Cloud Drawn On
+    def visualize_modal_frames_with_calibrated_pointcloud(self, sensor_data, pc_img_coord):
+        # Get Modal Frame
+        vis_frame = sensor_data.get_data()
+
+        if vis_frame is not None:
+            # Get Modal Type Name
+            modal_type = "{}".format(sensor_data)
+
+            # OpenCV Window Name
+            winname = "{} + {}".format(modal_type, "Rectified-PC")
+
+            # Make NamedWindow
+            cv2.namedWindow(winname)
+
+            if self.general_window_moved is False:
+                if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                    cv2.moveWindow(winname, self.screen_imshow_x, self.screen_imshow_y)
+                    self.general_window_moved = True
+
+            # Draw Point Cloud on the Frame
+            pc_len = pc_img_coord.shape[0]
+            for pc_img_coord_idx in range(pc_len):
+                pc_point = tuple(pc_img_coord[pc_img_coord_idx, :].reshape(2))
+                cv2.circle(
+                    img=vis_frame, center=pc_point, radius=3,
+                    color=(0, 0, 0), thickness=-1
+                )
 
             # IMSHOW
             if modal_type == "color":

@@ -101,6 +101,7 @@ class SNU_MOT(object):
         return matches, unmatched_worker_indices, unmatched_work_indices
 
     # Associate Detections with Tracklets
+    # TODO: How to Use Approximately Appropriate LiDAR Sensor Data?
     def associate_detections_with_tracklets(self, sync_data_dict, detections):
         # Unpack Detections
         dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]

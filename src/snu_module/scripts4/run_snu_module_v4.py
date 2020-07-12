@@ -132,6 +132,10 @@ class snu_module(ros_utils.coverage):
                 # Increase Frame Index
                 self.fidx += 1
 
+                # # Get LiDAR Data (EXP)
+                # self.lidar.get_data()
+                # projected_data = self.lidar.project_xyz_to_uv_by_camerainfo(sensor_data=self.color)
+
                 print("Fidx: {}".format(self.fidx))
 
                 # SNU USR Integrated Algorithm Call
@@ -142,6 +146,9 @@ class snu_module(ros_utils.coverage):
 
                 # # Draw Color Image Sequence
                 # self.visualizer.visualize_modal_frames(self.color)
+                # self.visualizer.visualize_modal_frames_with_calibrated_pointcloud(
+                #     sensor_data=self.color, pc_img_coord=projected_data
+                # )
 
                 # Draw Results
                 result_frame_dict = self.visualizer(

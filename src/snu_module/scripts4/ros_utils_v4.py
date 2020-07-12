@@ -9,8 +9,13 @@ import cv2
 import os
 import yaml
 import logging
+import pcl
+import matplotlib.cm
 import numpy as np
 import rospy
+import ros_numpy
+import image_geometry
+import sensor_msgs.point_cloud2 as pc2
 from cv_bridge import CvBridge, CvBridgeError
 
 # Import ROS Messages
@@ -33,7 +38,7 @@ class coverage(object):
         self.opts = opts
 
         # Initialize Point Cloud ROS Message Variable
-        self.pc_msg = None
+        self.lidar_msg = None
 
         # Odometry (Pass-through Variable)
         self.odometry_msg = None
@@ -62,17 +67,17 @@ class coverage(object):
         if is_sensor_param_file is False:
             # Subscriber for Color CameraInfo
             self.color_camerainfo_sub = rospy.Subscriber(
-                opts.sensors.color["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.color_camerainfo_callback
+                opts.sensors.color["camerainfo_rostopic_name"], (CameraInfo), self.color_camerainfo_callback
             )
 
             # Subscriber for Disparity CameraInfo
             self.disparity_camerainfo_sub = rospy.Subscriber(
-                opts.sensors.disparity["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.disparity_camerainfo_callback
+                opts.sensors.disparity["camerainfo_rostopic_name"], (CameraInfo), self.disparity_camerainfo_callback
             )
 
             # Subscriber for Infrared CameraInfo
             self.infrared_camerainfo_sub = rospy.Subscriber(
-                opts.sensors.infrared["camerainfo_rostopic_name"], numpy_msg(CameraInfo), self.infrared_camerainfo_callback
+                opts.sensors.infrared["camerainfo_rostopic_name"], (CameraInfo), self.infrared_camerainfo_callback
             )
 
         # ROS Publisher
@@ -90,7 +95,7 @@ class coverage(object):
 
     # Point Cloud Callback Function
     def point_cloud_callback(self, msg):
-        self.pc_msg = msg
+        self.lidar_msg = msg
 
     # Odometry Callback Function
     def odometry_callback(self, msg):
@@ -153,7 +158,7 @@ class coverage(object):
 
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
-        self.lidar.update_data(lidar_pc_msg=self.pc_msg, stamp=self.pc_msg.header.stamp)
+        self.lidar.update_data(lidar_pc_msg=self.lidar_msg, stamp=self.lidar_msg.header.stamp)
 
     def gather_all_modal_data(self):
         sensor_data = {
@@ -198,10 +203,10 @@ class sensor_params_rostopic(sensor_params):
         self.D, self.K, self.R, self.P = None, None, None, None
 
     def update_params(self, msg):
-        self.D = msg.D.reshape((5, 1))  # Distortion Matrix
-        self.K = msg.K.reshape((3, 3))  # Intrinsic Matrix
-        self.R = msg.R.reshape((3, 3))  # Rotation Matrix
-        self.P = msg.P.reshape((3, 4))  # Projection Matrix
+        self.D = np.asarray(msg.D).reshape((5, 1))  # Distortion Matrix
+        self.K = np.asarray(msg.K).reshape((3, 3))  # Intrinsic Matrix
+        self.R = np.asarray(msg.R).reshape((3, 3))  # Rotation Matrix
+        self.P = np.asarray(msg.P).reshape((3, 4))  # Projection Matrix
 
         self.projection_matrix = self.P
         self.pinv_projection_matrix = np.linalg.pinv(self.P)
@@ -290,6 +295,7 @@ class ros_sensor(object):
         self.timestamp = stamp
 
         # Modal Sensor Parameters
+        self.camerainfo_msg = None
         self.sensor_params = None
 
     def __repr__(self):
@@ -312,6 +318,9 @@ class ros_sensor(object):
 
     def update_sensor_params_rostopic(self, msg):
         if msg is not None:
+            # Save CameraInfo Message
+            self.camerainfo_msg = msg
+
             # Initialize Sensor Parameter Object (from rostopic)
             self.sensor_params = sensor_params_rostopic(param_precision=np.float32)
 
@@ -364,7 +373,7 @@ class ros_sensor_image(ros_sensor):
         self.timestamp = None
 
 
-# TODO: Implement MORE MORE MORE!!
+# TODO: Use KIRO's LiDAR Toolkit
 class ros_sensor_lidar(ros_sensor):
     def __init__(self, modal_type, lidar_pc_msg=None, stamp=None):
         super(ros_sensor_lidar, self).__init__(modal_type=modal_type, stamp=stamp)
@@ -372,9 +381,52 @@ class ros_sensor_lidar(ros_sensor):
         # Modal LiDAR PointCloud Message (format: ROS "PointCloud2")
         self.lidar_pc_msg = lidar_pc_msg
 
+        # Define Camera Model Function Variable (differs according to the input camerainfo)
+        self.CAMERA_MODEL = image_geometry.PinholeCameraModel()
+
+        # LiDAR XYZ Variable (Tentative)
+        self.xyz_cloud = None
+        self.pc_distance = None
+        self.pc_colors = None
+
     def get_data(self):
-        # TODO: Convert LiDAR PointCloud2 ROS Message to XYZ format
-        raise NotImplementedError()
+        """
+        https://github.com/anshulpaigwar/Attentional-PointNet/blob/master/tools/pcl_helper.py
+        """
+        if self.lidar_pc_msg is not None:
+            # # Convert ROS PointCloud2 to PCL XYZRGB Cloud Data
+            # points_list = []
+
+            # for data in pc2.read_points(self.lidar_pc_msg, skip_nans=True, field_names=("x", "y", "z")):
+            #     points_list.append([data[0], data[1], data[2]])
+
+            # for data in pc2.read_points(self.lidar_pc_msg, skip_nans=True, field_names=("x", "y", "z")):
+            #     points_list.append([-data[2], -data[1], -data[0]])
+            #
+            # xyz_cloud = pcl.PointCloud()
+            # xyz_cloud.from_list(points_list)
+
+            # self.xyz_cloud = np.asarray(xyz_cloud)
+            # self.xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.lidar_pc_msg, remove_nans=True)
+            xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.lidar_pc_msg)
+            xyz_cloud = np.asarray(xyz_cloud.tolist())
+
+            # Filer-out Points in Front of Camera
+            inrange = np.where((xyz_cloud[:, 0] > -8) &
+                               (xyz_cloud[:, 0] < 8) &
+                               (xyz_cloud[:, 1] > -5) &
+                               (xyz_cloud[:, 1] < 5) &
+                               (xyz_cloud[:, 2] > -0) &
+                               (xyz_cloud[:, 2] < 30))
+            max_intensity = np.max(xyz_cloud[:, -1])
+            self.xyz_cloud = xyz_cloud[inrange[0]]
+
+            # Straight Distance From Camera
+            self.pc_distance = np.sqrt(xyz_cloud[:, 0] * xyz_cloud[:, 0] + xyz_cloud[:, 1] * xyz_cloud[:, 1] + xyz_cloud[:, 2] * xyz_cloud[:, 2])
+
+            # Color map for the points
+            cmap = matplotlib.cm.get_cmap('jet')
+            self.pc_colors = cmap(xyz_cloud[:, -1] / max_intensity) * 255  # intensity color view
 
     def update_data(self, lidar_pc_msg, stamp=None):
         self.lidar_pc_msg = lidar_pc_msg
@@ -382,6 +434,39 @@ class ros_sensor_lidar(ros_sensor):
             self.update_stamp(stamp=stamp)
         else:
             self.update_stamp(stamp=lidar_pc_msg.header.stamp)
+
+    def project_xyz_to_uv_by_camerainfo(self, sensor_data):
+        """
+        Project XYZ PointCloud Numpy Array Data using Input Sensor Data's CameraInfo
+        """
+        assert isinstance(sensor_data, ros_sensor_image)
+
+        if self.xyz_cloud is not None:
+            # Update Camera Parameter to Pinhole Camera Model
+            self.CAMERA_MODEL.fromCameraInfo(sensor_data.camerainfo_msg)
+
+            # Get Camera Parameters
+            fx, fy = self.CAMERA_MODEL.fx(), self.CAMERA_MODEL.fy()
+            cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
+            Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
+
+            px = np.divide(fx * self.xyz_cloud[:, 0] + Tx, self.xyz_cloud[:, 2] + cx)
+            py = np.divide(fy * self.xyz_cloud[:, 1] + Ty, self.xyz_cloud[:, 2] + cy)
+
+            # Stack UV Image Coordinate Points
+            uv = np.column_stack((px, py))
+
+            frame = sensor_data.get_data()
+            inrange = np.where((uv[:, 0] >= 0) &
+                               (uv[:, 1] >= 0) &
+                               (uv[:, 0] < frame.shape[1]) &
+                               (uv[:, 1] < frame.shape[0]))
+            uv = uv[inrange[0]].round().astype('int')
+
+            return uv
+
+        else:
+            return None
 
 
 # Synchronized Subscriber (from KIRO, SNU Adaptation)
