@@ -12,6 +12,8 @@ import logging
 import pcl
 import matplotlib.cm
 import numpy as np
+import tf2_ros
+import tf
 import rospy
 import ros_numpy
 import image_geometry
@@ -40,8 +42,11 @@ class coverage(object):
         # Initialize Point Cloud ROS Message Variable
         self.lidar_msg = None
 
-        # Odometry (Pass-through Variable)
+        # Odometry Message (Pass-through Variable)
         self.odometry_msg = None
+
+        # TF Static-related Variables
+        self.tf_transform = None
 
         # Initialize Modal Classes
         self.color = ros_sensor_image(modal_type="color")
@@ -158,7 +163,10 @@ class coverage(object):
 
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
-        self.lidar.update_data(lidar_pc_msg=self.lidar_msg, stamp=self.lidar_msg.header.stamp)
+        self.lidar.update_data(
+            lidar_pc_msg=self.lidar_msg, stamp=self.lidar_msg.header.stamp,
+            tf_transform=self.tf_transform
+        )
 
     def gather_all_modal_data(self):
         sensor_data = {
@@ -384,6 +392,9 @@ class ros_sensor_lidar(ros_sensor):
         # Define Camera Model Function Variable (differs according to the input camerainfo)
         self.CAMERA_MODEL = image_geometry.PinholeCameraModel()
 
+        # Initialize TF_TRANSFORM
+        self.TF_TRANSFORM = None
+
         # LiDAR XYZ Variable (Tentative)
         self.xyz_cloud = None
         self.pc_distance = None
@@ -394,20 +405,7 @@ class ros_sensor_lidar(ros_sensor):
         https://github.com/anshulpaigwar/Attentional-PointNet/blob/master/tools/pcl_helper.py
         """
         if self.lidar_pc_msg is not None:
-            # # Convert ROS PointCloud2 to PCL XYZRGB Cloud Data
-            # points_list = []
-
-            # for data in pc2.read_points(self.lidar_pc_msg, skip_nans=True, field_names=("x", "y", "z")):
-            #     points_list.append([data[0], data[1], data[2]])
-
-            # for data in pc2.read_points(self.lidar_pc_msg, skip_nans=True, field_names=("x", "y", "z")):
-            #     points_list.append([-data[2], -data[1], -data[0]])
-            #
-            # xyz_cloud = pcl.PointCloud()
-            # xyz_cloud.from_list(points_list)
-
-            # self.xyz_cloud = np.asarray(xyz_cloud)
-            # self.xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(self.lidar_pc_msg, remove_nans=True)
+            # Convert ROS PointCloud2 to PCL XYZ Cloud Data
             xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.lidar_pc_msg)
             xyz_cloud = np.asarray(xyz_cloud.tolist())
 
@@ -428,12 +426,21 @@ class ros_sensor_lidar(ros_sensor):
             cmap = matplotlib.cm.get_cmap('jet')
             self.pc_colors = cmap(xyz_cloud[:, -1] / max_intensity) * 255  # intensity color view
 
-    def update_data(self, lidar_pc_msg, stamp=None):
+    def update_data(self, lidar_pc_msg, stamp=None, tf_transform=None):
+        # Update LiDAR Message
         self.lidar_pc_msg = lidar_pc_msg
+
+        # Update Stamp
         if stamp is not None:
             self.update_stamp(stamp=stamp)
         else:
             self.update_stamp(stamp=lidar_pc_msg.header.stamp)
+
+        # Update TF_TRANSFORM
+        if tf_transform is not None:
+            self.TF_TRANSFORM = tf_transform
+        else:
+            self.TF_TRANSFORM = None
 
     def project_xyz_to_uv_by_camerainfo(self, sensor_data):
         """
