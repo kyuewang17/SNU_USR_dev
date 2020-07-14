@@ -13,7 +13,6 @@ import time
 import argparse
 import rospy
 import logging
-import tf
 import tf2_ros
 
 import options_v4 as options
