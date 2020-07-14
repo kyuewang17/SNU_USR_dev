@@ -99,12 +99,12 @@ class snu_module(ros_utils.coverage):
             "acl": load_acl_model(opts=self.opts),
         }
         self.logger.info("Detector and Action Classifier Neural Network Model Loaded...!")
-        time.sleep(0.5)
+        time.sleep(0.01)
 
         # Initialize SNU Algorithm Class
         snu_usr = snu_algorithms.snu_algorithms(frameworks=frameworks, opts=self.opts)
         self.logger.info("SNU Algorithm Loaded...!")
-        time.sleep(1.5)
+        time.sleep(0.01)
 
         # ROS Node Initialization
         self.logger.info("ROS Node Initialization")
@@ -150,6 +150,7 @@ class snu_module(ros_utils.coverage):
                 # Get LiDAR Data (EXP)
                 self.lidar.get_data()
                 projected_data = self.lidar.project_xyz_to_uv_by_camerainfo(sensor_data=self.color)
+                lidar_color = self.lidar.pc_colors
 
                 print("Fidx: {}".format(self.fidx))
 
@@ -162,7 +163,7 @@ class snu_module(ros_utils.coverage):
                 # Draw Color Image Sequence
                 # self.visualizer.visualize_modal_frames(self.color)
                 self.visualizer.visualize_modal_frames_with_calibrated_pointcloud(
-                    sensor_data=self.color, pc_img_coord=projected_data
+                    sensor_data=self.color, pc_img_coord=projected_data, color=lidar_color
                 )
 
                 # # Draw Results

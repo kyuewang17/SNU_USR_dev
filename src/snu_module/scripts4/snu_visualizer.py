@@ -253,7 +253,7 @@ class visualizer(object):
             cv2.waitKey(1)
 
     # Visualize Image Sequence with Point Cloud Drawn On
-    def visualize_modal_frames_with_calibrated_pointcloud(self, sensor_data, pc_img_coord):
+    def visualize_modal_frames_with_calibrated_pointcloud(self, sensor_data, pc_img_coord, color):
         # Get Modal Frame
         vis_frame = sensor_data.get_data()
 
@@ -275,10 +275,10 @@ class visualizer(object):
             # Draw Point Cloud on the Frame
             pc_len = pc_img_coord.shape[0]
             for pc_img_coord_idx in range(pc_len):
-                pc_point = tuple(pc_img_coord[pc_img_coord_idx, :].reshape(2))
+                pc_point = tuple(pc_img_coord[pc_img_coord_idx])
                 cv2.circle(
                     img=vis_frame, center=pc_point, radius=3,
-                    color=(0, 0, 0), thickness=-1
+                    color=color[pc_img_coord_idx], thickness=-1
                 )
 
             # IMSHOW

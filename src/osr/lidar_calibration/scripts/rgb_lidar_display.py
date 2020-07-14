@@ -62,6 +62,8 @@ def points3D_to_points2D(points3D,img):    #Velodyne Points to 2D Points(image p
                        (points2D[:, 0] < img.shape[1]) &
                        (points2D[:, 1] < img.shape[0]))
     points2D = points2D[inrange[0]].round().astype('int')
+    if points2D.tolist():
+        pass
     return points2D
 
 def project_point_cloud(velodyne_link, img_msg, image_pub):

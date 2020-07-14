@@ -19,6 +19,7 @@ import ros_numpy
 import image_geometry
 import sensor_msgs.point_cloud2 as pc2
 from cv_bridge import CvBridge, CvBridgeError
+from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_matrix
 
 # Import ROS Messages
 from osr_msgs.msg import Track, Tracks, BoundingBox
@@ -26,8 +27,8 @@ from geometry_msgs.msg import Pose, Twist, Point, Quaternion, Vector3
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from nav_msgs.msg import Odometry
+from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
 from rospy.numpy_msg import numpy_msg
-from tf.transformations import quaternion_from_euler
 
 # Import KIRO's Synchronized Subscriber
 from utils.sync_subscriber import SyncSubscriber
@@ -387,26 +388,25 @@ class ros_sensor_lidar(ros_sensor):
         super(ros_sensor_lidar, self).__init__(modal_type=modal_type, stamp=stamp)
 
         # Modal LiDAR PointCloud Message (format: ROS "PointCloud2")
-        self.lidar_pc_msg = lidar_pc_msg
+        self.raw_pc_msg = lidar_pc_msg
+
+        # Initialize Transformed LiDAR PointCloud Variable
+        self.tf_pc_msg = None
 
         # Define Camera Model Function Variable (differs according to the input camerainfo)
         self.CAMERA_MODEL = image_geometry.PinholeCameraModel()
 
-        # Initialize TF_TRANSFORM
-        self.TF_TRANSFORM = None
-
-        # LiDAR XYZ Variable (Tentative)
+        # LiDAR Point Cloud XYZ, Distance and Colors
         self.xyz_cloud = None
-        self.pc_distance = None
-        self.pc_colors = None
+        self.pc_distance, self.pc_colors = None, None
 
     def get_data(self):
         """
         https://github.com/anshulpaigwar/Attentional-PointNet/blob/master/tools/pcl_helper.py
         """
-        if self.lidar_pc_msg is not None:
+        if self.tf_pc_msg is not None:
             # Convert ROS PointCloud2 to PCL XYZ Cloud Data
-            xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.lidar_pc_msg)
+            xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.tf_pc_msg)
             xyz_cloud = np.asarray(xyz_cloud.tolist())
 
             # Filer-out Points in Front of Camera
@@ -417,7 +417,8 @@ class ros_sensor_lidar(ros_sensor):
                                (xyz_cloud[:, 2] > -0) &
                                (xyz_cloud[:, 2] < 30))
             max_intensity = np.max(xyz_cloud[:, -1])
-            self.xyz_cloud = xyz_cloud[inrange[0]]
+            xyz_cloud = xyz_cloud[inrange[0]]
+            self.xyz_cloud = xyz_cloud
 
             # Straight Distance From Camera
             self.pc_distance = np.sqrt(xyz_cloud[:, 0] * xyz_cloud[:, 0] + xyz_cloud[:, 1] * xyz_cloud[:, 1] + xyz_cloud[:, 2] * xyz_cloud[:, 2])
@@ -428,7 +429,7 @@ class ros_sensor_lidar(ros_sensor):
 
     def update_data(self, lidar_pc_msg, stamp=None, tf_transform=None):
         # Update LiDAR Message
-        self.lidar_pc_msg = lidar_pc_msg
+        self.raw_pc_msg = lidar_pc_msg
 
         # Update Stamp
         if stamp is not None:
@@ -438,9 +439,9 @@ class ros_sensor_lidar(ros_sensor):
 
         # Update TF_TRANSFORM
         if tf_transform is not None:
-            self.TF_TRANSFORM = tf_transform
-        else:
-            self.TF_TRANSFORM = None
+            self.tf_pc_msg = do_transform_cloud(
+                cloud=self.raw_pc_msg, transform=tf_transform
+            )
 
     def project_xyz_to_uv_by_camerainfo(self, sensor_data):
         """
@@ -457,8 +458,11 @@ class ros_sensor_lidar(ros_sensor):
             cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
             Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
 
-            px = np.divide(fx * self.xyz_cloud[:, 0] + Tx, self.xyz_cloud[:, 2] + cx)
-            py = np.divide(fy * self.xyz_cloud[:, 1] + Ty, self.xyz_cloud[:, 2] + cy)
+            px = (fx * self.xyz_cloud[:, 0] + Tx) / self.xyz_cloud[:, 2] + cx;
+            py = (fy * self.xyz_cloud[:, 1] + Ty) / self.xyz_cloud[:, 2] + cy;
+
+            # px = np.divide(fx * self.xyz_cloud[:, 0] + Tx, self.xyz_cloud[:, 2] + cx)
+            # py = np.divide(fy * self.xyz_cloud[:, 1] + Ty, self.xyz_cloud[:, 2] + cy)
 
             # Stack UV Image Coordinate Points
             uv = np.column_stack((px, py))
@@ -469,7 +473,6 @@ class ros_sensor_lidar(ros_sensor):
                                (uv[:, 0] < frame.shape[1]) &
                                (uv[:, 1] < frame.shape[0]))
             uv = uv[inrange[0]].round().astype('int')
-
             return uv
 
         else:
