@@ -458,11 +458,8 @@ class ros_sensor_lidar(ros_sensor):
             cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
             Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
 
-            px = (fx * self.xyz_cloud[:, 0] + Tx) / self.xyz_cloud[:, 2] + cx;
-            py = (fy * self.xyz_cloud[:, 1] + Ty) / self.xyz_cloud[:, 2] + cy;
-
-            # px = np.divide(fx * self.xyz_cloud[:, 0] + Tx, self.xyz_cloud[:, 2] + cx)
-            # py = np.divide(fy * self.xyz_cloud[:, 1] + Ty, self.xyz_cloud[:, 2] + cy)
+            px = (fx * self.xyz_cloud[:, 0] + Tx) / self.xyz_cloud[:, 2] + cx
+            py = (fy * self.xyz_cloud[:, 1] + Ty) / self.xyz_cloud[:, 2] + cy
 
             # Stack UV Image Coordinate Points
             uv = np.column_stack((px, py))
