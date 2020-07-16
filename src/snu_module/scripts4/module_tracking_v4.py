@@ -6,6 +6,8 @@ SNU Integrated Module v4.0
 """
 
 # Import Modules
+import random
+from utils.profiling import Timer
 import numpy as np
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
 
@@ -17,6 +19,7 @@ import utils.histogram as snu_hist
 
 # Import Class Objects
 from class_objects_v4 import TrackletCandidate, Tracklet
+from lidar import lidar_kernel
 
 
 class SNU_MOT(object):
@@ -101,7 +104,6 @@ class SNU_MOT(object):
         return matches, unmatched_worker_indices, unmatched_work_indices
 
     # Associate Detections with Tracklets
-    # TODO: How to Use Approximately Appropriate LiDAR Sensor Data?
     def associate_detections_with_tracklets(self, sync_data_dict, detections):
         # Unpack Detections
         dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]
@@ -109,9 +111,34 @@ class SNU_MOT(object):
         # Initialize Cost Matrix Variable
         cost_matrix = np.zeros((len(dets), len(self.trks)), dtype=np.float32)
 
-        # Get Concatenated Frame
+        # Get (Color / Disparity) Frames
         color_frame = sync_data_dict["color"].get_data()
-        disparity_frame = sync_data_dict["disparity"].frame
+        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=True)
+
+        # """ Test """
+        # # Load PC Data (over 50fps, for 20000 points)
+        # test_timer = Timer(convert="FPS")
+        # test_timer.reset()
+        # sync_data_dict["lidar"].load_pc_xyz_data()
+        #
+        # # Project XYZ to uv-coordinates (don't care speed: fps fast)
+        # uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_by_camerainfo(
+        #     sensor_data=sync_data_dict["color"], random_sample_number=100
+        # )
+        #
+        # # Define LiDAR Kernels (restrict to 100 points, about 20fps)
+        # # TODO: Make the Process Faster
+        # lidar_kernels = []
+        # for uv_array_idx in range(len(uv_array)):
+        #     uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
+        #     lidar_kernels.append(
+        #         lidar_kernel(
+        #             sensor_data=sync_data_dict["disparity"],
+        #             pc_uv=uv_point, pc_distance=pc_distance, kernel_size=4
+        #         )
+        #     )
+        # fps = test_timer.elapsed
+        # """ Test """
 
         # Normalize Disparity Frame
         d_max, d_min = disparity_frame.max(), disparity_frame.min()
@@ -329,8 +356,8 @@ class SNU_MOT(object):
         # Associate Detections with Tracklets (return residual detections)
         if len(self.trks) != 0:
             detections = self.associate_detections_with_tracklets(
-                    sync_data_dict=sync_data_dict, detections=detections
-                )
+                sync_data_dict=sync_data_dict, detections=detections
+            )
 
         # Associate Residual Detections with Tracklet Candidates
         if len(self.trk_cands) == 0:

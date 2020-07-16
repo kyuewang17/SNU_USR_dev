@@ -290,18 +290,18 @@ class tracker_options(object):
             # Tracklet Candidate to Tracklet Association age (for Tracklet Initialization)
             # bug when set to even number
             # 'trk_init_age': 2,
-            'trk_init_age': 1,
+            'trk_init_age': 2,
             #
             # Destroy Unassociated Tracklets with this amount of continuous unassociation
             # 'trk_destroy_age': 4,
             'trk_destroy_age': 2,
 
             # Destroy Unassociated Tracklet Candidates with this amount of continuous unassociation
-            'trkc_destroy_age': 2,
+            'trkc_destroy_age': 3,
 
             # Association Cost Threshold
             # [1] DETECTION to TRACKLET
-            'cost_thresh_d2trk': 0.05,
+            'cost_thresh_d2trk': 0.1,
             # 'cost_thresh_d2trk': 0.,
 
             # [2] DETECTION to TRACKLET CANDIDATE (d2d)
@@ -312,7 +312,7 @@ class tracker_options(object):
         # Disparity Modality Parameters
         self.disparity_params = {
             # Extraction Rate for Disparity Patch
-            "extraction_roi_rate": 0.65,
+            "extraction_roi_rate": 0.8,
 
             # Histogram Bin for Rough Depth Computation
             "rough_hist_bin": 25,

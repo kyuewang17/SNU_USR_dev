@@ -245,7 +245,7 @@ class visualizer(object):
                     self.general_window_moved = True
 
             # IMSHOW
-            if modal_type == "color":
+            if modal_type.__contains__("color") is True:
                 cv2.imshow(winname, cv2.cvtColor(vis_frame, cv2.COLOR_RGB2BGR))
             else:
                 cv2.imshow(winname, vis_frame)
@@ -425,7 +425,7 @@ class visualizer(object):
             )
 
         # Reshape Image
-        scale_percent = 5
+        scale_percent = 1
         width = int(top_view_map.shape[1] * scale_percent / 100)
         height = int(top_view_map.shape[0] * scale_percent / 100)
         resized_top_view_map = cv2.resize(

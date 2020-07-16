@@ -19,6 +19,7 @@ import options_v4 as options
 import snu_visualizer
 import ros_utils_v4 as ros_utils
 import snu_algorithms_v4 as snu_algorithms
+from utils.profiling import Timer
 
 from module_detection import load_model as load_det_model
 from module_action import load_model as load_acl_model
@@ -116,8 +117,9 @@ class snu_module(ros_utils.coverage):
         while self.tf_transform is None:
             try:
                 self.tf_transform = tf_buffer.lookup_transform(
-                    'rgb_frame', 'velodyne_frame_from_rgb',
-                    rospy.Time(0))
+                    'rgb_frame', 'velodyne_frame_from_rgb', rospy.Time(0)
+                )
+
             except:
                 rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...!")
                 continue
@@ -145,38 +147,41 @@ class snu_module(ros_utils.coverage):
 
                 # Increase Frame Index
                 self.fidx += 1
+                rospy.loginfo("FIDX: {}".format(self.fidx))
 
-                # Get LiDAR Data (EXP)
-                self.lidar.get_data()
-                projected_data = self.lidar.project_xyz_to_uv_by_camerainfo(sensor_data=self.color)
-                lidar_color = self.lidar.pc_colors
+                # # Visualize Projected LiDAR Data
+                # self.lidar.load_pc_xyz_data()
+                # lidar_to_color_sensor_data = self.lidar + self.color
+                # lidar_to_color_sensor_data.visualize_frame()
 
-                print("Fidx: {}".format(self.fidx))
+                # Gather All Data and Process Disparity Frame
+                sync_data_dict = self.gather_all_modal_data()
+                sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
 
-                # # SNU USR Integrated Algorithm Call
-                # tracklets, detections, fps_dict = snu_usr(
-                #     sync_data_dict=self.gather_all_modal_data(),
-                #     logger=self.logger, fidx=self.fidx
-                # )
-
-                # Draw Color Image Sequence
-                # self.visualizer.visualize_modal_frames(self.color)
-                self.visualizer.visualize_modal_frames_with_calibrated_pointcloud(
-                    sensor_data=self.color, pc_img_coord=projected_data, color=lidar_color
+                # SNU USR Integrated Algorithm Call
+                tracklets, detections, fps_dict = snu_usr(
+                    sync_data_dict=sync_data_dict,
+                    logger=self.logger, fidx=self.fidx
                 )
 
-                # # Draw Results
-                # result_frame_dict = self.visualizer(
-                #     sensor_data=self.color, tracklets=tracklets, detections=detections, fidx=self.fidx
+                # # Draw Color Image Sequence
+                # # self.visualizer.visualize_modal_frames(self.color)
+                # self.visualizer.visualize_modal_frames_with_calibrated_pointcloud(
+                #     sensor_data=self.color, pc_img_coord=projected_data, color=lidar_color
                 # )
-                #
-                # # Publish Tracks
-                # self.publish_tracks(tracklets=tracklets, odometry_msg=self.odometry_msg)
-                #
-                # # Publish SNU Result Image Results
-                # self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
-                # # Rospy Sleep
+                # Draw Results
+                result_frame_dict = self.visualizer(
+                    sensor_data=self.color, tracklets=tracklets, detections=detections, fidx=self.fidx
+                )
+
+                # Publish Tracks
+                self.publish_tracks(tracklets=tracklets, odometry_msg=self.odometry_msg)
+
+                # Publish SNU Result Image Results
+                self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+
+                # Rospy Sleep
                 rospy.sleep(0.1)
 
             # Rospy Spin

@@ -6,6 +6,7 @@ SNU Integrated Module v4.0
 """
 # Import Modules
 import cv2
+import random
 import matplotlib.cm
 import numpy as np
 import rospy
@@ -338,6 +339,12 @@ class ros_sensor_image(ros_sensor):
         self.frame = frame
         self.processed_frame = None
 
+        # Initialize Frame Shape
+        self.WIDTH, self.HEIGHT = None, None
+
+        # Variable for Moving Visualization Window
+        self.__vis_window_moved = False
+
     def __add__(self, other):
         assert isinstance(other, ros_sensor_image), "Argument 'other' must be the same type!"
 
@@ -360,6 +367,21 @@ class ros_sensor_image(ros_sensor):
         self.frame = frame
         self.update_stamp(stamp=stamp)
 
+        if self.WIDTH is None:
+            self.WIDTH = frame.shape[1]
+        if self.HEIGHT is None:
+            self.HEIGHT = frame.shape[0]
+
+    def process_data(self, disparity_sensor_opts):
+        assert "{}".format(self) == "disparity"
+
+        frame = self.frame.astype(np.float32)
+        self.processed_frame = np.where(
+            (frame < disparity_sensor_opts["clip_distance"]["min"]) |
+            (frame > disparity_sensor_opts["clip_distance"]["max"]),
+            disparity_sensor_opts["clip_value"], frame
+        )
+
     # Get Normalized Data
     def get_normalized_data(self, min_value=0.0, max_value=1.0):
         frame = self.get_data()
@@ -368,6 +390,32 @@ class ros_sensor_image(ros_sensor):
         normalized_frame = min_value + (max_value - min_value) * minmax_normalized_frame
         return normalized_frame
 
+    # Visualize Frame
+    def visualize_frame(self, is_processed=True):
+        # Get Frame
+        vis_frame = self.get_data(is_processed=is_processed)
+
+        if vis_frame is not None:
+            # Get Modal Type Name
+            modal_type = "{}".format(self)
+
+            # OpenCV Window Name
+            winname = "[{}]".format(modal_type)
+
+            # Make NamedWindow
+            cv2.namedWindow(winname)
+
+            # Move Window
+            cv2.moveWindow(winname=winname, x=1000, y=500)
+
+            # IMSHOW
+            if modal_type.__contains__("color") is True:
+                cv2.imshow(winname, cv2.cvtColor(vis_frame, cv2.COLOR_RGB2BGR))
+            else:
+                cv2.imshow(winname, vis_frame)
+
+            cv2.waitKey(1)
+
     def _empty_frame(self):
         self.frame, self.processed_frame = None, None
 
@@ -375,7 +423,6 @@ class ros_sensor_image(ros_sensor):
         self.timestamp = None
 
 
-# TODO: Use KIRO's LiDAR Toolkit
 class ros_sensor_lidar(ros_sensor):
     def __init__(self, modal_type, lidar_pc_msg=None, stamp=None):
         super(ros_sensor_lidar, self).__init__(modal_type=modal_type, stamp=stamp)
@@ -390,35 +437,61 @@ class ros_sensor_lidar(ros_sensor):
         self.CAMERA_MODEL = image_geometry.PinholeCameraModel()
 
         # LiDAR Point Cloud XYZ, Distance and Colors
-        self.xyz_cloud = None
+        self.cloud = None
         self.pc_distance, self.pc_colors = None, None
 
+    def __add__(self, other):
+        assert isinstance(other, ros_sensor_image)
+        # Get Added Sensor Data Frame
+        other_frame = other.get_data(is_processed=False)
+
+        # Initialize Projected LiDAR Sensor Data
+        projected_sensor_data = ros_sensor_image(modal_type="{}+{}".format(other, "LiDAR"))
+
+        # Project LiDAR Sensor Data to the Added Sensor Data
+        tmp = self.project_xyz_to_uv_by_sensor_data(sensor_data=other)
+        if tmp is not None:
+            uv_arr, distances, colors = tmp[0], tmp[1], tmp[2]
+            for idx in range(len(uv_arr)):
+                uv_point = tuple(uv_arr[idx])
+                cv2.circle(
+                    img=other_frame, center=uv_point, radius=2, color=colors[idx], thickness=-1
+                )
+
+            # Update Projected LiDAR Sensor Data
+            projected_sensor_data.update_data(frame=other_frame, stamp=self.timestamp)
+
+        else:
+            projected_sensor_data = None
+
+        return projected_sensor_data
+
     def get_data(self):
-        """
-        https://github.com/anshulpaigwar/Attentional-PointNet/blob/master/tools/pcl_helper.py
-        """
+        raise NotImplementedError()
+
+    def load_pc_xyz_data(self):
         if self.tf_pc_msg is not None:
-            # Convert ROS PointCloud2 to PCL XYZ Cloud Data
-            xyz_cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.tf_pc_msg)
-            xyz_cloud = np.asarray(xyz_cloud.tolist())
+            # Convert ROS PointCloud2 to Cloud Data (XYZRGB)
+            cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.tf_pc_msg)
+            cloud = np.asarray(cloud.tolist())
 
             # Filer-out Points in Front of Camera
-            inrange = np.where((xyz_cloud[:, 0] > -8) &
-                               (xyz_cloud[:, 0] < 8) &
-                               (xyz_cloud[:, 1] > -5) &
-                               (xyz_cloud[:, 1] < 5) &
-                               (xyz_cloud[:, 2] > -0) &
-                               (xyz_cloud[:, 2] < 30))
-            max_intensity = np.max(xyz_cloud[:, -1])
-            xyz_cloud = xyz_cloud[inrange[0]]
-            self.xyz_cloud = xyz_cloud
+            inrange = np.where((cloud[:, 0] > -8) &
+                               (cloud[:, 0] < 8) &
+                               (cloud[:, 1] > -5) &
+                               (cloud[:, 1] < 5) &
+                               (cloud[:, 2] > -0) &
+                               (cloud[:, 2] < 30))
+            max_intensity = np.max(cloud[:, -1])
+            cloud = cloud[inrange[0]]
+            self.cloud = cloud
 
             # Straight Distance From Camera
-            self.pc_distance = np.sqrt(xyz_cloud[:, 0] * xyz_cloud[:, 0] + xyz_cloud[:, 1] * xyz_cloud[:, 1] + xyz_cloud[:, 2] * xyz_cloud[:, 2])
+            self.pc_distance = np.sqrt(cloud[:, 0] * cloud[:, 0] + cloud[:, 1] * cloud[:, 1] + cloud[:, 2] * cloud[:, 2])
 
             # Color map for the points
             cmap = matplotlib.cm.get_cmap('jet')
-            self.pc_colors = cmap(xyz_cloud[:, -1] / max_intensity) * 255  # intensity color view
+            self.pc_colors = cmap(cloud[:, -1] / max_intensity) * 255  # intensity color view
 
     def update_data(self, lidar_pc_msg, stamp=None, tf_transform=None):
         # Update LiDAR Message
@@ -436,34 +509,79 @@ class ros_sensor_lidar(ros_sensor):
                 cloud=self.raw_pc_msg, transform=tf_transform
             )
 
-    def project_xyz_to_uv_by_camerainfo(self, sensor_data):
+    def project_xyz_to_uv_by_sensor_data(self, sensor_data, random_sample_number=0):
         """
         Project XYZ PointCloud Numpy Array Data using Input Sensor Data's CameraInfo
         """
         assert isinstance(sensor_data, ros_sensor_image)
 
-        if self.xyz_cloud is not None:
+        return self.project_xyz_to_uv(
+            camerainfo_msg=sensor_data.camerainfo_msg,
+            frame_width=sensor_data.WIDTH, frame_height=sensor_data.HEIGHT,
+            random_sample_number=random_sample_number
+        )
+
+    def project_xyz_to_uv(self, camerainfo_msg, frame_width, frame_height, random_sample_number=0):
+        if self.cloud is not None:
             # Update Camera Parameter to Pinhole Camera Model
-            self.CAMERA_MODEL.fromCameraInfo(sensor_data.camerainfo_msg)
+            self.CAMERA_MODEL.fromCameraInfo(msg=camerainfo_msg)
 
             # Get Camera Parameters
             fx, fy = self.CAMERA_MODEL.fx(), self.CAMERA_MODEL.fy()
             cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
             Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
 
-            px = (fx * self.xyz_cloud[:, 0] + Tx) / self.xyz_cloud[:, 2] + cx
-            py = (fy * self.xyz_cloud[:, 1] + Ty) / self.xyz_cloud[:, 2] + cy
+            px = (fx * self.cloud[:, 0] + Tx) / self.cloud[:, 2] + cx
+            py = (fy * self.cloud[:, 1] + Ty) / self.cloud[:, 2] + cy
 
             # Stack UV Image Coordinate Points
             uv = np.column_stack((px, py))
+            inrange = np.where((uv[:, 0] >= 0) & (uv[:, 1] >= 0) &
+                               (uv[:, 0] < frame_width) & (uv[:, 1] < frame_height))
+            uv_array = uv[inrange[0]].round().astype('int')
+            pc_distances = self.pc_distance[inrange[0]]
+            pc_colors = self.pc_colors[inrange[0]]
 
-            frame = sensor_data.get_data()
-            inrange = np.where((uv[:, 0] >= 0) &
-                               (uv[:, 1] >= 0) &
-                               (uv[:, 0] < frame.shape[1]) &
-                               (uv[:, 1] < frame.shape[0]))
-            uv = uv[inrange[0]].round().astype('int')
-            return uv
+            if random_sample_number > 0:
+                rand_indices = sorted(random.sample(range(len(uv_array)), random_sample_number))
+                uv_array = uv_array[rand_indices]
+                pc_distances = pc_distances[rand_indices]
+                pc_colors = pc_colors[rand_indices]
+
+            return uv_array, pc_distances, pc_colors
+
+        else:
+            return None
+
+    def project_xyz_to_uv_inside_bbox(self, camerainfo_msg, bbox, random_sample_number=0):
+        if self.cloud is not None:
+            # Update Camera Parameter to Pinhole Camera Model
+            self.CAMERA_MODEL.fromCameraInfo(msg=camerainfo_msg)
+
+            # Get Camera Parameters
+            fx, fy = self.CAMERA_MODEL.fx(), self.CAMERA_MODEL.fy()
+            cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
+            Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
+
+            px = (fx * self.cloud[:, 0] + Tx) / self.cloud[:, 2] + cx
+            py = (fy * self.cloud[:, 1] + Ty) / self.cloud[:, 2] + cy
+
+            # Stack UV Image Coordinate Points
+            uv = np.column_stack((px, py))
+            inrange = np.where((uv[:, 0] >= bbox[0]) & (uv[:, 1] >= bbox[1]) &
+                               (uv[:, 0] < bbox[2]) & (uv[:, 1] < bbox[3]))
+            uv_array = uv[inrange[0]].round().astype('int')
+            pc_distances = self.pc_distance[inrange[0]]
+            pc_colors = self.pc_colors[inrange[0]]
+
+            if random_sample_number > 0:
+                random_sample_number = min(random_sample_number, len(uv_array))
+                rand_indices = sorted(random.sample(range(len(uv_array)), random_sample_number))
+                uv_array = uv_array[rand_indices]
+                pc_distances = pc_distances[rand_indices]
+                pc_colors = pc_colors[rand_indices]
+
+            return uv_array, pc_distances, pc_colors
 
         else:
             return None

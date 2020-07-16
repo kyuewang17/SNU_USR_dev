@@ -20,6 +20,8 @@ import utils.bounding_box as snu_bbox
 import kalman_params as kparams
 import utils.patch as snu_patch
 import utils.histogram as snu_hist
+from utils.profiling import Timer
+from lidar import lidar_kernel
 
 
 # Object Instance Class
@@ -262,31 +264,51 @@ class Tracklet(object_instance):
             patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
 
         # Get Disparity Frame
-        disparity_frame = sync_data_dict["disparity"].get_data()
+        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=True)
 
         # Get Disparity Patch
         disparity_patch = snu_patch.get_patch(
             img=disparity_frame, bbox=patch_bbox
         )
 
-        # TODO: Get and Process LiDAR Frame
-        # if sync_data_dict["lidar"].get_data() is not None:
+        # Load Point-Cloud XYZ Data
+        sync_data_dict["lidar"].load_pc_xyz_data()
 
-        # TODO: Fusion Method for Disparity and LiDAR
-
-        # Get Histogram
-        depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
-            sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["hist_bin"],
-            min_value=opts.sensors.disparity["clip_distance"]["min"],
-            max_value=opts.sensors.disparity["clip_distance"]["max"]
+        # Project XYZ to uv-coordinate
+        uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
+            camerainfo_msg=sync_data_dict["color"].camerainfo_msg,
+            bbox=patch_bbox, random_sample_number=100
         )
+
+        # Define LiDAR Kernels
+        fusion_depth_list = []
+        for uv_array_idx in range(len(uv_array)):
+            uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
+            l_kernel = lidar_kernel(
+                    sensor_data=sync_data_dict["disparity"],
+                    pc_uv=uv_point, pc_distance=pc_distance, kernel_size=4
+            )
+            fusion_depth_list.append(l_kernel.get_kernel_average_depth())
+
+        # Get Depth Histogram from Fusion Depth List
+        if len(fusion_depth_list) != 0:
+            depth_hist, depth_hist_idx = np.histogram(fusion_depth_list)
+        else:
+            depth_hist, depth_hist_idx = [], []
+
+        # # Get Histogram
+        # depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
+        #     sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["hist_bin"],
+        #     min_value=opts.sensors.disparity["clip_distance"]["min"],
+        #     max_value=opts.sensors.disparity["clip_distance"]["max"]
+        # )
 
         # Get Max-bin and Representative Depth Value of Disparity Histogram
         if len(depth_hist) != 0:
             max_bin = depth_hist.argmax()
-            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0)
         else:
-            depth_value = self.x3p[2]
+            depth_value = self.x3p[2][0]
 
         self.depth.append(depth_value)
 
