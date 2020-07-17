@@ -115,31 +115,6 @@ class SNU_MOT(object):
         color_frame = sync_data_dict["color"].get_data()
         disparity_frame = sync_data_dict["disparity"].get_data(is_processed=True)
 
-        # """ Test """
-        # # Load PC Data (over 50fps, for 20000 points)
-        # test_timer = Timer(convert="FPS")
-        # test_timer.reset()
-        # sync_data_dict["lidar"].load_pc_xyz_data()
-        #
-        # # Project XYZ to uv-coordinates (don't care speed: fps fast)
-        # uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_by_camerainfo(
-        #     sensor_data=sync_data_dict["color"], random_sample_number=100
-        # )
-        #
-        # # Define LiDAR Kernels (restrict to 100 points, about 20fps)
-        # # TODO: Make the Process Faster
-        # lidar_kernels = []
-        # for uv_array_idx in range(len(uv_array)):
-        #     uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
-        #     lidar_kernels.append(
-        #         lidar_kernel(
-        #             sensor_data=sync_data_dict["disparity"],
-        #             pc_uv=uv_point, pc_distance=pc_distance, kernel_size=4
-        #         )
-        #     )
-        # fps = test_timer.elapsed
-        # """ Test """
-
         # Normalize Disparity Frame
         d_max, d_min = disparity_frame.max(), disparity_frame.min()
         normalized_disparity_frame = \
@@ -344,6 +319,9 @@ class SNU_MOT(object):
         return new_trks
 
     def __call__(self, sync_data_dict, fidx, detections):
+        # Load Point-Cloud XYZ Data
+        sync_data_dict["lidar"].load_pc_xyz_data()
+
         # Initialize New Tracklet Variable
         new_trks = []
 

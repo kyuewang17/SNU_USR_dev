@@ -70,7 +70,7 @@ class lidar_kernel(object):
                 _lidar_part = (1-alpha)*self.pc_distance
 
                 # Frame Part
-                _frame_part = alpha*frame[v_idx, u_idx]
+                _frame_part = alpha*frame[v_idx, u_idx] / 1000.0
 
                 # Fill
                 kernel_patch[kernel_u_idx, kernel_v_idx] = _lidar_part + _frame_part

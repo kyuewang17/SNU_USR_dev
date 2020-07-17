@@ -121,6 +121,16 @@ __C.tracker = CN(new_allowed=True)
 __C.tracker.name = "Custom"
 __C.tracker.device = 0
 
+__C.tracker.association = CN(new_allowed=True)
+__C.tracker.association.trk = CN(new_allowed=True)
+__C.tracker.association.trk.init_age = 1
+__C.tracker.association.trk.destroy_age = 3
+__C.tracker.association.trk_cand = CN(new_allowed=True)
+__C.tracker.association.trk_cand.destroy_age = 3
+__C.tracker.association.cost_thresh = CN(new_allowed=True)
+__C.tracker.association.cost_thresh.d2trk = 0.1
+__C.tracker.association.cost_thresh.d2trkc = 0.6
+
 __C.tracker.visualization = CN(new_allowed=True)
 __C.tracker.visualization.is_draw = True
 __C.tracker.visualization.is_show = True

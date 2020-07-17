@@ -288,25 +288,20 @@ class tracker_options(object):
         # Association-related Options
         self.association = {
             # Tracklet Candidate to Tracklet Association age (for Tracklet Initialization)
-            # bug when set to even number
-            # 'trk_init_age': 2,
-            'trk_init_age': 2,
-            #
+            'trk_init_age': cfg.tracker.association.trk.init_age,
+
             # Destroy Unassociated Tracklets with this amount of continuous unassociation
-            # 'trk_destroy_age': 4,
-            'trk_destroy_age': 2,
+            'trk_destroy_age': cfg.tracker.association.trk.destroy_age,
 
             # Destroy Unassociated Tracklet Candidates with this amount of continuous unassociation
-            'trkc_destroy_age': 3,
+            'trkc_destroy_age': cfg.tracker.association.trk_cand.destroy_age,
 
             # Association Cost Threshold
             # [1] DETECTION to TRACKLET
-            'cost_thresh_d2trk': 0.1,
-            # 'cost_thresh_d2trk': 0.,
+            'cost_thresh_d2trk': cfg.tracker.association.cost_thresh.d2trk,
 
             # [2] DETECTION to TRACKLET CANDIDATE (d2d)
-            'cost_thresh_d2trkc': 0.5,
-            # 'cost_thresh_d2trkc': 0.
+            'cost_thresh_d2trkc': cfg.tracker.association.cost_thresh.d2trkc,
         }
 
         # Disparity Modality Parameters
@@ -315,14 +310,16 @@ class tracker_options(object):
             "extraction_roi_rate": 0.8,
 
             # Histogram Bin for Rough Depth Computation
-            "rough_hist_bin": 25,
+            "rough_hist_bin": 100,
+        }
 
-            # Histogram Bin Number
-            "hist_bin": 100,
+        # LiDAR Modality Parameters
+        self.lidar_params = {
+            # LiDAR Random Sampling Number of Tracklet BBOX
+            "sampling_number": 50,
 
-            # Histogram Count Window Gaussian Weight Map Parameters
-            "hist_gaussian_mean": 0,
-            "hist_gaussian_stdev": 0.1,
+            # LiDAR kernel size
+            "lidar_kernel_size": 4,
         }
 
         # Tracklet Color Options
