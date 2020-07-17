@@ -328,7 +328,7 @@ class tracker_options(object):
             "lambda": 1e-4,
 
             # Padding
-            "padding": 1.5,
+            "padding": 1,
 
             # Kernel Sigma
             "sigma": 0.5,

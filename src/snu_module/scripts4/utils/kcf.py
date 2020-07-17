@@ -10,6 +10,7 @@ SNU Integrated Module 4.5
 """
 import cv2
 import numpy as np
+import bounding_box as snu_bbox
 
 
 # Single-Object-Tracker Class
@@ -19,7 +20,7 @@ class SOT(object):
         self.roi = init_zx_bbox
 
         # Target Patch
-        self.patch = get_subwindow(frame=init_frame, roi=init_zx_bbox)
+        self.patch = get_subwindow(frame=init_frame, roi=init_zx_bbox.astype(int))
 
         # ROI List
         self.roi_list = [init_zx_bbox]
@@ -92,11 +93,11 @@ class KCF(SOT):
         self.y_f = np.fft.fft2(gen_label(output_sigma, window_sz))
 
     def get_bbox(self):
-        return self.roi
+        return self.orig_roi
 
-    def __extract_feature(self, frame, roi):
+    def _extract_feature(self, frame, roi):
         # Get Subwindow (Previous Patch)
-        x = get_subwindow(frame=frame, roi=roi)
+        x = get_subwindow(frame=frame, roi=roi.astype(int))
         if self._is_resize is True:
             x = cv2.resize(x, tuple(self._resize_sz))
         if self._is_window is True:
@@ -115,10 +116,10 @@ class KCF(SOT):
         # Test KCF Regressor on Current Frame ROI
         if self.call_idx > 1:
             # Get Current ROI Test Feature
-            x_f = self.__extract_feature(frame=frame, roi=self.roi)
+            z_f = self._extract_feature(frame=frame, roi=self.roi)
 
             # Get Test Parameter
-            kz_f = gaussian_correlation(x_f, self.xhat_f, self._sigma)
+            kz_f = gaussian_correlation(z_f, self.xhat_f, self._sigma)
 
             # Searches for the shift with the greatest response to the model
             # shift is of the form [y_pos, x_pos]
@@ -128,10 +129,10 @@ class KCF(SOT):
 
             # If the shift is higher than halfway, then it is interpreted as being a shift
             # in the opposite direction (i.e., right by default, but becomes left if too high)
-            if shift[0] > x_f.shape[0] / 2:
-                shift[0] -= x_f.shape[0]
-            if shift[1] > x_f.shape[1] / 2:
-                shift[1] -= x_f.shape[1]
+            if shift[0] > z_f.shape[0] / 2:
+                shift[0] -= z_f.shape[0]
+            if shift[1] > z_f.shape[1] / 2:
+                shift[1] -= z_f.shape[1]
 
             if self._is_resize is True:
                 shift = np.ceil(shift * self._resize_diff)
@@ -147,7 +148,7 @@ class KCF(SOT):
             self.orig_roi[0:2] = self.roi[0:2] - self.orig_diff
 
         # Train KCF Regressor on Current Frame ROI
-        x_f = self.__extract_feature(frame=frame, roi=self.roi)
+        x_f = self._extract_feature(frame=frame, roi=self.roi)
 
         # Get Train Parameters
         k_f = gaussian_correlation(x_f, x_f, self._sigma)
@@ -160,6 +161,80 @@ class KCF(SOT):
         else:
             self.ahat_f = (1 - self._interp_factor) * self.ahat_f + self._interp_factor * a_f
             self.xhat_f = (1 - self._interp_factor) * self.xhat_f + self._interp_factor * x_f
+
+
+# KCF Tracker as BBOX Predictor
+class KCF_PREDICTOR(KCF):
+    def __init__(self, init_frame, init_zx_bbox, init_fidx, kcf_params):
+        super(KCF_PREDICTOR, self).__init__(init_frame, init_zx_bbox, init_fidx, kcf_params)
+
+        # ROI as Original Size
+        self.bbox = None
+
+        # Train KCF Regressor
+        self.x_f = self._extract_feature(frame=init_frame, roi=self.roi)
+
+        # Get Train Parameters
+        self.k_f = gaussian_correlation(self.x_f, self.x_f, self._sigma)
+        self.a_f = self.y_f / (self.k_f + self._lambda)
+
+    def get_bbox(self):
+        pass
+
+    def predict_bbox(self, frame, roi_bbox):
+        # Convert BBOX to ZX (ROI)
+        roi = np.zeros(4)
+        roi[0] = roi_bbox[0]
+        roi[1] = roi_bbox[1]
+        roi[2] = roi_bbox[2] - roi_bbox[0]
+        roi[3] = roi_bbox[3] - roi_bbox[1]
+
+        # Copy ROI
+        orig_roi = roi.copy()
+
+        # Adopt Padding to ROI
+        roi_center = np.array([roi[0] + roi[2] * 0.5, roi[1] + roi[3] * 0.5])
+        roi[2] = np.floor(roi[2] * (1 + self._padding))
+        roi[3] = np.floor(roi[3] * (1 + self._padding))
+        roi[0] = np.floor(roi_center[0] - roi[2] / 2)
+        roi[1] = np.floor(roi_center[1] - roi[3] / 2)
+
+        # Get Current ROI Test Feature
+        z_f = self._extract_feature(frame=frame, roi=roi)
+
+        # Get Test Parameter
+        kz_f = gaussian_correlation(z_f, self.x_f, self._sigma)
+
+        # Searches for the shift with the greatest response to the model
+        # shift is of the form [y_pos, x_pos]
+        resp = np.real(np.fft.ifft2(kz_f * self.a_f))
+        shift = np.unravel_index(resp.argmax(), resp.shape)
+        shift = np.array(shift) + 1
+
+        # If the shift is higher than halfway, then it is interpreted as being a shift
+        # in the opposite direction (i.e., right by default, but becomes left if too high)
+        if shift[0] > z_f.shape[0] / 2:
+            shift[0] -= z_f.shape[0]
+        if shift[1] > z_f.shape[1] / 2:
+            shift[1] -= z_f.shape[1]
+
+        if self._is_resize is True:
+            shift = np.ceil(shift * self._resize_diff)
+
+        # Move ROI Center by Shift
+        roi[0] += shift[1] - 1
+        roi[1] += shift[0] - 1
+
+        # Move Original ROI
+        orig_roi[0:2] = roi[0:2] - self.orig_diff
+
+        # Convert Original ROI to BBOX
+        predicted_bbox = np.zeros(4)
+        predicted_bbox[0:2] = orig_roi[0:2]
+        predicted_bbox[2] = orig_roi[0] + orig_roi[2]
+        predicted_bbox[3] = orig_roi[1] + orig_roi[3]
+
+        return predicted_bbox
 
 
 # Get Sub-window
@@ -193,7 +268,7 @@ def gen_label(sigma, sz):
     sz -- An array of the form [x_sz, y_sz] representing the size of the feature array
     """
     sz = np.array(sz).astype(int)
-    rs, cs = np.meshgrid(range(1, sz[0]+1) - np.floor(sz[0]/2), range(1, sz[1]+1) - np.floor(sz[1]/2))
+    rs, cs = np.meshgrid(np.asarray(range(1, sz[0]+1)) - np.floor(sz[0]/2), np.asarray(range(1, sz[1]+1)) - np.floor(sz[1]/2))
     labels = np.exp(-0.5 / sigma ** 2 * (rs ** 2 + cs ** 2))
 
     # The [::-1] reverses the sz array, since it is of the form [x_sz, y_sz] by default
@@ -219,27 +294,6 @@ def gaussian_correlation(x_f, y_f, sigma):
     k_f = np.fft.fft2(np.exp(-1 / (sigma ** 2) * ((xx + yy - 2 * xy) / x_f.size).clip(min=0)))
 
     return k_f
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

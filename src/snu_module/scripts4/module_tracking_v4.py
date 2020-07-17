@@ -164,7 +164,7 @@ class SNU_MOT(object):
 
                 # Cost
                 cost_val = iou_cost * hist_similarity * hd_cost
-                print(cost_val)
+                # print(cost_val)
 
                 # to Cost Matrix
                 cost_matrix[det_idx, trk_idx] = cost_val
@@ -228,14 +228,23 @@ class SNU_MOT(object):
                     det_zx = snu_bbox.bbox_to_zx(det)
                     trk_cand_bbox, _ = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
+                    # SOT-predicted BBOX
+                    predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
+                    predicted_zx = snu_bbox.bbox_to_zx(predicted_bbox)
+
                     # [1] IOU Similarity
-                    iou_cost = snu_bbox.iou(det, trk_cand_bbox)
+                    # iou_cost = snu_bbox.iou(det, trk_cand_bbox)
+                    iou_cost = snu_bbox.iou(det, predicted_bbox)
 
                     # [2] Height-Distance Similarity
                     h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
+                    # l2_distance = snu_gfuncs.l2_distance_dim2(
+                    #     x1=det_zx[0], y1=det_zx[1],
+                    #     x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
+                    # )
                     l2_distance = snu_gfuncs.l2_distance_dim2(
                         x1=det_zx[0], y1=det_zx[1],
-                        x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
+                        x2=predicted_zx[0], y2=predicted_zx[1]
                     )
                     hd_cost = min(h_det / h_trkc, h_trkc / h_det) ** l2_distance
 
@@ -285,10 +294,11 @@ class SNU_MOT(object):
         # Generate New Tracklet Candidates with the Unassociated Detections
         for unasso_det_idx in unmatched_det_indices:
             new_trk_cand = TrackletCandidate(
+                frame=sync_data_dict["color"].get_data(),
                 bbox=residual_detections['dets'][unasso_det_idx],
                 conf=residual_detections['confs'][unasso_det_idx],
                 label=residual_detections['labels'][unasso_det_idx],
-                init_fidx=self.fidx
+                init_fidx=self.fidx, opts=self.opts
             )
             self.trk_cands.append(new_trk_cand)
             del new_trk_cand
@@ -345,8 +355,9 @@ class SNU_MOT(object):
             # Initialize New Tracklet Candidates
             for det_idx, det in enumerate(detections["dets"]):
                 new_trk_cand = TrackletCandidate(
+                    frame=sync_data_dict["color"].get_data(),
                     bbox=det, conf=detections["confs"][det_idx], label=detections["labels"][det_idx],
-                    init_fidx=fidx
+                    init_fidx=fidx, opts=self.opts
                 )
                 self.trk_cands.append(new_trk_cand)
                 del new_trk_cand

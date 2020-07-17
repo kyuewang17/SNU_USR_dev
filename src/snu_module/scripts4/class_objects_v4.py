@@ -22,6 +22,7 @@ import utils.patch as snu_patch
 import utils.histogram as snu_hist
 from utils.profiling import Timer
 from lidar import lidar_kernel
+from utils.kcf import KCF_PREDICTOR
 
 
 # Object Instance Class
@@ -57,7 +58,7 @@ class object_instance(object):
 
 # Tracklet Candidate Class
 class TrackletCandidate(object_instance):
-    def __init__(self, bbox, conf, label, init_fidx):
+    def __init__(self, frame, bbox, conf, label, init_fidx, opts):
         super(TrackletCandidate, self).__init__(init_fidx=init_fidx, obj_type="TrackletCandidate")
 
         # Detection BBOX, Confidence Lists and Label
@@ -69,6 +70,14 @@ class TrackletCandidate(object_instance):
 
         # z (observation bbox type: {u, v, du, dv, w, h})
         self.z = [snu_bbox.bbox_to_zx(bbox, np.zeros(2))]
+
+        # Initialize KCF Module for BBOX Prediction
+        self.BBOX_PREDICTOR = KCF_PREDICTOR(
+            init_frame=frame,
+            init_zx_bbox=snu_bbox.bbox_to_zx(bbox=bbox).reshape(4),
+            init_fidx=init_fidx,
+            kcf_params=opts.tracker.kcf_params
+        )
 
     # Addition BTW Identical Classes (Tentative)
     def __add__(self, detection_bbox):
@@ -181,6 +190,10 @@ class TrackletCandidate(object_instance):
             self.asso_confs.append(conf)
             self.is_associated.append(True)
             self.z.append(snu_bbox.bbox_to_zx(bbox, velocity))
+
+    # Predict BBOX using SOT
+    def predict(self, frame, bbox):
+        return self.BBOX_PREDICTOR.predict_bbox(frame=frame, roi_bbox=bbox)
 
     # Initialize Tracklet Class from TrackletCandidate
     def init_tracklet(self, disparity_frame, trk_id, fidx, opts):

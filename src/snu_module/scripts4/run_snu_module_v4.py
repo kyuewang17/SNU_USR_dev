@@ -147,7 +147,6 @@ class snu_module(ros_utils.coverage):
 
                 # Increase Frame Index
                 self.fidx += 1
-                rospy.loginfo("FIDX: {}".format(self.fidx))
 
                 # # Visualize Projected LiDAR Data
                 # self.lidar.load_pc_xyz_data()
@@ -162,6 +161,11 @@ class snu_module(ros_utils.coverage):
                 tracklets, detections, fps_dict = snu_usr(
                     sync_data_dict=sync_data_dict,
                     logger=self.logger, fidx=self.fidx
+                )
+
+                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> ||[DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                        self.fidx, len(snu_usr), fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                    )
                 )
 
                 # # Draw Color Image Sequence
