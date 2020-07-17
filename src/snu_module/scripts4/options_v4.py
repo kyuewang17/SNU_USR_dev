@@ -322,6 +322,36 @@ class tracker_options(object):
             "lidar_kernel_size": 4,
         }
 
+        # KCF Params
+        self.kcf_params = {
+            # Regularization
+            "lambda": 1e-4,
+
+            # Padding
+            "padding": 1.5,
+
+            # Kernel Sigma
+            "sigma": 0.5,
+
+            # Output Sigma Factor
+            "output_sigma_factor": 0.1,
+
+            # Interpolation Factor
+            "interp_factor": 0.075,
+
+            # Resize Patch
+            "resize": {
+                "flag": True,
+                "size": [64, 64],
+            },
+
+            # Cell Size (# of pixels per cell)
+            "cell_size": 1,
+
+            # Cosine Window Flag
+            "is_cos_window": True,
+        }
+
         # Tracklet Color Options
         self.trk_color_refresh_period = 16
         self.tracklet_colors = np.array(colormap(self.trk_color_refresh_period))

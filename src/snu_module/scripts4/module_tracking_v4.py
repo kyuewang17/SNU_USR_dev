@@ -113,7 +113,7 @@ class SNU_MOT(object):
 
         # Get (Color / Disparity) Frames
         color_frame = sync_data_dict["color"].get_data()
-        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=True)
+        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
 
         # Normalize Disparity Frame
         d_max, d_min = disparity_frame.max(), disparity_frame.min()
@@ -129,7 +129,7 @@ class SNU_MOT(object):
                 det_zx = snu_bbox.bbox_to_zx(det)
 
                 # Get Predicted State of Tracklet
-                trk_bbox, _ = snu_bbox.zx_to_bbox(trk.pred_states[-1])
+                trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
 
                 # Get Detection and Tracklet Patch RGBD Histograms
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
@@ -148,8 +148,11 @@ class SNU_MOT(object):
                     hist_product = np.matmul(det_hist.reshape(-1, 1).transpose(), trk_hist.reshape(-1, 1))
                     hist_similarity = hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist))
 
-                # Get IOU
-                iou_cost = snu_bbox.iou(det, trk_bbox)
+                # Get Velocity-Augmented IOU
+                aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
+                aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
+                aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                iou_cost = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
 
                 # Get Height-Distance Similarity
                 h_det, h_trk = det_zx[3], trk.pred_states[-1][6]
@@ -161,7 +164,7 @@ class SNU_MOT(object):
 
                 # Cost
                 cost_val = iou_cost * hist_similarity * hd_cost
-                # print(cost_val)
+                print(cost_val)
 
                 # to Cost Matrix
                 cost_matrix[det_idx, trk_idx] = cost_val
