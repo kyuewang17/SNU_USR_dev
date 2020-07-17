@@ -54,27 +54,34 @@ class lidar_kernel(object):
         v_max = frame.shape[0] - 1 if v_max >= frame.shape[0] else v_max
 
         # Initialize Kernel Patch
-        kernel_patch = np.zeros(shape=(u_max - u_min + 1, v_max - v_min + 1)).astype(float)
+        _lidar_patch = np.empty(shape=(u_max - u_min + 1, v_max - v_min + 1)).astype(float)
+        _lidar_patch.fill(self.pc_distance)
 
-        # Fill-in Kernel Patch
-        kernel_u_idx, kernel_v_idx = -1, -1
-        for u_idx in range(u_min, u_max+1):
-            kernel_u_idx += 1
-            for v_idx in range(v_min, v_max+1):
-                kernel_v_idx += 1
-                dist_arr = np.array([u_idx-self.c_u, v_idx-self.c_v])
-                _alpha = np.linalg.norm(dist_arr, 2)
-                alpha = _alpha / (np.sqrt(2)*self.kernel_size)
+        alpha = 0.05
+        _frame_patch = alpha*frame[v_min:v_max+1, u_min:u_max+1]
+        kernel_patch = _frame_patch + (1-alpha)*_lidar_patch
 
-                # LiDAR Part
-                _lidar_part = (1-alpha)*self.pc_distance
-
-                # Frame Part
-                _frame_part = alpha*frame[v_idx, u_idx] / 1000.0
-
-                # Fill
-                kernel_patch[kernel_u_idx, kernel_v_idx] = _lidar_part + _frame_part
-            kernel_v_idx = -1
+        # # Fill-in Kernel Patch
+        # kernel_u_idx, kernel_v_idx = -1, -1
+        # for u_idx in range(u_min, u_max+1):
+        #     kernel_u_idx += 1
+        #     for v_idx in range(v_min, v_max+1):
+        #         # kernel_v_idx += 1
+        #         # dist_arr = np.array([u_idx-self.c_u, v_idx-self.c_v])
+        #         # _alpha = np.linalg.norm(dist_arr, 2)
+        #         # alpha = _alpha / (np.sqrt(2)*self.kernel_size)
+        #
+        #         alpha = 0.05
+        #
+        #         # LiDAR Part
+        #         _lidar_part = (1-alpha)*self.pc_distance
+        #
+        #         # Frame Part
+        #         _frame_part = alpha*frame[v_idx, u_idx] / 1000.0
+        #
+        #         # Fill
+        #         kernel_patch[kernel_u_idx, kernel_v_idx] = _lidar_part + _frame_part
+        #     kernel_v_idx = -1
 
         return kernel_patch
 

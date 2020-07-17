@@ -153,7 +153,7 @@ class snu_module(ros_utils.coverage):
                 # self.lidar.load_pc_xyz_data()
                 # lidar_to_color_sensor_data = self.lidar + self.color
                 # lidar_to_color_sensor_data.visualize_frame()
-
+                #
                 # Gather All Data and Process Disparity Frame
                 sync_data_dict = self.gather_all_modal_data()
                 sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
@@ -181,8 +181,8 @@ class snu_module(ros_utils.coverage):
                 # Publish SNU Result Image Results
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
-                # Rospy Sleep
-                rospy.sleep(0.1)
+                # # Rospy Sleep (NOT REQUIRED)
+                # rospy.sleep(0.1)
 
             # Rospy Spin
             rospy.spin()
