@@ -149,22 +149,28 @@ class SNU_MOT(object):
                     hist_similarity = hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist))
 
                 # Get Velocity-Augmented IOU
-                aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
-                aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
-                aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
-                iou_cost = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+                if self.opts.experiment.association.trk is True:
+                    aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
+                    aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
+                    aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                    iou_cost = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+                else:
+                    iou_cost = snu_bbox.iou(det, trk_bbox)
 
-                # Get Height-Distance Similarity
+                # Get Size-Distance Similarity
                 h_det, h_trk = det_zx[3], trk.pred_states[-1][6]
+                w_det, w_trk = det_zx[2], trk.pred_states[-1][5]
                 l2_distance = snu_gfuncs.l2_distance_dim2(
                     x1=det_zx[0], y1=det_zx[1],
                     x2=trk.pred_states[-1][0], y2=trk.pred_states[-1][1]
                 )
-                hd_cost = min(h_det / h_trk, h_trk / h_det) ** l2_distance
+                det_sz, trk_sz = h_det*w_det, h_trk*w_trk
+                hd_cost = min(det_sz / trk_sz, trk_sz / det_sz) ** l2_distance
+                hd_cost = np.sqrt(hd_cost)
 
                 # Cost
                 cost_val = iou_cost * hist_similarity * hd_cost
-                # print(cost_val)
+                print(cost_val)
 
                 # to Cost Matrix
                 cost_matrix[det_idx, trk_idx] = cost_val
@@ -228,24 +234,30 @@ class SNU_MOT(object):
                     det_zx = snu_bbox.bbox_to_zx(det)
                     trk_cand_bbox, _ = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
-                    # SOT-predicted BBOX
-                    predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
-                    predicted_zx = snu_bbox.bbox_to_zx(predicted_bbox)
+                    if self.opts.experiment.association.trk_cand is True:
+                        # SOT-predicted BBOX
+                        predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
+                        predicted_zx = snu_bbox.bbox_to_zx(predicted_bbox)
 
-                    # [1] IOU Similarity
-                    # iou_cost = snu_bbox.iou(det, trk_cand_bbox)
-                    iou_cost = snu_bbox.iou(det, predicted_bbox)
+                        # [1] IOU Similarity
+                        iou_cost = snu_bbox.iou(det, predicted_bbox)
 
-                    # [2] Height-Distance Similarity
-                    h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
-                    # l2_distance = snu_gfuncs.l2_distance_dim2(
-                    #     x1=det_zx[0], y1=det_zx[1],
-                    #     x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
-                    # )
-                    l2_distance = snu_gfuncs.l2_distance_dim2(
-                        x1=det_zx[0], y1=det_zx[1],
-                        x2=predicted_zx[0], y2=predicted_zx[1]
-                    )
+                        # [2] Height-Distance Similarity
+                        h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
+                        l2_distance = snu_gfuncs.l2_distance_dim2(
+                            x1=det_zx[0], y1=det_zx[1],
+                            x2=predicted_zx[0], y2=predicted_zx[1]
+                        )
+                    else:
+                        # [1] IOU Similarity
+                        iou_cost = snu_bbox.iou(det, trk_cand_bbox)
+
+                        # [2] Height-Distance Similarity
+                        h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
+                        l2_distance = snu_gfuncs.l2_distance_dim2(
+                            x1=det_zx[0], y1=det_zx[1],
+                            x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
+                        )
                     hd_cost = min(h_det / h_trkc, h_trkc / h_det) ** l2_distance
 
                     # Cost

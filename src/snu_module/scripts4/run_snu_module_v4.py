@@ -31,7 +31,8 @@ from config import cfg
 parser = argparse.ArgumentParser(description="SNU Integrated Algorithm", prog="SNU-Integrated-v4.0")
 parser.add_argument(
     "--config", "-C",
-    default=os.path.join(os.path.dirname(__file__), "config", "curr_agent", "config.yaml"),
+    # default=os.path.join(os.path.dirname(__file__), "config", "curr_agent", "config.yaml"),
+    default=os.path.join(os.path.dirname(__file__), "config", "curr_agent", "config_exp.yaml"),
     # default=os.path.join(os.path.dirname(__file__), "config", "190823_kiro_lidar_camera_calib.yaml"),
     type=str, help="Configuration YAML file"
 )
@@ -186,7 +187,7 @@ class snu_module(ros_utils.coverage):
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
                 # # Rospy Sleep (NOT REQUIRED)
-                # rospy.sleep(0.1)
+                rospy.sleep(0.1)
 
             # Rospy Spin
             rospy.spin()

@@ -54,7 +54,7 @@ class lidar_kernel(object):
         v_max = frame.shape[0] - 1 if v_max >= frame.shape[0] else v_max
 
         # Initialize Kernel Patch
-        _lidar_patch = np.empty(shape=(u_max - u_min + 1, v_max - v_min + 1)).astype(float)
+        _lidar_patch = np.empty(shape=(v_max - v_min + 1, u_max - u_min + 1)).astype(float)
         _lidar_patch.fill(self.pc_distance)
 
         alpha = 0.05

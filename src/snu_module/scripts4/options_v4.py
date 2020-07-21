@@ -99,7 +99,8 @@ class snu_option_class(object):
             "trk_acl_result_rostopic_name": cfg.tracker.result_rostopic_name,
         }
 
-    # Update Camera Parameter
+        # Experiment Options
+        self.experiment = cfg.experiment
 
 
 # Sensor Option Class (ROS message)

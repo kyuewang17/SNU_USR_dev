@@ -19,6 +19,10 @@ __C = CN(new_allowed=False)
 # Load this Variable when importing this file as a module
 cfg = __C
 
+# Options for Experiment
+__C.experiment = CN(new_allowed=True)
+__C.experiment.association = CN(new_allowed=True)
+
 # Agent Options
 __C.agent = CN(new_allowed=False)
 __C.agent.type = "NULL"

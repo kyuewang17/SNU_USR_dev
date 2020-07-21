@@ -12,8 +12,7 @@ SNU Integrated Module v4.0
 """
 import numpy as np
 from rospy.rostime import Time
-
-from utils.sync_subscriber import SyncSubscriber
+from sync_subscriber import SyncSubscriber
 
 
 class ros_sensor(object):
@@ -331,44 +330,8 @@ class snu_SyncSubscriber(SyncSubscriber):
                 "color": self.sync_color, "disparity": self.sync_depth, "aligned_disparity": self.sync_aligned_depth,
                 "thermal": self.sync_thermal, "infrared": self.sync_ir, "nightvision": self.sync_nv1
             }
-            result_sync_pc_odom_dict = {
-                "pointcloud": self.sync_pointcloud, "odometry": self.sync_odometry
-            }
             self.lock_flag.release()
-            return self.sync_stamp, result_sync_frame_dict, result_sync_pc_odom_dict
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            return self.sync_stamp, result_sync_frame_dict
 
 
 if __name__ == "__main__":

@@ -1,17 +1,18 @@
 """
-SNU Integrated Module v4.0
+SNU Integrated Module v4.5
     - Coverage Class Module for ROS-embedded Integrated Algorithm
 
 """
 from rospy import Subscriber, Publisher
 from cv_bridge import CvBridge
 
-from utils.ros.sensors import ros_sensor_image, ros_sensor_lidar
+from wrapper import wrap_tracks
+from sensors import ros_sensor_image, ros_sensor_lidar
 
 # Import ROS Message Types
-from sensor_msgs.msg import CameraInfo, Image
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 from osr_msgs.msg import Tracks
-from rospy.numpy_msg import numpy_msg
+from nav_msgs.msg import Odometry
 
 
 class coverage(object):
@@ -19,16 +20,19 @@ class coverage(object):
         # Load Options
         self.opts = opts
 
+        # Initialize Point Cloud ROS Message Variable
+        self.lidar_msg = None
+
+        # Odometry Message (Pass-through Variable)
+        self.odometry_msg = None
+
+        # TF Static-related Variables
+        self.tf_transform = None
+
         # Odometry (Pass-through as ROS Message)
         self.odometry = None
 
-        # CvBridge for Publisher
-        self.pub_bridge = CvBridge()
-
-        # Initialize Synchronized Timestamp
-        self.sync_stamp = None
-
-        # Initialize Modal Objects
+        # Initialize Modal Classes
         self.color = ros_sensor_image(modal_type="color")
         self.disparity = ros_sensor_image(modal_type="disparity")
         self.thermal = ros_sensor_image(modal_type="thermal")
@@ -36,29 +40,42 @@ class coverage(object):
         self.nightvision = ros_sensor_image(modal_type="nightvision")
         self.lidar = ros_sensor_lidar(modal_type="lidar")
 
+        # CvBridge for Publisher
+        self.pub_bridge = CvBridge()
+
+        # Subscriber for Point Cloud
+        self.pc_sub = Subscriber(
+            opts.sensors.lidar["rostopic_name"], PointCloud2, self.point_cloud_callback
+        )
+
+        # Subscriber for Odometry
+        self.odom_sub = Subscriber(
+            opts.sensors.odometry["rostopic_name"], Odometry, self.odometry_callback
+        )
+
         # CameraInfo Subscribers
         if is_sensor_param_file is False:
             # Color CameraInfo Subscriber
             self.color_camerainfo_sub = Subscriber(
-                opts.sensors.color["camerainfo_rostopic_name"], numpy_msg(CameraInfo),
+                opts.sensors.color["camerainfo_rostopic_name"], CameraInfo,
                 self.color_camerainfo_callback
             )
 
             # Disparity CameraInfo Subscriber
             self.disparity_camerainfo_sub = Subscriber(
-                opts.sensors.disparity["camerainfo_rostopic_name"], numpy_msg(CameraInfo),
+                opts.sensors.disparity["camerainfo_rostopic_name"], CameraInfo,
                 self.disparity_camerainfo_callback
             )
 
             # Infrared CameraInfo Subscriber
             self.infrared_camerainfo_sub = Subscriber(
-                opts.sensors.infrared["camerainfo_rostopic_name"], numpy_msg(CameraInfo),
+                opts.sensors.infrared["camerainfo_rostopic_name"], CameraInfo,
                 self.infrared_camerainfo_callback
             )
 
             # Thermal CameraInfo Subscriber
             self.thermal_camerainfo_sub = Subscriber(
-                opts.sensors.thermal["camerainfo_rostopic_name"], numpy_msg(CameraInfo),
+                opts.sensors.thermal["camerainfo_rostopic_name"], CameraInfo,
                 self.thermal_camerainfo_callback
             )
 
@@ -74,6 +91,14 @@ class coverage(object):
         self.trk_acl_result_pub = Publisher(
             opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
         )
+
+    # Point Cloud Callback Function
+    def point_cloud_callback(self, msg):
+        self.lidar_msg = msg
+
+    # Odometry Callback Function
+    def odometry_callback(self, msg):
+        self.odometry_msg = msg
 
     # Color CameraInfo Callback Function
     def color_camerainfo_callback(self, msg):
@@ -94,6 +119,11 @@ class coverage(object):
     def thermal_camerainfo_callback(self, msg):
         if self.thermal.get_sensor_params() is None:
             self.thermal.update_sensor_params_rostopic(msg=msg)
+
+    # Publish Tracks
+    def publish_tracks(self, tracklets, odometry_msg):
+        out_tracks = wrap_tracks(trackers=tracklets, odometry=odometry_msg)
+        self.tracks_pub.publish(out_tracks)
 
     # Publish SNU Result Image ( DET / TRK + ACL )
     def publish_snu_result_image(self, result_frame_dict):
@@ -120,10 +150,6 @@ class coverage(object):
     def update_all_modal_data(self, sync_data):
         sync_stamp = sync_data[0]
         sync_frame_dict = sync_data[1]
-        sync_pc_odom_dict = sync_data[2]
-
-        # Update Synchronized Timestamp
-        self.sync_stamp = sync_stamp
 
         # Update Modal Frames
         self.color.update_data(frame=sync_frame_dict["color"], stamp=sync_stamp)
@@ -136,6 +162,10 @@ class coverage(object):
         self.infrared.update_data(frame=sync_frame_dict["infrared"], stamp=sync_stamp)
 
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
+
+        self.lidar.update_data(
+            
+        )
 
         self.lidar.update_data(data=sync_pc_odom_dict["pointcloud"], stamp=sync_stamp)
 
