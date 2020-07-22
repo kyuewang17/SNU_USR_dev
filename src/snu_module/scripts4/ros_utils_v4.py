@@ -92,6 +92,9 @@ class coverage(object):
         self.trk_acl_result_pub = rospy.Publisher(
             opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
         )
+        self.top_view_result_pub = rospy.Publisher(
+            opts.publish_mesg["trk_top_view_rostopic_name"], Image, queue_size=1
+        )
 
     # Point Cloud Callback Function
     def point_cloud_callback(self, msg):

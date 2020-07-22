@@ -196,11 +196,15 @@ class visualizer(object):
         self.general_window_moved = False
 
         # Top-view Map (in mm)
-        self.top_view_map = np.ones(
-            shape=[opts.visualization.top_view["map_size"][0], opts.visualization.top_view["map_size"][1], 3],
-            dtype=np.uint8
-        )
-        self.top_view_window_moved = False
+        if self.vopts.top_view["is_draw"] is True:
+            self.top_view_map = np.ones(
+                shape=[opts.visualization.top_view["map_size"][0], opts.visualization.top_view["map_size"][1], 3],
+                dtype=np.uint8
+            )
+            self.top_view_window_moved = False
+        else:
+            self.top_view_map = None
+            self.top_view_window_moved = None
 
         # Top-view Max Axis
         self.u_max_axis, self.v_max_axis = 0, 0
@@ -432,14 +436,15 @@ class visualizer(object):
             top_view_map, (width, height), interpolation=cv2.INTER_AREA
         )
 
-        # Plot as OpenCV Window
-        cv2.namedWindow(top_view_winname)
-        if self.top_view_window_moved is False:
-            cv2.moveWindow(top_view_winname, self.screen_imshow_x, self.screen_imshow_y)
-            self.top_view_window_moved = True
-        cv2.imshow(top_view_winname, cv2.cvtColor(resized_top_view_map, cv2.COLOR_RGB2BGR))
+        if self.vopts.top_view["is_show"] is True:
+            # Plot as OpenCV Window
+            cv2.namedWindow(top_view_winname)
+            if self.top_view_window_moved is False:
+                cv2.moveWindow(top_view_winname, self.screen_imshow_x, self.screen_imshow_y)
+                self.top_view_window_moved = True
+            cv2.imshow(top_view_winname, cv2.cvtColor(resized_top_view_map, cv2.COLOR_RGB2BGR))
 
-        cv2.waitKey(1)
+            cv2.waitKey(1)
 
 
 def main():

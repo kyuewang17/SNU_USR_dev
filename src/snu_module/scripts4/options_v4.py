@@ -97,6 +97,8 @@ class snu_option_class(object):
 
             "det_result_rostopic_name": cfg.detector.result_rostopic_name,
             "trk_acl_result_rostopic_name": cfg.tracker.result_rostopic_name,
+
+            "trk_top_view_rostopic_name": cfg.tracker.visualization.top_view.rostopic_name,
         }
 
         # Experiment Options
@@ -454,3 +456,6 @@ class visualizer_options(object):
 
         if self.tracking["is_draw"] is False:
             self.tracking["is_show"] = False
+
+        if self.top_view["is_draw"] is False:
+            self.top_view["is_show"] = False

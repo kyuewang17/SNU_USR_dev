@@ -44,7 +44,7 @@ detector:
     device: 0
     visualization:
         is_draw: true
-        is_show: true
+        is_show: false
         auto_save: false
         bbox_color: (255, 0, 0)
     is_result_publish: true
@@ -64,7 +64,7 @@ tracker:
             d2trkc: 0.3
     visualization:
         is_draw: true
-        is_show: true
+        is_show: false
         auto_save: false
         top_view:
             is_draw: false
@@ -72,6 +72,7 @@ tracker:
             # map_size -> (depth_range, horizontal length*2)
             map_size: (30000, 5000)
             trk_radius: 100
+            rostopic_name: "/osr/trk_top_view_image"
     is_result_publish: true
     result_rostopic_name: "/osr/snu_trk_acl_result_image"
 

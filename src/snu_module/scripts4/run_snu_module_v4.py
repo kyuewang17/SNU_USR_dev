@@ -192,6 +192,17 @@ class snu_module(ros_utils.coverage):
                 # Publish SNU Result Image Results
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
+                # Draw / Show / Publish Top-view Result
+                if self.opts.visualization.top_view["is_draw"] is True:
+                    self.visualizer.visualize_top_view_tracklets(tracklets=tracklets)
+
+                    # Publish Top-view Result
+                    self.top_view_result_pub.publish(
+                        self.pub_bridge.cv2_to_imgmsg(
+                            self.visualizer.top_view_map, "rgb8"
+                        )
+                    )
+
                 # # Rospy Sleep (NOT REQUIRED)
                 # rospy.sleep(0.1)
 
@@ -208,6 +219,7 @@ def main():
 
     # Load Options
     opts = options.snu_option_class(cfg=cfg)
+    opts.visualization.correct_flag_options()
 
     # Initialize SNU Module
     snu_usr = snu_module(opts=opts)
