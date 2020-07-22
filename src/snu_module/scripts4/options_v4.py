@@ -106,6 +106,9 @@ class snu_option_class(object):
 # Sensor Option Class (ROS message)
 class sensor_options(object):
     def __init__(self, cfg):
+        # Initialize Sensor Image Width and Height
+        self.width, self.height = None, None
+
         # D435i RGB Camera
         self.color = {
             # ROS Message
@@ -184,6 +187,9 @@ class sensor_options(object):
         self.odometry = {
             "rostopic_name": cfg.odometry_rostopic_name
         }
+
+    def update_sensor_image_size(self, frame):
+        self.width, self.height = frame.shape[1], frame.shape[0]
 
 
 # Detector Option Class

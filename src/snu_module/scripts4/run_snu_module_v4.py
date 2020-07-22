@@ -149,6 +149,12 @@ class snu_module(ros_utils.coverage):
                 # Increase Frame Index
                 self.fidx += 1
 
+                # Update Sensor Image Frame Size
+                if self.fidx == 1:
+                    self.opts.sensors.update_sensor_image_size(
+                        frame=self.color.frame
+                    )
+
                 # # Visualize Projected LiDAR Data
                 # self.lidar.load_pc_xyz_data()
                 # lidar_to_color_sensor_data = self.lidar + self.color
@@ -187,7 +193,7 @@ class snu_module(ros_utils.coverage):
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
                 # # Rospy Sleep (NOT REQUIRED)
-                rospy.sleep(0.1)
+                # rospy.sleep(0.1)
 
             # Rospy Spin
             rospy.spin()

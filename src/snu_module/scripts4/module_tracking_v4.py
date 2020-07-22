@@ -37,7 +37,7 @@ class SNU_MOT(object):
         self.fidx = None
 
         # Tracklet BBOX Size Limit
-        self.trk_bbox_size_lower_limit = 10
+        self.trk_bbox_size_limits = None
 
     def __len__(self):
         return len(self.trks)
@@ -50,8 +50,10 @@ class SNU_MOT(object):
         destroy_trk_indices = []
         for trk_idx, trk in enumerate(self.trks):
             # (1) Tracklets with tiny bounding box
-            if trk.x3[5] * trk.x3[6] < self.trk_bbox_size_lower_limit:
-                destroy_trk_indices.append(trk_idx)
+            if self.trk_bbox_size_limits is not None:
+                trk_size = trk.x3[5] * trk.x3[6]
+                if trk_size < min(self.trk_bbox_size_limits) or trk_size > max(self.trk_bbox_size_limits):
+                    destroy_trk_indices.append(trk_idx)
 
             # (2) Prolonged Consecutively Unassociated Tracklets
             if snu_gfuncs.get_max_consecutive(trk.is_associated, False) == \
@@ -170,7 +172,7 @@ class SNU_MOT(object):
 
                 # Cost
                 cost_val = iou_cost * hist_similarity * hd_cost
-                print(cost_val)
+                # print(cost_val)
 
                 # to Cost Matrix
                 cost_matrix[det_idx, trk_idx] = cost_val
@@ -344,6 +346,14 @@ class SNU_MOT(object):
         return new_trks
 
     def __call__(self, sync_data_dict, fidx, detections):
+        if self.trk_bbox_size_limits is None:
+            _width = sync_data_dict["color"].get_data().shape[1]
+            _height = sync_data_dict["color"].get_data().shape[0]
+
+            size_min_limit = 10
+            size_max_limit = _width*_height / 10.0
+            self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
+
         # Load Point-Cloud XYZ Data
         sync_data_dict["lidar"].load_pc_xyz_data()
 
