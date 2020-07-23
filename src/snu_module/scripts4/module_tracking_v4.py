@@ -351,7 +351,7 @@ class SNU_MOT(object):
             _height = sync_data_dict["color"].get_data().shape[0]
 
             size_min_limit = 10
-            size_max_limit = _width*_height / 10.0
+            size_max_limit = _width*_height / 3.0
             self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data
