@@ -14,6 +14,8 @@ import argparse
 import rospy
 import logging
 import tf2_ros
+import numpy as np
+from tf2_sensor_msgs import transform_to_kdl
 
 import options_v4 as options
 import snu_visualizer
@@ -135,6 +137,9 @@ class snu_module(ros_utils.coverage):
         print("Starting SNU Integrated Module...!")
         try:
             while not rospy.is_shutdown():
+                sensor_timer = Timer(convert="FPS")
+                sensor_timer.reset()
+
                 # Make Synchronized Data
                 sync_ss.make_sync_data()
 
@@ -145,6 +150,7 @@ class snu_module(ros_utils.coverage):
                 else:
                     self.update_all_modal_data(sync_data=sync_data)
                 self.sync_stamp = sync_data[0]
+                sensor_fps = sensor_timer.elapsed
 
                 # Increase Frame Index
                 self.fidx += 1
@@ -170,8 +176,8 @@ class snu_module(ros_utils.coverage):
                     logger=self.logger, fidx=self.fidx
                 )
 
-                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> ||[DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
-                        self.fidx, len(snu_usr), fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                        self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
                     )
                 )
 
@@ -207,7 +213,7 @@ class snu_module(ros_utils.coverage):
                 # rospy.sleep(0.1)
 
             # Rospy Spin
-            rospy.spin()
+            # rospy.spin()
 
         except KeyboardInterrupt:
             print("Shutdown SNU Module...!")

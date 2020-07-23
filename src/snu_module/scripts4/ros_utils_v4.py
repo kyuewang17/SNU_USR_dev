@@ -12,6 +12,7 @@ import numpy as np
 import rospy
 import ros_numpy
 import image_geometry
+import pyquaternion
 from cv_bridge import CvBridge, CvBridgeError
 from tf.transformations import quaternion_from_euler
 
@@ -21,7 +22,7 @@ from geometry_msgs.msg import Pose, Twist, Point, Quaternion, Vector3
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from nav_msgs.msg import Odometry
-from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
+from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud, transform_to_kdl
 from rospy.numpy_msg import numpy_msg
 
 # Import KIRO's Synchronized Subscriber
@@ -433,8 +434,9 @@ class ros_sensor_lidar(ros_sensor):
         # Modal LiDAR PointCloud Message (format: ROS "PointCloud2")
         self.raw_pc_msg = lidar_pc_msg
 
-        # Initialize Transformed LiDAR PointCloud Variable
-        self.tf_pc_msg = None
+        # Initialize Rotation and Translation Matrices btw (Color and LiDAR) Camera
+        self.R__color, self.T__color = None, None
+        self.projected_cloud = None
 
         # Define Camera Model Function Variable (differs according to the input camerainfo)
         self.CAMERA_MODEL = image_geometry.PinholeCameraModel()
@@ -473,10 +475,11 @@ class ros_sensor_lidar(ros_sensor):
         raise NotImplementedError()
 
     def load_pc_xyz_data(self):
-        if self.tf_pc_msg is not None:
-            # Convert ROS PointCloud2 to Cloud Data (XYZRGB)
-            cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.tf_pc_msg)
-            cloud = np.asarray(cloud.tolist())
+        if self.projected_cloud is not None:
+            # # Convert ROS PointCloud2 to Cloud Data (XYZRGB)
+            # cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.tf_pc_msg)
+            # cloud = np.asarray(cloud.tolist())
+            cloud = self.projected_cloud
 
             # Filer-out Points in Front of Camera
             inrange = np.where((cloud[:, 0] > -8) &
@@ -497,6 +500,11 @@ class ros_sensor_lidar(ros_sensor):
             self.pc_colors = cmap(cloud[:, -1] / max_intensity) * 255  # intensity color view
 
     def update_data(self, lidar_pc_msg, stamp=None, tf_transform=None):
+        # kdl = transform_to_kdl(tf_transform)
+        # self.tf_pc_msg = do_transform_cloud(
+        #     cloud=self.raw_pc_msg, transform=tf_transform
+        # )
+
         # Update LiDAR Message
         self.raw_pc_msg = lidar_pc_msg
 
@@ -506,11 +514,27 @@ class ros_sensor_lidar(ros_sensor):
         else:
             self.update_stamp(stamp=lidar_pc_msg.header.stamp)
 
-        # Update TF_TRANSFORM
-        if tf_transform is not None:
-            self.tf_pc_msg = do_transform_cloud(
-                cloud=self.raw_pc_msg, transform=tf_transform
-            )
+        # Update Rotation and Translation Matrices
+        if self.R__color is None:
+            self.R__color = pyquaternion.Quaternion(
+                tf_transform.transform.rotation.w,
+                tf_transform.transform.rotation.x,
+                tf_transform.transform.rotation.y,
+                tf_transform.transform.rotation.z,
+            ).rotation_matrix
+        if self.T__color is None:
+            self.T__color = np.array([
+                tf_transform.transform.translation.x,
+                tf_transform.transform.translation.y,
+                tf_transform.transform.translation.z
+            ]).reshape(3, 1)
+
+        # Project Point Cloud
+        if self.R__color is not None and self.T__color is not None:
+            pc = np.array(ros_numpy.numpify(self.raw_pc_msg).tolist())
+            self.projected_cloud = np.dot(pc[:, 0:3], self.R__color.T) + self.T__color.T
+        else:
+            self.projected_cloud = None
 
     def project_xyz_to_uv_by_sensor_data(self, sensor_data, random_sample_number=0):
         """
