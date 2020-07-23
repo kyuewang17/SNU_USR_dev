@@ -334,6 +334,10 @@ class Tracklet(object_instance):
             img=disparity_frame, bbox=patch_bbox
         )
 
+        color_timestamp, lidar_timestamp = sync_data_dict["color"].timestamp, sync_data_dict["lidar"].timestamp
+        if color_timestamp != lidar_timestamp:
+            pass
+
         # Project XYZ to uv-coordinate
         uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
             camerainfo_msg=sync_data_dict["color"].camerainfo_msg,

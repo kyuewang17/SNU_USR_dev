@@ -49,28 +49,31 @@ class SNU_MOT(object):
         # Destroy Tracklets with Following traits
         destroy_trk_indices = []
         for trk_idx, trk in enumerate(self.trks):
-            # (1) Tracklets with tiny bounding box
-            if self.trk_bbox_size_limits is not None:
-                trk_size = trk.x3[5] * trk.x3[6]
-                if trk_size < min(self.trk_bbox_size_limits) or trk_size > max(self.trk_bbox_size_limits):
-                    destroy_trk_indices.append(trk_idx)
-
-            # (2) Prolonged Consecutively Unassociated Tracklets
+            # (1) Prolonged Consecutively Unassociated Tracklets
             if snu_gfuncs.get_max_consecutive(trk.is_associated, False) == \
                     self.opts.tracker.association["trk_destroy_age"]:
                 destroy_trk_indices.append(trk_idx)
 
-            # Remove Duplicate Indices
-            destroy_trk_indices = list(set(destroy_trk_indices))
+        # Remove Duplicate Indices
+        destroy_trk_indices = list(set(destroy_trk_indices))
         self.trks = snu_gfuncs.exclude_from_list(self.trks, destroy_trk_indices)
 
     def destroy_tracklet_candidates(self):
         # Destroy Prolonged Tracklet Candidates
         destroy_trkc_indices = []
         for trkc_idx, trk_cand in enumerate(self.trk_cands):
+            # (1) Tracklet Candidates with Abnormal Size
+            if self.trk_bbox_size_limits is not None and trk_cand.z[-1] is not None:
+                trkc_size = trk_cand.z[-1][4]*trk_cand.z[-1][5]
+                if trkc_size < min(self.trk_bbox_size_limits) or trkc_size > max(self.trk_bbox_size_limits):
+                    destroy_trkc_indices.append(trkc_idx)
+
             if snu_gfuncs.get_max_consecutive(trk_cand.is_associated, False) == \
                     self.opts.tracker.association["trkc_destroy_age"]:
                 destroy_trkc_indices.append(trkc_idx)
+
+        # Remove Duplicate Indices
+        destroy_trkc_indices = list(set(destroy_trkc_indices))
         self.trk_cands = snu_gfuncs.exclude_from_list(self.trk_cands, destroy_trkc_indices)
 
     @staticmethod
@@ -351,7 +354,7 @@ class SNU_MOT(object):
             _height = sync_data_dict["color"].get_data().shape[0]
 
             size_min_limit = 10
-            size_max_limit = _width*_height / 3.0
+            size_max_limit = _width*_height / 2.0
             self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data

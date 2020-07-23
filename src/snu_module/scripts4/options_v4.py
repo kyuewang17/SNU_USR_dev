@@ -239,7 +239,9 @@ class detector_options(object):
         self.detector_args = {
             "name": "yolov4",
             "net_width": 448, "net_height": 320,
-            "thresh": 0.5, "hier_thresh": 0.5, "nms_thresh": 0.45,
+            "thresh": 0.5, "hier_thresh": 0.5,
+            # "nms_thresh": 0.45,
+            "nms_thresh": 0.45,
             "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
 
             # "name": "refinedet",

@@ -59,7 +59,7 @@ class lidar_kernel(object):
 
         alpha = 0.05
         _frame_patch = alpha*frame[v_min:v_max+1, u_min:u_max+1]
-        kernel_patch = _frame_patch + (1-alpha)*_lidar_patch
+        kernel_patch = _frame_patch / 1000.0 + (1-alpha)*_lidar_patch
 
         # # Fill-in Kernel Patch
         # kernel_u_idx, kernel_v_idx = -1, -1
