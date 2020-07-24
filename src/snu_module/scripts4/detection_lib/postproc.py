@@ -158,8 +158,12 @@ def nms_cls_boxes_s(boxes_s, confs_s, n_classes, conf_threshold, nms_threshold):
         coco = True
     else:
         coco = False
-    coco_car_and_person = [0, 2, 3, 5, 7]
-    coco_car = [2, 3, 5, 7]
+    """ ================================= """
+    # coco_car_and_person = [0, 2, 3, 5, 7]
+    # coco_car = [2, 3, 5, 7]
+    coco_car_and_person = [0, 2]
+    coco_car = [2]
+    """ ================================= """
 
     for c in range(n_classes):
         if coco and (c not in coco_car_and_person):
