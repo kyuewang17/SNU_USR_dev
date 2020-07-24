@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TARGET_ROSBAG_BASE_PATH="/home/kyle/bag_files"
+TARGET_ROSBAG_BASE_PATH="/home/snu/bag_files"
 t_now=$(date +"%Y-%m-%d")
 
 # Change to Target ROSBAG Base Directory for Saving
