@@ -224,7 +224,7 @@ class detector_options(object):
         self.detection_args = {
             "n_classes": 81,
             # "input_h": 320, "input_w": 448,
-            "input_h": 800, "input_w": 800,
+            "input_h": 512, "input_w": 512,
         }
 
         # Backbone Arguments
@@ -240,7 +240,7 @@ class detector_options(object):
         self.detector_args = {
             "name": "yolov4",
             # "net_width": 448, "net_height": 320,
-            "net_width": 800, "net_height": 800,
+            "net_width": 512, "net_height": 512,
             # "thresh": 0.5, "hier_thresh": 0.5,
             "thresh": 0.65, "hier_thresh": 0.5,
             "nms_thresh": 0.45,
