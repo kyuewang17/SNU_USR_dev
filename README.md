@@ -61,6 +61,7 @@
     - yaml
     - numpy, numba, scipy, FilterPy, sklearn, yacs
     - sip 4.18 (for PyKDL support, version number is important!)
+    - motmetrics (*pip*, for MOT Performance Evaluation)
     
    
 - Build Detection Module (tentative, for current detector model: **yolo v4** \[[Paper](https://arxiv.org/abs/2004.10934)\])

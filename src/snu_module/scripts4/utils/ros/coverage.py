@@ -16,7 +16,7 @@ from nav_msgs.msg import Odometry
 
 
 class coverage(object):
-    def __init__(self, opts, is_sensor_param_file=False):
+    def __init__(self, opts, is_sensor_param_file=True):
         # Load Options
         self.opts = opts
 
@@ -28,9 +28,6 @@ class coverage(object):
 
         # TF Static-related Variables
         self.tf_transform = None
-
-        # Odometry (Pass-through as ROS Message)
-        self.odometry = None
 
         # Initialize Modal Classes
         self.color = ros_sensor_image(modal_type="color")
@@ -164,16 +161,9 @@ class coverage(object):
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
         self.lidar.update_data(
-            
+            lidar_pc_msg=self.lidar_msg, stamp=self.lidar_msg.header.stamp,
+            tf_transform=self.tf_transform
         )
-
-        self.lidar.update_data(data=sync_pc_odom_dict["pointcloud"], stamp=sync_stamp)
-
-        # Get Odometry
-        self.odometry = sync_pc_odom_dict["odometry"]
-
-    def get_sync_timestamp(self):
-        return self.sync_stamp
 
     def gather_all_modal_data(self):
         sensor_data = {
