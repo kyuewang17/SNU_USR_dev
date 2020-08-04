@@ -1,8 +1,8 @@
 """
-SNU Integrated Module v4.0
+SNU Integrated Module v4.5
     - Code which defines object classes
-    [1] Tracklet Candidate Class
-    [2] Tracklet Class
+    [1] Trajectory Candidate Class
+    [2] Trajectory Class
     [3] Refine Class Code
 
 """
@@ -21,7 +21,8 @@ import kalman_params as kparams
 import utils.patch as snu_patch
 import utils.histogram as snu_hist
 from utils.profiling import Timer
-from lidar import lidar_kernel
+from utils.lidar import lidar_window
+from utils.kcf import KCF_PREDICTOR
 
 
 # Object Instance Class
@@ -55,10 +56,10 @@ class object_instance(object):
         raise NotImplementedError()
 
 
-# Tracklet Candidate Class
-class TrackletCandidate(object_instance):
-    def __init__(self, bbox, conf, label, init_fidx):
-        super(TrackletCandidate, self).__init__(init_fidx=init_fidx, obj_type="TrackletCandidate")
+# Trajectory Candidate Class
+class TrajectoryCandidate(object_instance):
+    def __init__(self, frame, bbox, conf, label, init_fidx, opts):
+        super(TrajectoryCandidate, self).__init__(init_fidx=init_fidx, obj_type="TrajectoryCandidate")
 
         # Detection BBOX, Confidence Lists and Label
         self.asso_dets, self.asso_confs = [bbox], [conf]
@@ -69,6 +70,14 @@ class TrackletCandidate(object_instance):
 
         # z (observation bbox type: {u, v, du, dv, w, h})
         self.z = [snu_bbox.bbox_to_zx(bbox, np.zeros(2))]
+
+        # Initialize KCF Module for BBOX Prediction
+        self.BBOX_PREDICTOR = KCF_PREDICTOR(
+            init_frame=frame,
+            init_zx_bbox=snu_bbox.bbox_to_zx(bbox=bbox).reshape(4),
+            init_fidx=init_fidx,
+            kcf_params=opts.tracker.kcf_params
+        )
 
     # Addition BTW Identical Classes (Tentative)
     def __add__(self, detection_bbox):
@@ -182,26 +191,30 @@ class TrackletCandidate(object_instance):
             self.is_associated.append(True)
             self.z.append(snu_bbox.bbox_to_zx(bbox, velocity))
 
-    # Initialize Tracklet Class from TrackletCandidate
+    # Predict BBOX using SOT
+    def predict(self, frame, bbox):
+        return self.BBOX_PREDICTOR.predict_bbox(frame=frame, roi_bbox=bbox)
+
+    # Initialize Trajectory Class from TrajectoryCandidate
     def init_tracklet(self, disparity_frame, trk_id, fidx, opts):
         # Get Rough Depth
         depth = self.get_rough_depth(disparity_frame, opts)
 
-        # Tracklet Initialization Dictionary
+        # Trajectory Initialization Dictionary
         init_trk_dict = {
             "asso_dets": self.asso_dets, "asso_confs": self.asso_confs, "label": self.label,
             "is_associated": self.is_associated, "init_depth": depth
         }
 
-        # Initialize Tracklet
-        tracklet = Tracklet(trk_id, fidx, opts.tracker, **init_trk_dict)
+        # Initialize Trajectory
+        trajectory = Trajectory(trk_id, fidx, opts.tracker, **init_trk_dict)
 
-        return tracklet
+        return trajectory
 
 
-class Tracklet(object_instance):
+class Trajectory(object_instance):
     def __init__(self, trk_id, init_fidx, tracker_opts, **kwargs):
-        super(Tracklet, self).__init__(obj_id=trk_id, init_fidx=init_fidx, obj_type="Tracklet")
+        super(Trajectory, self).__init__(obj_id=trk_id, init_fidx=init_fidx, obj_type="Tracklet")
 
         # Unpack Input Dictionary
         self.asso_dets = kwargs["asso_dets"]
@@ -211,13 +224,13 @@ class Tracklet(object_instance):
         # Association Flag
         self.is_associated = kwargs["is_associated"]
 
-        # Tracklet Depth Value
+        # Trajectory Depth Value
         self.depth = [kwargs["init_depth"]]
 
-        # Tracklet Visualization Color
-        self.color = tracker_opts.tracklet_colors[self.id % tracker_opts.trk_color_refresh_period, :] * 255
+        # Trajectory Visualization Color
+        self.color = tracker_opts.trajectory_colors[self.id % tracker_opts.trk_color_refresh_period, :] * 255
 
-        # Initialize Tracklet Kalman Parameters
+        # Initialize Trajectory Kalman Parameters
         self.A = tracker_opts.kparam_class.A  # State Transition Matrix (Motion Model)
         self.H = tracker_opts.kparam_class.H  # Unit Transformation Matrix
         self.P = tracker_opts.kparam_class.P  # Error Covariance Matrix
@@ -240,13 +253,13 @@ class Tracklet(object_instance):
         self.x3 = init_observation
         self.x3p, self.Pp = kalmanfilter.predict(self.x3, self.P, self.A, self.Q)
 
-        # Tracklet States
+        # Trajectory States
         self.states = [self.x3]
 
-        # Tracklet Predicted States
+        # Trajectory Predicted States
         self.pred_states = [self.x3p]
 
-        # 3D Tracklet State on Camera Coordinates
+        # 3D Trajectory State on Camera Coordinates
         self.c3 = None
 
         # Roll, Pitch, Yaw
@@ -268,7 +281,7 @@ class Tracklet(object_instance):
         # Append Frame Index
         self.fidxs.append(fidx)
 
-        # If Tracklet is unassociated, replace detection with the previous Kalman Prediction
+        # If Trajectory is unassociated, replace detection with the previous Kalman Prediction
         if bbox is None:
             self.asso_dets.append(None)
             self.asso_confs.append(None)
@@ -290,7 +303,7 @@ class Tracklet(object_instance):
         # Kalman Update
         self.x3, self.P = kalmanfilter.update(self.x3p, self.Pp, z3, self.R, self.H)
 
-        # Append to Tracklet States
+        # Append to Trajectory States
         self.states.append(self.x3)
 
     def predict(self):
@@ -301,7 +314,7 @@ class Tracklet(object_instance):
     def get_2d_img_coord_state(self):
         return snu_bbox.zx3_to_zx2(self.x3)
 
-    # Get Tracklet Depth (as an observation, using associated detection bbox)
+    # Get Trajectory Depth (as an observation, using associated detection bbox)
     def get_depth(self, sync_data_dict, opts):
         # Get Observation Patch bbox
         if self.asso_dets[-1] is not None:
@@ -321,22 +334,26 @@ class Tracklet(object_instance):
             img=disparity_frame, bbox=patch_bbox
         )
 
+        color_timestamp, lidar_timestamp = sync_data_dict["color"].get_stamp(), sync_data_dict["lidar"].get_stamp()
+        if color_timestamp != lidar_timestamp:
+            pass
+
         # Project XYZ to uv-coordinate
         uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
-            camerainfo_msg=sync_data_dict["color"].camerainfo_msg,
+            camerainfo_msg=sync_data_dict["color"].get_camerainfo_msg(),
             bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
         )
 
-        # Define LiDAR Kernels
+        # Define LiDAR Windows
         fusion_depth_list = []
         for uv_array_idx in range(len(uv_array)):
             uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
-            l_kernel = lidar_kernel(
+            l_window = lidar_window(
                     sensor_data=sync_data_dict["disparity"],
                     pc_uv=uv_point, pc_distance=pc_distance,
-                    kernel_size=opts.tracker.lidar_params["lidar_kernel_size"]
+                    window_size=opts.tracker.lidar_params["lidar_window_size"]
             )
-            fusion_depth_list.append(l_kernel.get_kernel_average_depth())
+            fusion_depth_list.append(l_window.get_window_average_depth())
 
         # Get Depth Histogram from Fusion Depth List
         if len(fusion_depth_list) >= np.floor(0.1*opts.tracker.lidar_params["sampling_number"]):
@@ -357,7 +374,7 @@ class Tracklet(object_instance):
 
     # Image Coordinates(2D) to Camera Coordinates(3D) in meters (m)
     def img_coord_to_cam_coord(self, inverse_projection_matrix, opts):
-        # If agent type is 'static', the reference point of image coordinate is the bottom center of the tracklet bounding box
+        # If agent type is 'static', the reference point of image coordinate is the bottom center of the trajectory bounding box
         if opts.agent_type == "static":
             img_coord_pos = np.array([self.x3[0][0], (self.x3[1][0] + 0.5 * self.x3[6][0]), 1.0]).reshape((3, 1))
         else:

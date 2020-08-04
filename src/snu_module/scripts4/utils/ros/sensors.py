@@ -19,6 +19,7 @@ import numpy as np
 import image_geometry
 from rospy.rostime import Time
 from sync_subscriber import SyncSubscriber
+from utils.profiling import Timer
 
 
 class ros_sensor(object):
@@ -42,6 +43,7 @@ class ros_sensor(object):
         return self.get_modal_type()
 
     """ Comparison Operator w.r.t. Timestamp """
+
     def __ge__(self, other):
         if isinstance(other, ros_sensor):
             t_diff = (self._timestamp - other._timestamp).to_sec()
@@ -86,6 +88,7 @@ class ros_sensor(object):
         else:
             raise NotImplementedError()
         return True if t_diff <= 0 else False
+
     """ Comparison Operator Part Ended """
 
     def get_time_difference(self, stamp):
@@ -131,6 +134,9 @@ class ros_sensor(object):
     def get_sensor_params(self):
         return self._sensor_params
 
+    def get_camerainfo_msg(self):
+        return self._camerainfo_msg
+
 
 class ros_sensor_image(ros_sensor):
     def __init__(self, modal_type, frame=None, stamp=None):
@@ -142,13 +148,16 @@ class ros_sensor_image(ros_sensor):
         # Initialize Frame Shape
         self.WIDTH, self.HEIGHT = None, None
 
+        # Variable for Moving Visualization Window
+        self.__vis_window_moved = False
+
     def __add__(self, other):
         """
         Channel-wise Frame Concatenation Operation
         :param other: Same Class Object or an NumPy Image-like Array of Same Width(Column) and Height(Row)
         :return: Concatenated Frame
         """
-        assert isinstance(other, ros_sensor_image) or isinstance(other, np.ndarray), \
+        assert isinstance(other, ros_sensor_image) or isinstance(other, ros_sensor_disparity) or isinstance(other, np.ndarray), \
             "Operation Error! The current operand type is {}...!".format(other.__class__.__name__)
 
         # Concatenate Frames Channel-wise
@@ -178,6 +187,9 @@ class ros_sensor_image(ros_sensor):
             self.HEIGHT = frame.shape[0]
 
     def get_data(self):
+        return self._frame
+
+    def get_data_aux(self):
         return self._frame
 
     def get_normalized_data(self, min_value=0.0, max_value=1.0):
@@ -227,7 +239,9 @@ class ros_sensor_image(ros_sensor):
             cv2.namedWindow(winname)
 
             # Move Window
-            cv2.moveWindow(winname=winname, x=1000, y=500)
+            if self.__vis_window_moved is False:
+                cv2.moveWindow(winname=winname, x=1000, y=500)
+                self.__vis_window_moved = True
 
             # IMSHOW
             if modal_type.__contains__("color") is True:
@@ -238,9 +252,35 @@ class ros_sensor_image(ros_sensor):
             cv2.waitKey(1)
 
 
+class ros_sensor_disparity(ros_sensor_image):
+    def __init__(self, frame=None, stamp=None):
+        super(ros_sensor_disparity, self).__init__(
+            modal_type="disparity", frame=frame, stamp=stamp
+        )
+
+        self._processed_frame = None
+
+    def process_data(self, disparity_sensor_opts):
+        frame = self.get_data().astype(np.float32)
+        self._processed_frame = np.where(
+            (frame < disparity_sensor_opts["clip_distance"]["min"]) |
+            (frame > disparity_sensor_opts["clip_distance"]["max"]),
+            disparity_sensor_opts["clip_value"], frame
+        )
+
+    def get_data(self, is_processed=False):
+        if is_processed is False:
+            return self.get_data_aux()
+        else:
+            if self._processed_frame is None:
+                return self.get_data_aux()
+            else:
+                return self._processed_frame
+
+
 class ros_sensor_lidar(ros_sensor):
-    def __init__(self, modal_type, lidar_pc_msg=None, stamp=None):
-        super(ros_sensor_lidar, self).__init__(modal_type=modal_type, stamp=stamp)
+    def __init__(self, lidar_pc_msg=None, stamp=None):
+        super(ros_sensor_lidar, self).__init__(modal_type="lidar", stamp=stamp)
 
         # LiDAR PointCloud Message (ROS < PointCloud2 > Type)
         self.raw_pc_msg = lidar_pc_msg
@@ -259,7 +299,7 @@ class ros_sensor_lidar(ros_sensor):
         self.pc_distance, self.pc_colors = None, None
 
     def __add__(self, other):
-        assert isinstance(other, ros_sensor_image)
+        assert isinstance(other, ros_sensor_image) or isinstance(other, ros_sensor_disparity)
         # Get Added Sensor Data Frame
         other_frame = other.get_data()
 
@@ -312,20 +352,12 @@ class ros_sensor_lidar(ros_sensor):
             cmap = matplotlib.cm.get_cmap('jet')
             self.pc_colors = cmap(cloud[:, -1] / max_intensity) * 255  # intensity color view
 
-    def update_data(self, lidar_pc_msg, stamp=None, tf_transform=None):
-        # kdl = transform_to_kdl(tf_transform)
-        # self.tf_pc_msg = do_transform_cloud(
-        #     cloud=self.raw_pc_msg, transform=tf_transform
-        # )
-
+    def update_data(self, lidar_pc_msg, tf_transform):
         # Update LiDAR Message
         self.raw_pc_msg = lidar_pc_msg
 
         # Update Stamp
-        if stamp is not None:
-            self.update_stamp(stamp=stamp)
-        else:
-            self.update_stamp(stamp=lidar_pc_msg.header.stamp)
+        self.update_stamp(stamp=lidar_pc_msg.header.stamp)
 
         # Update Rotation and Translation Matrices
         if self.R__color is None:
@@ -356,7 +388,7 @@ class ros_sensor_lidar(ros_sensor):
         assert isinstance(sensor_data, ros_sensor_image)
 
         return self.project_xyz_to_uv(
-            camerainfo_msg=sensor_data._camerainfo_msg,
+            camerainfo_msg=sensor_data.get_camerainfo_msg(),
             frame_width=sensor_data.WIDTH, frame_height=sensor_data.HEIGHT,
             random_sample_number=random_sample_number
         )

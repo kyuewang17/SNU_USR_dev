@@ -19,7 +19,7 @@ else
 fi
 
 # Save ROSBAG File to the Target ROSBAG directory
-rosbag record -o "${TARGET_ROSBAG_PATH}"/ \
+rosbag record -b 0 -o "${TARGET_ROSBAG_PATH}"/ \
 "/osr/image_color" \
 "/osr/image_color_camerainfo" \
 "/osr/image_aligned_depth" \

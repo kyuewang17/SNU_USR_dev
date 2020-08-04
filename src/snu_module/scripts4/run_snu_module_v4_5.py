@@ -20,9 +20,10 @@ import logging
 import tf2_ros
 
 import snu_visualizer
+from options_v4_5 import snu_option_class as options
 from utils.ros.coverage import coverage
 from utils.ros.sensors import snu_SyncSubscriber
-from snu_algorithms_v4 import snu_algorithms
+from snu_algorithms_v4_5 import snu_algorithms
 from utils.profiling import Timer
 
 from module_detection import load_model as load_det_model
@@ -126,6 +127,7 @@ class snu_module(coverage):
                 )
             except:
                 rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...!")
+                continue
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
@@ -134,54 +136,99 @@ class snu_module(coverage):
         )
 
         # ROS Loop Starts
+        rospy.loginfo("Starting SNU Integrated Module...!")
+        try:
+            while not rospy.is_shutdown():
+                loop_timer = Timer(convert="FPS")
+                loop_timer.reset()
+
+                # Make Synchronized Data
+                sync_ss.make_sync_data()
+
+                # Get Synchronized Data, Loop Until Synchronized
+                sync_data = sync_ss.get_sync_data()
+                if sync_data is None:
+                    continue
+                else:
+                    self.update_all_modal_data(sync_data=sync_data)
+                self.sync_stamp = sync_data[0]
+                sensor_fps = loop_timer.elapsed
+
+                # Increase Frame Index
+                self.fidx += 1
+
+                # Update Sensor Image Frame Size
+                if self.fidx == 1:
+                    self.opts.sensors.update_sensor_image_size(
+                        frame=self.color.get_data()
+                    )
+
+                # Gather All Data and Process Disparity Frame
+                sync_data_dict = self.gather_all_modal_data()
+                sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
+
+                # SNU USR Integrated Algorithm Call
+                trajectories, detections, fps_dict = snu_usr(
+                    sync_data_dict=sync_data_dict, fidx=self.fidx
+                )
+
+                # Algorithm Total FPS
+                total_fps = loop_timer.elapsed
+
+                # Log Profile
+                rospy.loginfo(
+                    "FIDX: {} || # of Trajectories: <{}> || Total SNU Module Speed: {:.2f}fps".format(
+                        self.fidx, len(snu_usr), total_fps
+                    )
+                )
+                # rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                #     self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                #     )
+                # )
+
+                # Draw Results
+                result_frame_dict = self.visualizer(
+                    sensor_data=self.color, trajectories=trajectories, detections=detections, fidx=self.fidx
+                )
+
+                # Publish Tracks
+                self.publish_tracks(trajectories=trajectories, odometry_msg=self.odometry_msg)
+
+                # Publish SNU Result Image Results
+                self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+
+                # Draw / Show / Publish Top-view Result
+                if self.opts.visualization.top_view["is_draw"] is True:
+                    self.visualizer.visualize_top_view_trajectories(trajectories=trajectories)
+
+                    # # Publish Top-view Result
+                    # self.top_view_result_pub.publish(
+                    #     self.pub_bridge.cv2_to_imgmsg(
+                    #         self.visualizer.top_view_map, "rgb8"
+                    #     )
+                    # )
+
+            # Rospy Spin
+            rospy.spin()
+
+        except KeyboardInterrupt:
+            rospy.logwarn("ShutDown SNU Module...!")
 
 
+def main():
+    # Load Configuration File
+    cfg.merge_from_file(args.config)
 
+    # Load Options
+    opts = options(cfg=cfg)
+    opts.visualization.correct_flag_options()
 
+    # Initialize SNU Module
+    snu_usr = snu_module(opts=opts)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # Run SNU Module
+    snu_usr(module_name="snu_module")
 
 
 if __name__ == "__main__":
-    pass
-
+    main()

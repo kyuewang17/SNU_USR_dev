@@ -7,7 +7,7 @@ from rospy import Subscriber, Publisher
 from cv_bridge import CvBridge
 
 from wrapper import wrap_tracks
-from sensors import ros_sensor_image, ros_sensor_lidar
+from sensors import ros_sensor_image, ros_sensor_disparity, ros_sensor_lidar
 
 # Import ROS Message Types
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
@@ -31,11 +31,11 @@ class coverage(object):
 
         # Initialize Modal Classes
         self.color = ros_sensor_image(modal_type="color")
-        self.disparity = ros_sensor_image(modal_type="disparity")
+        self.disparity = ros_sensor_disparity()
         self.thermal = ros_sensor_image(modal_type="thermal")
         self.infrared = ros_sensor_image(modal_type="infrared")
         self.nightvision = ros_sensor_image(modal_type="nightvision")
-        self.lidar = ros_sensor_lidar(modal_type="lidar")
+        self.lidar = ros_sensor_lidar()
 
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
@@ -118,8 +118,8 @@ class coverage(object):
             self.thermal.update_sensor_params_rostopic(msg=msg)
 
     # Publish Tracks
-    def publish_tracks(self, tracklets, odometry_msg):
-        out_tracks = wrap_tracks(trackers=tracklets, odometry=odometry_msg)
+    def publish_tracks(self, trajectories, odometry_msg):
+        out_tracks = wrap_tracks(trackers=trajectories, odometry=odometry_msg)
         self.tracks_pub.publish(out_tracks)
 
     # Publish SNU Result Image ( DET / TRK + ACL )
@@ -161,8 +161,7 @@ class coverage(object):
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
         self.lidar.update_data(
-            lidar_pc_msg=self.lidar_msg, stamp=self.lidar_msg.header.stamp,
-            tf_transform=self.tf_transform
+            lidar_pc_msg=self.lidar_msg, tf_transform=self.tf_transform
         )
 
     def gather_all_modal_data(self):

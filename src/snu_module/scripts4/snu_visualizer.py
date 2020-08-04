@@ -89,8 +89,8 @@ class vis_trk_acl_obj(vis_obj):
         self.linewidth = vopts.tracking["linewidth"]
 
     # Update Tracklet Object
-    def update_objects(self, tracklets):
-        self.trks = tracklets
+    def update_objects(self, trajectories):
+        self.trks = trajectories
 
     # Draw Tracking Result on Selected Modal Frame
     def draw_objects(self, frame, opencv_winname):
@@ -112,7 +112,7 @@ class vis_trk_acl_obj(vis_obj):
             pad_pixels = self.vopts.pad_pixels
             info_interval = self.vopts.info_interval
 
-            # Visualize Tracklet ID
+            # Visualize Trajectory ID
             trk_id_str = "id:" + str(trk.id) + ""
             (tw, th) = cv2.getTextSize(trk_id_str, font, fontScale=font_size, thickness=2)[0]
             text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
@@ -125,7 +125,7 @@ class vis_trk_acl_obj(vis_obj):
                 (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
             )
 
-            # Visualize Tracklet Depth
+            # Visualize Trajectory Depth
             if trk.depth is not None:
                 trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
                 (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
@@ -294,12 +294,12 @@ class visualizer(object):
             cv2.waitKey(1)
 
     # Functional Visualizer Call
-    def __call__(self, sensor_data, tracklets, detections, fidx, _check_run_time=False):
+    def __call__(self, sensor_data, trajectories, detections, fidx, _check_run_time=False):
         # Get Visualization Sensor Data Modality
-        modal_type = sensor_data.modal_type
+        modal_type = sensor_data.get_modal_type()
 
         # Get Image Frame
-        vis_frame = sensor_data.frame
+        vis_frame = sensor_data.get_data()
 
         # OpenCV Window Name
         winname = self.winname + "(%s)" % modal_type
@@ -329,7 +329,7 @@ class visualizer(object):
 
         # Update Module Results
         if self.vopts.tracking["is_draw"] is True:
-            self.TRK_ACL_VIS_OBJ.update_objects(tracklets)
+            self.TRK_ACL_VIS_OBJ.update_objects(trajectories)
 
             # Draw Tracking/Action Classification Results on Frame
             trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
@@ -342,7 +342,7 @@ class visualizer(object):
                 if os.path.isdir(auto_save_tracklet_base_dir) is False:
                     os.mkdir(auto_save_tracklet_base_dir)
 
-                if len(tracklets) != 0:
+                if len(trajectories) != 0:
                     self.save_frame(
                         save_base_dir=auto_save_tracklet_base_dir, frame=trk_acl_frame,
                         fidx=fidx, modal=sensor_data.modal_type
@@ -381,7 +381,7 @@ class visualizer(object):
 
         # Visualize Top-view Tracklets
         if self.vopts.top_view["is_show"] is True:
-            self.visualize_top_view_tracklets(tracklets=tracklets)
+            self.visualize_top_view_trajectories(trajectories=trajectories)
 
         if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
                 self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True:
@@ -389,9 +389,9 @@ class visualizer(object):
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
-    # Visualize Top-view Tracklets
+    # Visualize Top-view Trajectories
     # TODO: Cost-down Calculation
-    def visualize_top_view_tracklets(self, tracklets):
+    def visualize_top_view_trajectories(self, trajectories):
         # Top-view Map Coordinate to Row/Column Axis Value
         def cam_coord_to_top_view_coord(x, y):
             row = int(self.top_view_map.shape[0] - y)
@@ -413,7 +413,7 @@ class visualizer(object):
         )
 
         # Draw Tracklet Coordinates to Top-view Map
-        for trk_idx, trk in enumerate(tracklets):
+        for trk_idx, trk in enumerate(trajectories):
             # Tracklet Coordinates < (-y) and (+x) Coordinates >
             top_view_x, top_view_y = -trk.c3[1][0]*1000, trk.c3[0][0]*1000
 

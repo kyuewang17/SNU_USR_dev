@@ -6,12 +6,12 @@ SNU Integrated Module v4.0
 """
 import numpy as np
 
-from ros_utils_v4 import ros_sensor_image
+from utils.ros.sensors import ros_sensor_image, ros_sensor_disparity
 
 
 class lidar_kernel(object):
     def __init__(self, sensor_data, pc_uv, pc_distance, kernel_size):
-        assert isinstance(sensor_data, ros_sensor_image)
+        assert isinstance(sensor_data, ros_sensor_image) or isinstance(sensor_data, ros_sensor_disparity)
 
         # Get Modality of Sensor Data
         self.kernel_modal = "{}".format(sensor_data)
@@ -27,7 +27,7 @@ class lidar_kernel(object):
 
         # Get LiDAR Kernel Data
         self.data = self._get_kernel_data(
-            frame=sensor_data.get_data(is_processed=True)
+            frame=sensor_data.get_data()
         )
 
         pass

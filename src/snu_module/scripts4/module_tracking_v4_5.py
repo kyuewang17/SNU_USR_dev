@@ -1,7 +1,9 @@
 """
-SNU Integrated Module v4.0
+SNU Integrated Module v4.5
     - Multimodal Multiple Target Tracking
-
+    - Changed Terminologies and Corrected Mis-used Terms
+        - Tracklet -> Trajectory
+        - Cost -> (corrected regarding to its definition)
 
 """
 
@@ -9,6 +11,7 @@ SNU Integrated Module v4.0
 import random
 from utils.profiling import Timer
 import numpy as np
+from scipy.misc import imresize
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
 
 # Import Custom Modules
@@ -18,8 +21,7 @@ import utils.general_functions as snu_gfuncs
 import utils.histogram as snu_hist
 
 # Import Class Objects
-from class_objects_v4 import TrackletCandidate, Tracklet
-from lidar import lidar_kernel
+from class_objects_v4_5 import TrajectoryCandidate
 
 
 class SNU_MOT(object):
@@ -27,16 +29,16 @@ class SNU_MOT(object):
         # Load Options
         self.opts = opts
 
-        # Tracklets and Tracklet Candidates
+        # Trajectories and Trajectory Candidates
         self.trks, self.trk_cands = [], []
 
-        # Max Tracklet ID
+        # Max Trajectory ID
         self.max_trk_id = 0
 
         # Frame Index
         self.fidx = None
 
-        # Tracklet BBOX Size Limit
+        # Trajectory BBOX Size Limit
         self.trk_bbox_size_limits = None
 
     def __len__(self):
@@ -45,31 +47,32 @@ class SNU_MOT(object):
     def __repr__(self):
         return "SNU_MOT"
 
-    def destroy_tracklets(self):
-        # Destroy Tracklets with Following traits
+    def destroy_trajectories(self):
+        # Destroy Trajectories with Following traits
         destroy_trk_indices = []
         for trk_idx, trk in enumerate(self.trks):
-            # (1) Prolonged Consecutively Unassociated Tracklets
+            # (1) Prolonged Consecutively Unassociated Trajectories
             if snu_gfuncs.get_max_consecutive(trk.is_associated, False) == \
-                    self.opts.tracker.association["trk_destroy_age"]:
+                    self.opts.tracker.association["trk"]["destroy_age"]:
                 destroy_trk_indices.append(trk_idx)
 
         # Remove Duplicate Indices
         destroy_trk_indices = list(set(destroy_trk_indices))
         self.trks = snu_gfuncs.exclude_from_list(self.trks, destroy_trk_indices)
 
-    def destroy_tracklet_candidates(self):
-        # Destroy Prolonged Tracklet Candidates
+    def destroy_trajectory_candidates(self):
+        # Destroy Prolonged Trajectory Candidates
         destroy_trkc_indices = []
         for trkc_idx, trk_cand in enumerate(self.trk_cands):
-            # (1) Tracklet Candidates with Abnormal Size
+            # (1) Trajectory Candidates with Abnormal Size
             if self.trk_bbox_size_limits is not None and trk_cand.z[-1] is not None:
                 trkc_size = trk_cand.z[-1][4]*trk_cand.z[-1][5]
                 if trkc_size < min(self.trk_bbox_size_limits) or trkc_size > max(self.trk_bbox_size_limits):
                     destroy_trkc_indices.append(trkc_idx)
 
+            # (2) Prolonged Consecutively Unassociated Trajectory Candidates
             if snu_gfuncs.get_max_consecutive(trk_cand.is_associated, False) == \
-                    self.opts.tracker.association["trkc_destroy_age"]:
+                    self.opts.tracker.association["trk_cand"]["destroy_age"]:
                 destroy_trkc_indices.append(trkc_idx)
 
         # Remove Duplicate Indices
@@ -77,9 +80,9 @@ class SNU_MOT(object):
         self.trk_cands = snu_gfuncs.exclude_from_list(self.trk_cands, destroy_trkc_indices)
 
     @staticmethod
-    def associate(cost_matrix, cost_thresh, workers, works):
+    def associate(similarity_matrix, similarity_thresh, workers, works):
         # Hungarian Algorithm
-        matched_indices = hungarian(-cost_matrix)
+        matched_indices = hungarian(-similarity_matrix)
 
         # Collect Unmatched Worker Indices
         unmatched_worker_indices = []
@@ -96,7 +99,7 @@ class SNU_MOT(object):
         # Filter-out Matched with Cost lower then the threshold
         matches = []
         for m in matched_indices:
-            if cost_matrix[m[0], m[1]] < cost_thresh:
+            if similarity_matrix[m[0], m[1]] < similarity_thresh:
                 unmatched_worker_indices.append(m[0])
                 unmatched_work_indices.append(m[1])
             else:
@@ -108,27 +111,27 @@ class SNU_MOT(object):
 
         return matches, unmatched_worker_indices, unmatched_work_indices
 
-    # Associate Detections with Tracklets
-    def associate_detections_with_tracklets(self, sync_data_dict, detections):
+    # Associate Detections with Trajectories
+    def associate_detections_with_trajectories(self, sync_data_dict, detections):
         # Unpack Detections
         dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]
 
-        # Initialize Cost Matrix Variable
-        cost_matrix = np.zeros((len(dets), len(self.trks)), dtype=np.float32)
+        # Initialize Similarity Matrix Variable
+        similarity_matrix = np.zeros((len(dets), len(self.trks)), dtype=np.float32)
 
         # Get (Color / Disparity) Frames
         color_frame = sync_data_dict["color"].get_data()
-        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
+        # disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
 
-        # Normalize Disparity Frame
-        d_max, d_min = disparity_frame.max(), disparity_frame.min()
-        normalized_disparity_frame = \
-            ((disparity_frame - d_min) / (d_max - d_min)) * 255
+        # Normalize Disparity Frame to uint8 scale (0~255)
+        normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(
+            min_value=0.0, max_value=255.0
+        )
 
         # Concatenate
         rgbd_frame = np.dstack((color_frame, normalized_disparity_frame.astype(np.uint8)))
 
-        # Calculate Cost Matrix
+        # Calculate Similarity Matrix
         for det_idx, det in enumerate(dets):
             for trk_idx, trk in enumerate(self.trks):
                 det_zx = snu_bbox.bbox_to_zx(det)
@@ -136,58 +139,70 @@ class SNU_MOT(object):
                 # Get Predicted State of Tracklet
                 trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
 
-                # Get Detection and Tracklet Patch RGBD Histograms
+                # Get RGBD Patches
+                det_patch = snu_patch.get_patch(rgbd_frame, det)
+                trk_patch = snu_patch.get_patch(rgbd_frame, trk_bbox)
+
+                # Resize RGBD Patches
+                resized_det_patch = imresize(det_patch, size=[64, 64])
+                resized_trk_patch = imresize(trk_patch, size=[64, 64])
+
+                # Get RGBD Histograms of Detection and Trajectory Patch
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=snu_patch.get_patch(rgbd_frame, det),
+                    sensor_patch=resized_det_patch,
                     dhist_bin=128, min_value=0, max_value=255, count_window=None
                 )
                 trk_hist, trk_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=snu_patch.get_patch(rgbd_frame, trk_bbox),
+                    sensor_patch=resized_trk_patch,
                     dhist_bin=128, min_value=0, max_value=255, count_window=None
                 )
 
-                # Get Histogram Similarity
+                # [1] Get Histogram Similarity
                 if len(det_hist) == 0 or len(trk_hist) == 0:
                     hist_similarity = 1.0
                 else:
                     hist_product = np.matmul(det_hist.reshape(-1, 1).transpose(), trk_hist.reshape(-1, 1))
-                    hist_similarity = hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist))
+                    hist_similarity = np.sqrt(hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist)))
+                    hist_similarity = hist_similarity[0, 0]
 
-                # Get Velocity-Augmented IOU
+                # [2] Get IOU Similarity
                 if self.opts.experiment.association.trk is True:
                     aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
                     aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
                     aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
-                    iou_cost = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+                    iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
                 else:
-                    iou_cost = snu_bbox.iou(det, trk_bbox)
+                    iou_similarity = snu_bbox.iou(det, trk_bbox)
 
-                # Get Size-Distance Similarity
-                h_det, h_trk = det_zx[3], trk.pred_states[-1][6]
-                w_det, w_trk = det_zx[2], trk.pred_states[-1][5]
+                # [3] Get Distance Similarity
                 l2_distance = snu_gfuncs.l2_distance_dim2(
                     x1=det_zx[0], y1=det_zx[1],
                     x2=trk.pred_states[-1][0], y2=trk.pred_states[-1][1]
                 )
-                det_sz, trk_sz = h_det*w_det, h_trk*w_trk
-                hd_cost = min(det_sz / trk_sz, trk_sz / det_sz) ** l2_distance
-                hd_cost = np.sqrt(hd_cost)
+                dist_similarity = np.exp(-l2_distance)[0]
 
-                # Cost
-                cost_val = iou_cost * hist_similarity * hd_cost
-                # print(cost_val)
+                # Get Total Similarity
+                s_w_dict = self.opts.tracker.association["trk"]["similarity_weights"]
+                similarity = \
+                    s_w_dict["histogram"] * hist_similarity + \
+                    s_w_dict["iou"] * iou_similarity + \
+                    s_w_dict["distance"] * dist_similarity
+                # print("T2D Similarity Value: {:.3f}".format(similarity))
 
-                # to Cost Matrix
-                cost_matrix[det_idx, trk_idx] = cost_val
+                # to Similarity Matrix
+                similarity_matrix[det_idx, trk_idx] = similarity
 
-        # Get Cost Threshold
-        cost_thresh = self.opts.tracker.association['cost_thresh_d2trk']
+        # Get Similarity Threshold
+        similarity_thresh = self.opts.tracker.association["trk"]['similarity_thresh']
 
         # Associate Using Hungarian Algorithm
         matches, unmatched_det_indices, unmatched_trk_indices = \
-            self.associate(cost_matrix, cost_thresh, dets, self.trks)
+            self.associate(
+                similarity_matrix=similarity_matrix, similarity_thresh=similarity_thresh,
+                workers=dets, works=self.trks
+            )
 
-        # Update Associated Tracklets
+        # Update Associated Trajectories
         for match in matches:
             matched_det = detections['dets'][match[0]]
             matched_conf, matched_label = detections['confs'][match[0]], detections['labels'][match[0]]
@@ -195,18 +210,18 @@ class SNU_MOT(object):
             matched_trk = self.trks[match[1]]
             matched_trk.get_depth(sync_data_dict, self.opts)
 
-            # If passed, update Tracklet
+            # If passed, update Trajectory
             matched_trk.update(self.fidx, matched_det, matched_conf)
             self.trks[match[1]] = matched_trk
             del matched_trk
 
-        # Update Unassociated Tracklets
+        # Update Unassociated Trajectories
         for unasso_trk_idx in unmatched_trk_indices:
             unasso_trk = self.trks[unasso_trk_idx]
 
             unasso_trk.get_depth(sync_data_dict, self.opts)
 
-            # Update
+            # Update Trajectory
             unasso_trk.update(self.fidx)
             self.trks[unasso_trk_idx] = unasso_trk
             del unasso_trk
@@ -222,76 +237,71 @@ class SNU_MOT(object):
 
         return detections
 
+    # Associate Detections with Detections
     def associate_resdets_trkcands(self, sync_data_dict, residual_detections):
         # Unpack Residual Detections
         dets, confs, labels = \
             residual_detections["dets"], residual_detections["confs"], residual_detections["labels"]
 
-        # Initialize Cost Matrix Variable
-        cost_matrix = np.zeros((len(dets), len(self.trk_cands)), dtype=np.float32)
+        # Initialize Similarity Matrix Variable
+        similarity_matrix = np.zeros((len(dets), len(self.trk_cands)), dtype=np.float32)
 
         # Calculate Cost Matrix
         for det_idx, det in enumerate(dets):
             for trk_cand_idx, trk_cand in enumerate(self.trk_cands):
                 if trk_cand.z[-1] is None:
-                    cost_val = -1
+                    similarity = -1
                 else:
                     det_zx = snu_bbox.bbox_to_zx(det)
                     trk_cand_bbox, _ = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
+                    # [1] Get IOU Similarity
                     if self.opts.experiment.association.trk_cand is True:
                         # SOT-predicted BBOX
                         predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
                         predicted_zx = snu_bbox.bbox_to_zx(predicted_bbox)
 
-                        # [1] IOU Similarity
-                        iou_cost = snu_bbox.iou(det, predicted_bbox)
-
-                        # [2] Height-Distance Similarity
-                        h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
-                        l2_distance = snu_gfuncs.l2_distance_dim2(
-                            x1=det_zx[0], y1=det_zx[1],
-                            x2=predicted_zx[0], y2=predicted_zx[1]
-                        )
+                        iou_similarity = snu_bbox.iou(det, predicted_bbox)
                     else:
-                        # [1] IOU Similarity
-                        iou_cost = snu_bbox.iou(det, trk_cand_bbox)
+                        iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
 
-                        # [2] Height-Distance Similarity
-                        h_det, h_trkc = det_zx[3], trk_cand.z[-1][5]
-                        l2_distance = snu_gfuncs.l2_distance_dim2(
-                            x1=det_zx[0], y1=det_zx[1],
-                            x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
-                        )
-                    hd_cost = min(h_det / h_trkc, h_trkc / h_det) ** l2_distance
+                    # [2] Get Distance Similarity
+                    l2_distance = snu_gfuncs.l2_distance_dim2(
+                        x1=det_zx[0], y1=det_zx[1],
+                        x2=trk_cand.z[-1][0], y2=trk_cand.z[-1][1]
+                    )
+                    dist_similarity = np.exp(-l2_distance)[0]
 
-                    # Cost
-                    cost_val = iou_cost * hd_cost
-                    # print(cost_val)
+                    # Get Total Similarity
+                    s_w_dict = self.opts.tracker.association["trk_cand"]["similarity_weights"]
+                    similarity = \
+                        s_w_dict["iou"] * iou_similarity + \
+                        s_w_dict["distance"] * dist_similarity
+                    # print("D2D Similarity Value: {:.3f}".format(similarity))
 
-                # to Cost Matrix
-                cost_matrix[det_idx, trk_cand_idx] = cost_val
+                # to Similarity Matrix
+                similarity_matrix[det_idx, trk_cand_idx] = similarity
 
-        # Get Cost Threshold
-        cost_thresh = self.opts.tracker.association['cost_thresh_d2trkc']
+        # Get Similarity Threshold
+        similarity_thresh = self.opts.tracker.association["trk_cand"]["similarity_thresh"]
 
         # Associate using Hungarian Algorithm
         matches, unmatched_det_indices, unmatched_trk_cand_indices = \
             self.associate(
-                cost_matrix=cost_matrix, cost_thresh=cost_thresh,
+                similarity_matrix=similarity_matrix, similarity_thresh=similarity_thresh,
                 workers=dets, works=self.trk_cands
             )
 
-        # Update Associated Tracklet Candidates
+        # Update Associated Trajectory Candidates
         for match in matches:
             # Matched Detection
             matched_det = residual_detections['dets'][match[0]]
             matched_conf, matched_label = residual_detections['confs'][match[0]], residual_detections['labels'][match[0]]
 
-            # Matched Tracklet Candidate
+            # Matched Trajectory Candidate
             matched_trk_cand = self.trk_cands[match[1]]
 
-            # Update Tracklet Candidate
+            # Update Trajectory Candidate
             if matched_label != matched_trk_cand.label:
                 unmatched_det_indices.append(match[0]), unmatched_trk_cand_indices.append(match[1])
             else:
@@ -299,18 +309,18 @@ class SNU_MOT(object):
                 self.trk_cands[match[1]] = matched_trk_cand
             del matched_trk_cand
 
-        # Update Unassociated Tracklet Candidates
+        # Update Unassociated Trajectory Candidates
         for unasso_trkc_idx in unmatched_trk_cand_indices:
             unasso_trk_cand = self.trk_cands[unasso_trkc_idx]
 
-            # Update
+            # Update Trajectory Candidate
             unasso_trk_cand.update(fidx=self.fidx)
             self.trk_cands[unasso_trkc_idx] = unasso_trk_cand
             del unasso_trk_cand
 
-        # Generate New Tracklet Candidates with the Unassociated Detections
+        # Generate New Trajectory Candidates with the Unassociated Detections
         for unasso_det_idx in unmatched_det_indices:
-            new_trk_cand = TrackletCandidate(
+            new_trk_cand = TrajectoryCandidate(
                 frame=sync_data_dict["color"].get_data(),
                 bbox=residual_detections['dets'][unasso_det_idx],
                 conf=residual_detections['confs'][unasso_det_idx],
@@ -320,30 +330,30 @@ class SNU_MOT(object):
             self.trk_cands.append(new_trk_cand)
             del new_trk_cand
 
-    def generate_new_tracklets(self, sync_data_dict, new_trks):
-        # Associate Tracklet Candidates with Detection Associated Consecutively for < k > frames
+    def generate_new_trajectories(self, sync_data_dict, new_trks):
+        # Select Trajectory Candidates that are consecutively associated for < k > frames
         selected_trkc_indices = []
         for trkc_idx, trk_cand in enumerate(self.trk_cands):
             if snu_gfuncs.get_max_consecutive(trk_cand.is_associated, True) == \
-                    self.opts.tracker.association["trk_init_age"]:
+                    self.opts.tracker.association["trk"]["init_age"]:
                 selected_trkc_indices.append(trkc_idx)
         sel_trk_cands = snu_gfuncs.select_from_list(self.trk_cands, selected_trkc_indices)
 
-        # Initialize New Tracklets
+        # Initialize New Trajectories
         for sel_trkc_idx, sel_trk_cand in enumerate(sel_trk_cands):
-            # Get New Tracklet ID
+            # Get New Trajectory ID
             new_trk_id = self.max_trk_id + 1 + sel_trkc_idx
 
-            # Initialize New Tracklet
+            # Initialize New Trajectory
             new_trk = sel_trk_cand.init_tracklet(
-                disparity_frame=sync_data_dict["disparity"].get_data(),
+                disparity_frame=sync_data_dict["disparity"].get_data(is_processed=False),
                 trk_id=new_trk_id, fidx=self.fidx, opts=self.opts
             )
             new_trks.append(new_trk)
             del new_trk
         del sel_trk_cands
 
-        # Destroy Associated Tracklet Candidates
+        # Destroy Associated Trajectory Candidates
         self.trk_cands = snu_gfuncs.exclude_from_list(self.trk_cands, selected_trkc_indices)
 
         return new_trks
@@ -360,26 +370,26 @@ class SNU_MOT(object):
         # Load Point-Cloud XYZ Data
         sync_data_dict["lidar"].load_pc_xyz_data()
 
-        # Initialize New Tracklet Variable
+        # Initialize New Trajectory Variable
         new_trks = []
 
-        # Destroy Tracklets with Following traits
-        self.destroy_tracklets()
+        # Destroy Trajectories with Following traits
+        self.destroy_trajectories()
 
-        # Destroy Prolonged Tracklet Candidates
-        self.destroy_tracklet_candidates()
+        # Destroy Prolonged Trajectory Candidates
+        self.destroy_trajectory_candidates()
 
-        # Associate Detections with Tracklets (return residual detections)
+        # Associate Detections with Trajectories (return residual detections)
         if len(self.trks) != 0:
-            detections = self.associate_detections_with_tracklets(
+            detections = self.associate_detections_with_trajectories(
                 sync_data_dict=sync_data_dict, detections=detections
             )
 
-        # Associate Residual Detections with Tracklet Candidates
+        # Associate Residual Detections with Trajectory Candidates
         if len(self.trk_cands) == 0:
             # Initialize New Tracklet Candidates
             for det_idx, det in enumerate(detections["dets"]):
-                new_trk_cand = TrackletCandidate(
+                new_trk_cand = TrajectoryCandidate(
                     frame=sync_data_dict["color"].get_data(),
                     bbox=det, conf=detections["confs"][det_idx], label=detections["labels"][det_idx],
                     init_fidx=fidx, opts=self.opts
@@ -391,10 +401,10 @@ class SNU_MOT(object):
                 sync_data_dict=sync_data_dict, residual_detections=detections
             )
 
-        # Generate New Tracklets from Tracklet Candidates
-        new_trks = self.generate_new_tracklets(sync_data_dict=sync_data_dict, new_trks=new_trks)
+        # Generate New Trajectories from Trajectory Candidates
+        new_trks = self.generate_new_trajectories(sync_data_dict=sync_data_dict, new_trks=new_trks)
 
-        # Append New Tracklets and Update Maximum Tracklet ID
+        # Append New Trajectories and Update Maximum Trajectory ID
         for new_trk in new_trks:
             if new_trk.id >= self.max_trk_id:
                 self.max_trk_id = new_trk.id
@@ -403,9 +413,9 @@ class SNU_MOT(object):
         del new_trks
 
         # Get Pseudo-inverse of Projection Matrix
-        color_P_inverse = sync_data_dict["color"].sensor_params.pinv_projection_matrix
+        color_P_inverse = sync_data_dict["color"].get_sensor_params().pinv_projection_matrix
 
-        # Tracklet Prediction, Projection, and Message
+        # Trajectory Prediction, Projection, and Message
         for trk_idx, trk in enumerate(self.trks):
             # Predict Tracklet States (time-ahead Kalman Prediction)
             trk.predict()
@@ -418,7 +428,7 @@ class SNU_MOT(object):
             # Compute RPY
             trk.compute_rpy(roll=0.0)
 
-            # Adjust to Tracklet List
+            # Adjust to Trajectory List
             self.trks[trk_idx] = trk
             del trk
 

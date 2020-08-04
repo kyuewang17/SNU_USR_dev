@@ -57,14 +57,21 @@ tracker:
         trk:
             init_age: 4
             destroy_age: 3
+            similarity_thresh: 0.6
+            similarity_weights:
+                # [Check] Does Fractional Number Properly Formats?
+                histogram: 0.333333333
+                iou: 0.333333333
+                distance: 0.333333333
         trk_cand:
             destroy_age: 3
-        cost_thresh:
-            d2trk: 0.01
-            d2trkc: 0.3
+            similarity_thresh: 0.3
+            similarity_weights:
+                iou: 0.5
+                distance: 0.5
     visualization:
         is_draw: true
-        is_show: false
+        is_show: true
         auto_save: false
         top_view:
             is_draw: false
