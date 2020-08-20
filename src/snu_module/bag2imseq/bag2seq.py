@@ -72,12 +72,10 @@ import cv2
 import matplotlib
 import matplotlib.cm
 import numpy as np
-import copy
 
 import rosbag
 import ros_numpy
 import pyquaternion
-import rospy
 from cv_bridge import CvBridge
 
 
