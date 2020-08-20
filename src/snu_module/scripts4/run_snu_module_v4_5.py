@@ -15,13 +15,15 @@ SNU Integrated Module v4.5
 import os
 import argparse
 import time
+import yaml
 import rospy
 import logging
 import tf2_ros
+import numpy as np
 
 import snu_visualizer
 from options_v4_5 import snu_option_class as options
-from utils.ros.coverage import coverage
+from utils.ros.base import backbone
 from utils.ros.sensors import snu_SyncSubscriber
 from snu_algorithms_v4_5 import snu_algorithms
 from utils.profiling import Timer
@@ -38,7 +40,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "--config", "-C",
-    default=os.path.join(os.path.dirname(__file__), "configs", "config.yaml")
+    default=os.path.join(os.path.dirname(__file__), "config", "agents", "static", "01.yaml")
 )
 args = parser.parse_args()
 
@@ -62,7 +64,7 @@ def set_logger(logging_level=logging.INFO):
 
 
 # Define SNU Module Class
-class snu_module(coverage):
+class snu_module(backbone):
     def __init__(self, opts):
         super(snu_module, self).__init__(
             opts=opts, is_sensor_param_file=self.sensor_param_file_check()
@@ -91,10 +93,29 @@ class snu_module(coverage):
 
     @staticmethod
     def sensor_param_file_check():
-        return False
+        sensor_params_path = os.path.join(os.path.dirname(args.config), "sensor_params")
+        if os.path.isdir(sensor_params_path):
+            return True
+        else:
+            return False
 
     def gather_all_sensor_params_via_files(self):
-        raise NotImplementedError()
+        config_file_number = int(args.config.split("/")[-1].split(".")[0])
+        sensor_params_path = os.path.join(os.path.dirname(args.config), "sensor_params")
+        sensor_param_filenames = os.listdir(sensor_params_path)
+
+        for sensor_param_filename in sensor_param_filenames:
+            modal = sensor_param_filename.split(".")[0]
+
+            # Get Sensor Parameters
+            sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
+            with open(sensor_param_filepath, "r") as stream:
+                tmp = yaml.safe_load(stream=stream)
+            sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(config_file_number)]["camera_param"])
+
+            # Update Sensor Parameter
+            modal_obj = getattr(self, modal)
+            modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
 
     # Call as Function
     def __call__(self, module_name):
@@ -115,19 +136,24 @@ class snu_module(coverage):
         self.logger.info("ROS Node Initialization")
         rospy.init_node(name=module_name, anonymous=True)
 
-        # Subscribe for tf_static
-        tf_buffer = tf2_ros.Buffer()
-        tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
+        if self.opts.agent_type == "dynamic" or self.opts.agent_type == "rosbagfile":
+            # Subscribe for tf_static
+            tf_buffer = tf2_ros.Buffer()
+            tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
 
-        # Iterate Loop until "tf_static is heard"
-        while self.tf_transform is None:
-            try:
-                self.tf_transform = tf_buffer.lookup_transform(
-                    "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
-                )
-            except:
-                rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...!")
-                continue
+            # Iterate Loop until "tf_static is heard"
+            while self.tf_transform is None:
+                try:
+                    self.tf_transform = tf_buffer.lookup_transform(
+                        "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
+                    )
+                except:
+                    rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...!")
+                    continue
+
+        elif self.opts.agent_type == "static":
+            self.tf_transform = None
+            self.gather_all_sensor_params_via_files()
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")

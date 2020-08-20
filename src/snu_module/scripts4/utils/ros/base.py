@@ -15,7 +15,7 @@ from osr_msgs.msg import Tracks
 from nav_msgs.msg import Odometry
 
 
-class coverage(object):
+class backbone(object):
     def __init__(self, opts, is_sensor_param_file=True):
         # Load Options
         self.opts = opts
@@ -35,7 +35,10 @@ class coverage(object):
         self.thermal = ros_sensor_image(modal_type="thermal")
         self.infrared = ros_sensor_image(modal_type="infrared")
         self.nightvision = ros_sensor_image(modal_type="nightvision")
-        self.lidar = ros_sensor_lidar()
+        if opts.agent_type == "static":
+            self.lidar = None
+        else:
+            self.lidar = ros_sensor_lidar()
 
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
@@ -160,9 +163,10 @@ class coverage(object):
 
         self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
-        self.lidar.update_data(
-            lidar_pc_msg=self.lidar_msg, tf_transform=self.tf_transform
-        )
+        if self.lidar is not None:
+            self.lidar.update_data(
+                lidar_pc_msg=self.lidar_msg, tf_transform=self.tf_transform
+            )
 
     def gather_all_modal_data(self):
         sensor_data = {
