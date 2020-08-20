@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchvision import transforms
 
 # Resnet module from [torchvision-0.3.0]
-import snu_utils.resnet as models
+import utils.resnet as models
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = torch.load("/home/kyle/USR_SNU_MODULE/SNU_Integrated_v2/src/snu_module/model/model_img60_res18_1_full_copy_6.pth")

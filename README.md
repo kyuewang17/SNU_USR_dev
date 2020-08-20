@@ -60,16 +60,23 @@
     - empy (*pip*)
     - yaml
     - numpy, numba, scipy, FilterPy, sklearn, yacs
+    - sip 4.18 (for PyKDL support, version number is important!)
+    - motmetrics (*pip*, for MOT Performance Evaluation)
     
-- Build Detection Module (tentative, for current detector model: **RefineDet** \[[Paper](https://arxiv.org/abs/1711.06897)\])
+   
+- Build Detection Module (tentative, for current detector model: **yolo v4** \[[Paper](https://arxiv.org/abs/2004.10934)\])
     - Setting Requirements (_as far as we know_...)
-        - gcc 5.4.0\
-        (note that on gcc 8.x, the module does not build)
-        - PyTorch 1.0 ~ 1.2
-        - CUDA 9.0 ~ 10.1
+        - CMake >= 3.12: https://cmake.org/download/ ( cf. https://snowdeer.github.io/linux/2018/04/10/upgrade-cmake/ (korean) )
+        - CUDA 10
+        - OpenCV >= 2.4
+        - cudnn >= 7.0 for CUDA 10.0
+        - requirement detail : https://github.com/AlexeyAB/darknet
+    - Download yolov4.weights file
+        - https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT
+        - path : src/snu_module/models/detector/YOLOv4/day/
     - Build Steps
-        1. Run [detection_setup.py](/src/snu_module/scripts4/detection_setup.py) using the Anaconda environments\
-        `>> python detection_setup.py build develop`
+        1. Run [build.sh](/src/snu_module/scripts4/detection_lib/darknet/build.sh) \
+        `>> name@name:~/src/snu_module/scripts4/detection_lib/darknet$ ./build.sh`
         
 
 - How to use ROS-embedded current algorithm?

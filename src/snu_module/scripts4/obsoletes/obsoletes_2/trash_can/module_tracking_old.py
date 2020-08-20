@@ -8,11 +8,11 @@ import copy
 import numpy as np
 
 # Import Source Modules
-import snu_utils.patch as ptch
-import snu_utils.bounding_box as fbbox
-import snu_utils.general_functions as gfuncs
-import snu_utils.data_association as fasso
-import snu_utils.histogram as fhist
+import utils.patch as ptch
+import utils.bounding_box as fbbox
+import utils.general_functions as gfuncs
+import utils.data_association as fasso
+import utils.histogram as fhist
 from class_objects import TrackletCandidate, Tracklet
 
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align

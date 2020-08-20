@@ -21,3 +21,15 @@
 
 # Current Agent YAML file
 /src/snu_module/scripts4/config/curr_agent/config.yaml
+
+# Ignore YOLOv4 Weights
+/src/snu_module/models/detector/YOLOv4/day/*.weights
+
+# Ignore Auto-Save Results
+/src/snu_module/sample_results/
+/src/snu_module/sample_results/*
+!/src/snu_module/sample_results/*.py
+!/src/snu_module/sample_results/*.sh
+
+
+/src/snu_module/bag2imseq/test/

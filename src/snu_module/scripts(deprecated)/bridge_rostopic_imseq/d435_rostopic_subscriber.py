@@ -16,7 +16,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from rospy.numpy_msg import numpy_msg
 
 # Import Modules
-import snu_utils.general_functions as gfuncs
+import utils.general_functions as gfuncs
 
 
 # Get Computer Screen Geometry

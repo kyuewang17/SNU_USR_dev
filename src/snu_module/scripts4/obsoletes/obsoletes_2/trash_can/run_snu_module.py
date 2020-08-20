@@ -79,7 +79,7 @@ from rospy.numpy_msg import numpy_msg
 # Import Custom Modules
 import options
 import ros_utils
-import snu_utils.general_functions as gfuncs
+import utils.general_functions as gfuncs
 from mot_embedding import MultipleObjects
 import snu_algorithms
 import snu_visualizer

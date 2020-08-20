@@ -6,7 +6,7 @@ import torch.nn as nn
 # from torchvision import transforms
 
 # Resnet module from [torchvision-0.3.0] (should be run as "pretrained=False")
-import snu_utils.resnet as models
+import utils.resnet as models
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

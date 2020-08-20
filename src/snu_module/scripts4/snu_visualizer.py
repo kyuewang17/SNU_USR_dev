@@ -6,12 +6,10 @@ SNU Integrated Module v3.0
 import cv2
 import numpy as np
 import copy
-import matplotlib
-# matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
+import os
 
 # Import Custom Modules
-import snu_utils.bounding_box as fbbox
+import utils.bounding_box as fbbox
 
 
 # Define Base Visualization Object
@@ -91,8 +89,8 @@ class vis_trk_acl_obj(vis_obj):
         self.linewidth = vopts.tracking["linewidth"]
 
     # Update Tracklet Object
-    def update_objects(self, tracklets):
-        self.trks = tracklets
+    def update_objects(self, trajectories):
+        self.trks = trajectories
 
     # Draw Tracking Result on Selected Modal Frame
     def draw_objects(self, frame, opencv_winname):
@@ -114,7 +112,7 @@ class vis_trk_acl_obj(vis_obj):
             pad_pixels = self.vopts.pad_pixels
             info_interval = self.vopts.info_interval
 
-            # Visualize Tracklet ID
+            # Visualize Trajectory ID
             trk_id_str = "id:" + str(trk.id) + ""
             (tw, th) = cv2.getTextSize(trk_id_str, font, fontScale=font_size, thickness=2)[0]
             text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
@@ -127,7 +125,7 @@ class vis_trk_acl_obj(vis_obj):
                 (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
             )
 
-            # Visualize Tracklet Depth
+            # Visualize Trajectory Depth
             if trk.depth is not None:
                 trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
                 (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
@@ -195,33 +193,97 @@ class visualizer(object):
         self.screen_imshow_x = opts.screen_imshow_x
         self.screen_imshow_y = opts.screen_imshow_y
         self.det_window_moved, self.trk_acl_window_moved = False, False
+        self.general_window_moved = False
 
         # Top-view Map (in mm)
-        self.top_view_map = np.ones(
-            shape=[opts.visualization.top_view["map_size"][0], opts.visualization.top_view["map_size"][1], 3],
-            dtype=np.uint8
-        )
-        self.top_view_window_moved = False
+        if self.vopts.top_view["is_draw"] is True:
+            self.top_view_map = np.ones(
+                shape=[opts.visualization.top_view["map_size"][0], opts.visualization.top_view["map_size"][1], 3],
+                dtype=np.uint8
+            )
+            self.top_view_window_moved = False
+        else:
+            self.top_view_map = None
+            self.top_view_window_moved = None
 
         # Top-view Max Axis
         self.u_max_axis, self.v_max_axis = 0, 0
         self.u_min_axis, self.v_min_axis = 0, 0
 
-    # Visualize Image Sequences Only
+    # Save Image Frame
     @staticmethod
-    def visualize_modal_frames(sensor_data):
-        if sensor_data is not None:
-            # Get Visualization Sensor Data Modality
-            modal_type = sensor_data.modal_type
+    def save_frame(save_base_dir, frame, fidx, modal):
+        assert os.path.isdir(save_base_dir)
 
-            # Get Image Frame
-            vis_frame = sensor_data.frame
+        modal_save_dir = os.path.join(save_base_dir, modal)
+        if os.path.isdir(modal_save_dir) is False:
+            os.mkdir(modal_save_dir)
+
+        frame_filename = "{:08d}".format(fidx)
+        frame_filepath = os.path.join(modal_save_dir, frame_filename + ".png")
+        if os.path.isfile(frame_filepath) is True:
+            frame_filename += "_X_"
+            frame_filepath = os.path.join(modal_save_dir, frame_filename + ".png")
+
+        # OpenCV Save Image
+        cv2.imwrite(frame_filepath, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    # Visualize Image Sequences Only
+    def visualize_modal_frames(self, sensor_data):
+        # Get Modal Frame
+        vis_frame = sensor_data.get_data()
+
+        if vis_frame is not None:
+            # Get Modal Type Name
+            modal_type = "{}".format(sensor_data)
 
             # OpenCV Window Name
-            winname = "[%s]" % modal_type
+            winname = "[{}]".format(modal_type)
 
             # Make NamedWindow
             cv2.namedWindow(winname)
+
+            if self.general_window_moved is False:
+                if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                    cv2.moveWindow(winname, self.screen_imshow_x, self.screen_imshow_y)
+                    self.general_window_moved = True
+
+            # IMSHOW
+            if modal_type.__contains__("color") is True:
+                cv2.imshow(winname, cv2.cvtColor(vis_frame, cv2.COLOR_RGB2BGR))
+            else:
+                cv2.imshow(winname, vis_frame)
+
+            cv2.waitKey(1)
+
+    # Visualize Image Sequence with Point Cloud Drawn On
+    def visualize_modal_frames_with_calibrated_pointcloud(self, sensor_data, pc_img_coord, color):
+        # Get Modal Frame
+        vis_frame = sensor_data.get_data()
+
+        if vis_frame is not None:
+            # Get Modal Type Name
+            modal_type = "{}".format(sensor_data)
+
+            # OpenCV Window Name
+            winname = "{} + {}".format(modal_type, "Rectified-PC")
+
+            # Make NamedWindow
+            cv2.namedWindow(winname)
+
+            if self.general_window_moved is False:
+                if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                    cv2.moveWindow(winname, self.screen_imshow_x, self.screen_imshow_y)
+                    self.general_window_moved = True
+
+            # Draw Point Cloud on the Frame
+            pc_len = pc_img_coord.shape[0]
+            for pc_img_coord_idx in range(pc_len):
+                pc_point = tuple(pc_img_coord[pc_img_coord_idx])
+                cv2.circle(
+                    img=vis_frame, center=pc_point, radius=3,
+                    color=color[pc_img_coord_idx], thickness=-1
+                )
 
             # IMSHOW
             if modal_type == "color":
@@ -232,31 +294,61 @@ class visualizer(object):
             cv2.waitKey(1)
 
     # Functional Visualizer Call
-    def __call__(self, sensor_data, tracklets, detections, _check_run_time=False):
+    def __call__(self, sensor_data, trajectories, detections, fidx, _check_run_time=False):
         # Get Visualization Sensor Data Modality
-        modal_type = sensor_data.modal_type
+        modal_type = sensor_data.get_modal_type()
 
         # Get Image Frame
-        vis_frame = sensor_data.frame
+        vis_frame = sensor_data.get_data()
 
         # OpenCV Window Name
         winname = self.winname + "(%s)" % modal_type
 
         # Update Module Results
-        self.DET_VIS_OBJ.update_objects(detections)
+        if self.vopts.detection["is_draw"] is True:
+            self.DET_VIS_OBJ.update_objects(detections)
 
-        # Draw Detection Results on Frame
-        det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
-            frame=copy.deepcopy(vis_frame), opencv_winname=winname
-        )
+            # Draw Detection Results on Frame
+            det_vis_frame, det_winname = self.DET_VIS_OBJ.draw_objects(
+                frame=copy.deepcopy(vis_frame), opencv_winname=winname
+            )
+
+            if self.vopts.detection["auto_save"] is True:
+                auto_save_detection_base_dir = \
+                    os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results", "detections")
+                if os.path.isdir(auto_save_detection_base_dir) is False:
+                    os.mkdir(auto_save_detection_base_dir)
+
+                if len(detections["dets"].tolist()) != 0:
+                    self.save_frame(
+                        save_base_dir=auto_save_detection_base_dir, frame=det_vis_frame,
+                        fidx=fidx, modal=sensor_data.modal_type
+                    )
+        else:
+            det_vis_frame, det_winname = None, None
 
         # Update Module Results
-        self.TRK_ACL_VIS_OBJ.update_objects(tracklets)
+        if self.vopts.tracking["is_draw"] is True:
+            self.TRK_ACL_VIS_OBJ.update_objects(trajectories)
 
-        # Draw Tracking/Action Classification Results on Frame
-        trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
-            frame=copy.deepcopy(vis_frame), opencv_winname=winname
-        )
+            # Draw Tracking/Action Classification Results on Frame
+            trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
+                frame=copy.deepcopy(vis_frame), opencv_winname=winname
+            )
+
+            if self.vopts.tracking["auto_save"] is True:
+                auto_save_tracklet_base_dir = \
+                    os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results", "tracklets")
+                if os.path.isdir(auto_save_tracklet_base_dir) is False:
+                    os.mkdir(auto_save_tracklet_base_dir)
+
+                if len(trajectories) != 0:
+                    self.save_frame(
+                        save_base_dir=auto_save_tracklet_base_dir, frame=trk_acl_frame,
+                        fidx=fidx, modal=sensor_data.modal_type
+                    )
+        else:
+            trk_acl_frame, trk_acl_winname = None, None
 
         # Visualize Detection Results
         if self.vopts.detection["is_show"] is True:
@@ -289,7 +381,7 @@ class visualizer(object):
 
         # Visualize Top-view Tracklets
         if self.vopts.top_view["is_show"] is True:
-            self.visualize_top_view_tracklets(tracklets=tracklets)
+            self.visualize_top_view_trajectories(trajectories=trajectories)
 
         if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
                 self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True:
@@ -297,9 +389,9 @@ class visualizer(object):
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
-    # Visualize Top-view Tracklets
+    # Visualize Top-view Trajectories
     # TODO: Cost-down Calculation
-    def visualize_top_view_tracklets(self, tracklets):
+    def visualize_top_view_trajectories(self, trajectories):
         # Top-view Map Coordinate to Row/Column Axis Value
         def cam_coord_to_top_view_coord(x, y):
             row = int(self.top_view_map.shape[0] - y)
@@ -321,7 +413,7 @@ class visualizer(object):
         )
 
         # Draw Tracklet Coordinates to Top-view Map
-        for trk_idx, trk in enumerate(tracklets):
+        for trk_idx, trk in enumerate(trajectories):
             # Tracklet Coordinates < (-y) and (+x) Coordinates >
             top_view_x, top_view_y = -trk.c3[1][0]*1000, trk.c3[0][0]*1000
 
@@ -337,21 +429,22 @@ class visualizer(object):
             )
 
         # Reshape Image
-        scale_percent = 5
+        scale_percent = 1
         width = int(top_view_map.shape[1] * scale_percent / 100)
         height = int(top_view_map.shape[0] * scale_percent / 100)
         resized_top_view_map = cv2.resize(
             top_view_map, (width, height), interpolation=cv2.INTER_AREA
         )
 
-        # Plot as OpenCV Window
-        cv2.namedWindow(top_view_winname)
-        if self.top_view_window_moved is False:
-            cv2.moveWindow(top_view_winname, self.screen_imshow_x, self.screen_imshow_y)
-            self.top_view_window_moved = True
-        cv2.imshow(top_view_winname, cv2.cvtColor(resized_top_view_map, cv2.COLOR_RGB2BGR))
+        if self.vopts.top_view["is_show"] is True:
+            # Plot as OpenCV Window
+            cv2.namedWindow(top_view_winname)
+            if self.top_view_window_moved is False:
+                cv2.moveWindow(top_view_winname, self.screen_imshow_x, self.screen_imshow_y)
+                self.top_view_window_moved = True
+            cv2.imshow(top_view_winname, cv2.cvtColor(resized_top_view_map, cv2.COLOR_RGB2BGR))
 
-        cv2.waitKey(1)
+            cv2.waitKey(1)
 
 
 def main():

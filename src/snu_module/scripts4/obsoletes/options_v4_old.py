@@ -1,5 +1,5 @@
 """
-SNU Integrated Module v3.0
+SNU Integrated Module v4.0
     - Option Class
         - Module Options
             - Object Detection
@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 # Import Colormap, Screen Geometry
-from snu_utils.general_functions import colormap, get_screen_geometry
+from utils.general_functions import colormap, get_screen_geometry
 
 # Import Kalman Parameters
 from kalman_params import kparams
@@ -97,14 +97,20 @@ class snu_option_class(object):
 
             "det_result_rostopic_name": cfg.detector.result_rostopic_name,
             "trk_acl_result_rostopic_name": cfg.tracker.result_rostopic_name,
+
+            "trk_top_view_rostopic_name": cfg.tracker.visualization.top_view.rostopic_name,
         }
 
-    # Update Camera Parameter
+        # Experiment Options
+        self.experiment = cfg.experiment
 
 
 # Sensor Option Class (ROS message)
 class sensor_options(object):
     def __init__(self, cfg):
+        # Initialize Sensor Image Width and Height
+        self.width, self.height = None, None
+
         # D435i RGB Camera
         self.color = {
             # ROS Message
@@ -175,22 +181,6 @@ class sensor_options(object):
             "imgmsg_to_cv2_encoding": cfg.sensors.lidar.encoding,
             "rostopic_name": cfg.sensors.lidar.rostopic_name,
 
-            # LiDAR Filtering Kernel
-            "kernel": np.array([
-                [1, 1, 1, 1, 1],
-                [1, 2, 2, 2, 1],
-                [1, 2, 3, 2, 1],
-                [1, 2, 2, 2, 1],
-                [1, 1, 1, 1, 1]
-            ]) * (1.0 / 35),
-            "kernel2": np.array([
-                [1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1]
-            ]) * (1.0 / 25),
-
             # Calibrated to Camera
             "calib_obj_cam": cfg.sensors.lidar.calibration_target_sensor,
         }
@@ -199,6 +189,9 @@ class sensor_options(object):
         self.odometry = {
             "rostopic_name": cfg.odometry_rostopic_name
         }
+
+    def update_sensor_image_size(self, frame):
+        self.width, self.height = frame.shape[1], frame.shape[0]
 
 
 # Detector Option Class
@@ -230,7 +223,8 @@ class detector_options(object):
         # Detection Arguments
         self.detection_args = {
             "n_classes": 81,
-            "input_h": 320, "input_w": 448,
+            # "input_h": 320, "input_w": 448,
+            "input_h": 512, "input_w": 512,
         }
 
         # Backbone Arguments
@@ -245,8 +239,11 @@ class detector_options(object):
         # ( what is the difference between 'detection_args' ?!?! )
         self.detector_args = {
             "name": "yolov4",
-            "net_width": 448, "net_height": 320,
-            "thresh": 0.5, "hier_thresh": 0.5, "nms_thresh": 0.45,
+            # "net_width": 448, "net_height": 320,
+            "net_width": 512, "net_height": 512,
+            # "thresh": 0.5, "hier_thresh": 0.5,
+            "thresh": 0.65, "hier_thresh": 0.5,
+            "nms_thresh": 0.45,
             "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
 
             # "name": "refinedet",
@@ -304,41 +301,68 @@ class tracker_options(object):
         # Association-related Options
         self.association = {
             # Tracklet Candidate to Tracklet Association age (for Tracklet Initialization)
-            # bug when set to even number
-            'trk_init_age': 4,
-            # 'trk_init_age': 1,
+            'trk_init_age': cfg.tracker.association.trk.init_age,
 
             # Destroy Unassociated Tracklets with this amount of continuous unassociation
-            # 'trk_destroy_age': 4,
-            'trk_destroy_age': 6,
+            'trk_destroy_age': cfg.tracker.association.trk.destroy_age,
 
             # Destroy Unassociated Tracklet Candidates with this amount of continuous unassociation
-            'trkc_destroy_age': 2,
+            'trkc_destroy_age': cfg.tracker.association.trk_cand.destroy_age,
 
             # Association Cost Threshold
             # [1] DETECTION to TRACKLET
-            'cost_thresh_d2trk': 0.05,
-            # 'cost_thresh_d2trk': 0.,
+            'cost_thresh_d2trk': cfg.tracker.association.cost_thresh.d2trk,
 
             # [2] DETECTION to TRACKLET CANDIDATE (d2d)
-            'cost_thresh_d2trkc': 0.5,
-            # 'cost_thresh_d2trkc': 0.
+            'cost_thresh_d2trkc': cfg.tracker.association.cost_thresh.d2trkc,
         }
 
         # Disparity Modality Parameters
         self.disparity_params = {
             # Extraction Rate for Disparity Patch
-            "extraction_roi_rate": 0.65,
+            "extraction_roi_rate": 0.8,
 
             # Histogram Bin for Rough Depth Computation
-            "rough_hist_bin": 25,
+            "rough_hist_bin": 100,
+        }
 
-            # Histogram Bin Number
-            "hist_bin": 100,
+        # LiDAR Modality Parameters
+        self.lidar_params = {
+            # LiDAR Random Sampling Number of Tracklet BBOX
+            "sampling_number": 50,
 
-            # Histogram Count Window Gaussian Weight Map Parameters
-            "hist_gaussian_mean": 0,
-            "hist_gaussian_stdev": 0.1,
+            # LiDAR kernel size
+            "lidar_kernel_size": 4,
+        }
+
+        # KCF Params
+        self.kcf_params = {
+            # Regularization
+            "lambda": 1e-4,
+
+            # Padding
+            "padding": 1,
+
+            # Kernel Sigma
+            "sigma": 0.5,
+
+            # Output Sigma Factor
+            "output_sigma_factor": 0.1,
+
+            # Interpolation Factor
+            "interp_factor": 0.075,
+
+            # Resize Patch
+            "resize": {
+                "flag": True,
+                "size": [64, 64],
+            },
+
+            # Cell Size (# of pixels per cell)
+            "cell_size": 1,
+
+            # Cosine Window Flag
+            "is_cos_window": True,
         }
 
         # Tracklet Color Options
@@ -383,6 +407,7 @@ class visualizer_options(object):
         self.detection = {
             "is_draw": cfg.detector.visualization.is_draw,
             "is_show": cfg.detector.visualization.is_show,
+            "auto_save": cfg.detector.visualization.auto_save,
 
             "is_show_label": None,
             "is_show_score": None,
@@ -398,6 +423,7 @@ class visualizer_options(object):
         self.tracking = {
             "is_draw": cfg.tracker.visualization.is_draw,
             "is_show": cfg.tracker.visualization.is_show,
+            "auto_save": cfg.tracker.visualization.auto_save,
 
             "is_show_id": None,
             "is_show_3d_coord": None,
@@ -406,6 +432,13 @@ class visualizer_options(object):
 
             "linewidth": 2,
         }
+
+        # TODO: Change this Working Method
+        if self.detection["auto_save"] is True or self.tracking["auto_save"] is True:
+            sample_result_base_dir = \
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results")
+            if os.path.isdir(sample_result_base_dir) is False:
+                os.mkdir(sample_result_base_dir)
 
         self.aclassifier = {
             "is_draw": cfg.aclassifier.visualization.is_draw,
@@ -420,3 +453,13 @@ class visualizer_options(object):
 
             "trk_radius": cfg.tracker.visualization.top_view.trk_radius,
         }
+
+    def correct_flag_options(self):
+        if self.detection["is_draw"] is False:
+            self.detection["is_show"] = False
+
+        if self.tracking["is_draw"] is False:
+            self.tracking["is_show"] = False
+
+        if self.top_view["is_draw"] is False:
+            self.top_view["is_show"] = False

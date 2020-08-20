@@ -56,8 +56,8 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     - range: [0, 255]
     - if there is no thermal image frame, "thermal_frame" is None
     """
-    color_frame = (sync_data_dict["color"].frame if "color" in sync_data_dict.keys() else None)
-    thermal_frame = (sync_data_dict["thermal"].frame if "thermal" in sync_data_dict.keys() else None)
+    color_frame = (sync_data_dict["color"].get_data() if "color" in sync_data_dict.keys() else None)
+    thermal_frame = (sync_data_dict["thermal"].get_data() if "thermal" in sync_data_dict.keys() else None)
 
     ######## by JIS (maybe...?) #########
     # global cnt

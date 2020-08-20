@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 
-import snu_utils.bounding_box as fbbox
+import utils.bounding_box as fbbox
 
 # Rescue Option for Night Version in IITP Final demo
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align

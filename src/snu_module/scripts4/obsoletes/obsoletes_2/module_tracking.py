@@ -10,10 +10,10 @@ import numpy as np
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
 
 # Import Custom Modules
-import snu_utils.patch as snu_patch
-import snu_utils.bounding_box as snu_bbox
-import snu_utils.general_functions as snu_gfuncs
-import snu_utils.histogram as snu_hist
+import utils.patch as snu_patch
+import utils.bounding_box as snu_bbox
+import utils.general_functions as snu_gfuncs
+import utils.histogram as snu_hist
 
 # Import Class Objects
 from class_objects import TrackletCandidate, Tracklet
@@ -181,10 +181,6 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
     # Get Pseudo-inverse of Projection Matrix
     color_P_inverse = sync_data_dict["color"].sensor_params.pinv_projection_matrix
 
-    # Set Base Tracklet Message
-    trk_msg_fidx_part = "Frame #[%08d] --> {Tracklets}: " % fidx
-    tracklet_recursive_msg = ""
-
     # Tracklet Prediction, Projection, and Message
     for trk_idx, trk in enumerate(trks):
         # Predict Tracklet States (time-ahead Kalman Prediction)
@@ -198,20 +194,9 @@ def tracker(sync_data_dict, fidx, detections, max_trk_id, opts, trks, trk_cands)
         # Compute RPY
         trk.compute_rpy(roll=0.0)
 
-        # Message
-        if trk_idx < len(trks)-1:
-            add_tracklet_msg = "[%d]," % trk.id
-        else:
-            add_tracklet_msg = "[%d]" % trk.id
-        tracklet_recursive_msg += add_tracklet_msg
-
         # Adjust to Tracklet List
         trks[trk_idx] = trk
         del trk
-
-    # Print Tracklet Message
-    trk_msg = trk_msg_fidx_part + tracklet_recursive_msg
-    print(trk_msg)
 
     return trks, trk_cands
 

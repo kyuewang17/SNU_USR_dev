@@ -205,8 +205,8 @@ class kparams(object):
                 [0, 0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 0, 1, 0],
                 [0, 0, 0, 0, 0, 0, 1]
-            ]) * 1e-3
-            self.Q = np.multiply(Q, Q) * 1e-1
+            ]) * 1e-2
+            self.Q = np.multiply(Q, Q)
 
             R = np.float32([
                 [1, 0, 0, 0, 0, 0, 0],
@@ -216,7 +216,7 @@ class kparams(object):
                 [0, 0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 0, 1, 0],
                 [0, 0, 0, 0, 0, 0, 1]
-            ]) * 1e-3
+            ]) * 1e-2
             self.R = np.multiply(R, R)
 
             self.K = np.float32([

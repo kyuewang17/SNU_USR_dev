@@ -13,8 +13,8 @@ import filterpy.kalman.kalman_filter as kalmanfilter
 
 # Import Source Libraries
 import kalman_params as kparams
-import snu_utils.bounding_box as fbbox
-import snu_utils.patch as ptch
+import utils.bounding_box as fbbox
+import utils.patch as ptch
 
 
 # [1] Tracklet Candidate Class

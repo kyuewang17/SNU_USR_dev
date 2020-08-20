@@ -17,8 +17,8 @@ import filterpy.kalman.kalman_filter as kalmanfilter
 
 # Import Source Libraries
 import kalman_params as kparams
-import snu_utils.bounding_box as fbbox
-import snu_utils.patch as ptch
+import utils.bounding_box as fbbox
+import utils.patch as ptch
 
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align
 
