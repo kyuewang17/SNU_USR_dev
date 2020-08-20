@@ -530,9 +530,11 @@ def save_multimodal_data(save_base_path, logger):
                     logger.warn("Modal [{}] | File {} Already Exists...!".format(data_obj, frame_filename))
 
                 # Save Camera Params
-
-
-                pass
+                if data_obj.camerainfo is not None:
+                    np.save(os.path.join(curr_modal_camera_params_save_path, "D.npy"), data_obj.camerainfo.D)
+                    np.save(os.path.join(curr_modal_camera_params_save_path, "K.npy"), data_obj.camerainfo.K)
+                    np.save(os.path.join(curr_modal_camera_params_save_path, "P.npy"), data_obj.camerainfo.P)
+                    np.save(os.path.join(curr_modal_camera_params_save_path, "R.npy"), data_obj.camerainfo.R)
 
             # If Object is a lidar type,
             else:
@@ -548,10 +550,11 @@ def save_multimodal_data(save_base_path, logger):
                     logger.warn("Modal [{}] | File {} Already Exists...!".format(data_obj, lidar_pc_filename))
 
                 # Save Camera Params
-                pass
+                np.save(os.path.join(curr_modal_camera_params_save_path, "R__color.npy"), data_obj.R__color)
+                np.save(os.path.join(curr_modal_camera_params_save_path, "T__color.npy"), data_obj.T__color)
 
         # Pause
-        time.sleep(2)
+        time.sleep(1)
 
 
 # Main Function
