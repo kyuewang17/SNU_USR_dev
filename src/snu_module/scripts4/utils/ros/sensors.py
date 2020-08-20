@@ -201,9 +201,12 @@ class ros_sensor_image(ros_sensor):
 
     def get_normalized_data(self, min_value=0.0, max_value=1.0):
         frame = self.get_data()
-        frame_max_value, frame_min_value = frame.max(), frame.min()
-        minmax_normalized_frame = (frame - frame_min_value) / (frame_max_value - frame_min_value)
-        normalized_frame = min_value + (max_value - min_value) * minmax_normalized_frame
+        if frame is not None:
+            frame_max_value, frame_min_value = frame.max(), frame.min()
+            minmax_normalized_frame = (frame - frame_min_value) / (frame_max_value - frame_min_value)
+            normalized_frame = min_value + (max_value - min_value) * minmax_normalized_frame
+        else:
+            normalized_frame = None
         return normalized_frame
 
     def get_z_normalized_data(self, stochastic_standard="channel"):

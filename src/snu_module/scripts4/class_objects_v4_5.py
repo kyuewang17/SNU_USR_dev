@@ -105,19 +105,23 @@ class TrajectoryCandidate(object_instance):
         return snu_patch.get_patch(img=modal_frame, bbox=fidx_bbox)
 
     def get_rough_depth(self, disparity_frame, opts):
-        # Get Disparity Patch
-        disparity_patch = self.get_fidx_patch(modal_frame=disparity_frame, fidx=self.fidxs[-1])
+        if disparity_frame is not None:
+            # Get Disparity Patch
+            disparity_patch = self.get_fidx_patch(modal_frame=disparity_frame, fidx=self.fidxs[-1])
 
-        # Get Histogram
-        disparity_hist, disparity_hist_idx = snu_hist.histogramize_patch(
-            sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["rough_hist_bin"],
-            min_value=opts.sensors.disparity["clip_distance"]["min"],
-            max_value=opts.sensors.disparity["clip_distance"]["max"]
-        )
+            # Get Histogram
+            disparity_hist, disparity_hist_idx = snu_hist.histogramize_patch(
+                sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["rough_hist_bin"],
+                min_value=opts.sensors.disparity["clip_distance"]["min"],
+                max_value=opts.sensors.disparity["clip_distance"]["max"]
+            )
 
-        # Get Max-bin and Representative Depth Value of Disparity Histogram
-        max_bin = disparity_hist.argmax()
-        depth_value = ((disparity_hist_idx[max_bin] + disparity_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+            # Get Max-bin and Representative Depth Value of Disparity Histogram
+            max_bin = disparity_hist.argmax()
+            depth_value = ((disparity_hist_idx[max_bin] + disparity_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+
+        else:
+            depth_value = 1.0
 
         return depth_value
 
@@ -368,24 +372,28 @@ class Trajectory(object_instance):
             disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
 
             # Get Disparity Patch
-            disparity_patch = snu_patch.get_patch(
-                img=disparity_frame, bbox=patch_bbox
-            )
+            if disparity_frame is not None:
+                disparity_patch = snu_patch.get_patch(
+                    img=disparity_frame, bbox=patch_bbox
+                )
 
-            # Get Disparity Histogram
-            depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
-                sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["rough_hist_bin"],
-                min_value=opts.sensors.disparity["clip_distance"]["min"],
-                max_value=opts.sensors.disparity["clip_distance"]["max"]
-            )
+                # Get Disparity Histogram
+                depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
+                    sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["rough_hist_bin"],
+                    min_value=opts.sensors.disparity["clip_distance"]["min"],
+                    max_value=opts.sensors.disparity["clip_distance"]["max"]
+                )
 
-            # Get Max-bin and Representative Depth Value of Disparity Histogram
-            max_bin = depth_hist.argmax()
-            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
+                # Get Max-bin and Representative Depth Value of Disparity Histogram
+                max_bin = depth_hist.argmax()
+                depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
 
-            # Use Kalman Predicted Depth Value
-            if depth_value <= 0:
-                depth_value = self.x3p[2][0]
+                # Use Kalman Predicted Depth Value
+                if depth_value <= 0:
+                    depth_value = self.x3p[2][0]
+
+            else:
+                depth_value = 1.0
 
             self.depth.append(depth_value)
 
