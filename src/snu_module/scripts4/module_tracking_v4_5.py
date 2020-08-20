@@ -368,7 +368,8 @@ class SNU_MOT(object):
             self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data
-        sync_data_dict["lidar"].load_pc_xyz_data()
+        if sync_data_dict["lidar"] is not None:
+            sync_data_dict["lidar"].load_pc_xyz_data()
 
         # Initialize New Trajectory Variable
         new_trks = []

@@ -326,51 +326,68 @@ class Trajectory(object_instance):
         if self.label == 1:
             patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
 
-        # Get Disparity Frame
-        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=True)
+        # If LiDAR is available, use LiDAR Window Method to Estimate Depth (on moving agent)
+        if sync_data_dict["lidar"] is not None:
+            # Project XYZ to uv-coordinate
+            uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
+                camerainfo_msg=sync_data_dict["color"].get_camerainfo_msg(),
+                bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
+            )
 
-        # Get Disparity Patch
-        disparity_patch = snu_patch.get_patch(
-            img=disparity_frame, bbox=patch_bbox
-        )
-
-        color_timestamp, lidar_timestamp = sync_data_dict["color"].get_stamp(), sync_data_dict["lidar"].get_stamp()
-        if color_timestamp != lidar_timestamp:
-            pass
-
-        # Project XYZ to uv-coordinate
-        uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
-            camerainfo_msg=sync_data_dict["color"].get_camerainfo_msg(),
-            bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
-        )
-
-        # Define LiDAR Windows
-        fusion_depth_list = []
-        for uv_array_idx in range(len(uv_array)):
-            uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
-            l_window = lidar_window(
+            # Define LiDAR Windows
+            fusion_depth_list = []
+            for uv_array_idx in range(len(uv_array)):
+                uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
+                l_window = lidar_window(
                     sensor_data=sync_data_dict["disparity"],
                     pc_uv=uv_point, pc_distance=pc_distance,
                     window_size=opts.tracker.lidar_params["lidar_window_size"]
-            )
-            fusion_depth_list.append(l_window.get_window_average_depth())
+                )
+                fusion_depth_list.append(l_window.get_window_average_depth())
 
-        # Get Depth Histogram from Fusion Depth List
-        if len(fusion_depth_list) >= np.floor(0.1*opts.tracker.lidar_params["sampling_number"]):
-            depth_hist, depth_hist_idx = np.histogram(fusion_depth_list)
+            # Get Depth Histogram from Fusion Depth List
+            if len(fusion_depth_list) >= np.floor(0.1 * opts.tracker.lidar_params["sampling_number"]):
+                depth_hist, depth_hist_idx = np.histogram(fusion_depth_list)
+
+                # Get Max-bin and Representative Depth Value of Disparity Histogram
+                max_bin = depth_hist.argmax()
+                depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0)
+
+            elif len(fusion_depth_list) > 0:
+                # Get Average Depth Value of the Fusion Depth List
+                depth_value = np.average(fusion_depth_list)
+
+            else:
+                # Get Kalman Predicted Depth Value
+                depth_value = self.x3p[2][0]
+            self.depth.append(depth_value)
+
+        # If LiDAR is unavailable, use only Disparity Image to Estimate Depth (on fixed agent)
+        else:
+            # Get Disparity Frame
+            disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
+
+            # Get Disparity Patch
+            disparity_patch = snu_patch.get_patch(
+                img=disparity_frame, bbox=patch_bbox
+            )
+
+            # Get Disparity Histogram
+            depth_hist, depth_hist_idx = snu_hist.histogramize_patch(
+                sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["rough_hist_bin"],
+                min_value=opts.sensors.disparity["clip_distance"]["min"],
+                max_value=opts.sensors.disparity["clip_distance"]["max"]
+            )
 
             # Get Max-bin and Representative Depth Value of Disparity Histogram
             max_bin = depth_hist.argmax()
-            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0)
+            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0) / 1000.0
 
-        elif len(fusion_depth_list) > 0:
-            # Get Average Depth Value of the Fusion Depth List
-            depth_value = np.average(fusion_depth_list)
+            # Use Kalman Predicted Depth Value
+            if depth_value <= 0:
+                depth_value = self.x3p[2][0]
 
-        else:
-            # Get Kalman Predicted Depth Value
-            depth_value = self.x3p[2][0]
-        self.depth.append(depth_value)
+            self.depth.append(depth_value)
 
     # Image Coordinates(2D) to Camera Coordinates(3D) in meters (m)
     def img_coord_to_cam_coord(self, inverse_projection_matrix, opts):

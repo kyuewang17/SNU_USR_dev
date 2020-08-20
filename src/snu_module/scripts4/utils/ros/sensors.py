@@ -131,6 +131,13 @@ class ros_sensor(object):
             # Update Parameters
             self._sensor_params.update_params(msg=msg)
 
+    def update_sensor_params_file_array(self, sensor_param_array):
+        # Initialize Sensor Parameter Object (from file array)
+        self._sensor_params = sensor_params_file_array(param_precision=np.float32)
+
+        # Update Sensor Parameter Array
+        self._sensor_params.update_params(param_array=sensor_param_array)
+
     def get_sensor_params(self):
         return self._sensor_params
 
@@ -505,9 +512,9 @@ class sensor_params_rostopic(sensor_params):
         self.pinv_projection_matrix = np.linalg.pinv(self.P)
 
 
-class sensor_params_file(sensor_params):
+class sensor_params_file_array(sensor_params):
     def __init__(self, param_precision=np.float32):
-        super(sensor_params_file, self).__init__(param_precision)
+        super(sensor_params_file_array, self).__init__(param_precision)
 
         # Initialize Intrinsic-related Variables
         self.fx, self.fy, self.cx, self.cy = None, None, None, None
