@@ -188,9 +188,9 @@ class ros_sensor_image(ros_sensor):
         self._frame = frame
         self.update_stamp(stamp=stamp)
 
-        if self.WIDTH is None:
+        if self.WIDTH is None and frame is not None:
             self.WIDTH = frame.shape[1]
-        if self.HEIGHT is None:
+        if self.HEIGHT is None and frame is not None:
             self.HEIGHT = frame.shape[0]
 
     def get_data(self):
@@ -268,12 +268,13 @@ class ros_sensor_disparity(ros_sensor_image):
         self._processed_frame = None
 
     def process_data(self, disparity_sensor_opts):
-        frame = self.get_data().astype(np.float32)
-        self._processed_frame = np.where(
-            (frame < disparity_sensor_opts["clip_distance"]["min"]) |
-            (frame > disparity_sensor_opts["clip_distance"]["max"]),
-            disparity_sensor_opts["clip_value"], frame
-        )
+        if self.get_data() is not None:
+            frame = self.get_data().astype(np.float32)
+            self._processed_frame = np.where(
+                (frame < disparity_sensor_opts["clip_distance"]["min"]) |
+                (frame > disparity_sensor_opts["clip_distance"]["max"]),
+                disparity_sensor_opts["clip_value"], frame
+            )
 
     def get_data(self, is_processed=False):
         if is_processed is False:

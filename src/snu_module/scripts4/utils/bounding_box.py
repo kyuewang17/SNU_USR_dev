@@ -3,7 +3,7 @@ SNU Integrated Module v3.0
   - Code that converts Bounding Box Format
   * bbox ==>> {Left-top Right-bottom}
   ** zx ==>> {Center(u,v) du, dv, width, height}
-  *** zx3 ==>> {Center(u,v) Depth(D), du, dv, dD, w, h}
+  *** zx3 ==>> {Center(u,v) Depth(D), du, dv, w, h}
 
 """
 # Import Module

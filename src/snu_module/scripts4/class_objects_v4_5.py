@@ -147,12 +147,12 @@ class TrajectoryCandidate(object_instance):
         fusion_depth_list = []
         for uv_array_idx in range(len(uv_array)):
             uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
-            l_kernel = lidar_kernel(
+            l_kernel = lidar_window(
                 sensor_data=sync_data_dict["disparity"],
                 pc_uv=uv_point, pc_distance=pc_distance,
-                kernel_size=opts.tracker.lidar_params["lidar_kernel_size"]
+                window_size=opts.tracker.lidar_params["lidar_kernel_size"]
             )
-            fusion_depth_list.append(l_kernel.get_kernel_average_depth())
+            fusion_depth_list.append(l_kernel.get_window_average_depth())
 
         # Get Depth Histogram from Fusion Depth List
         if len(fusion_depth_list) >= np.floor(0.1 * opts.tracker.lidar_params["sampling_number"]):
