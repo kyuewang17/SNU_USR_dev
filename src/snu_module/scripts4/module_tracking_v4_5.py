@@ -129,7 +129,10 @@ class SNU_MOT(object):
         )
 
         # Concatenate
-        rgbd_frame = np.dstack((color_frame, normalized_disparity_frame.astype(np.uint8)))
+        if normalized_disparity_frame is not None:
+            frame = np.dstack((color_frame, normalized_disparity_frame.astype(np.uint8)))
+        else:
+            frame = color_frame
 
         # Calculate Similarity Matrix
         for det_idx, det in enumerate(dets):
@@ -140,8 +143,8 @@ class SNU_MOT(object):
                 trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
 
                 # Get RGBD Patches
-                det_patch = snu_patch.get_patch(rgbd_frame, det)
-                trk_patch = snu_patch.get_patch(rgbd_frame, trk_bbox)
+                det_patch = snu_patch.get_patch(frame, det)
+                trk_patch = snu_patch.get_patch(frame, trk_bbox)
 
                 # Resize RGBD Patches
                 resized_det_patch = imresize(det_patch, size=[64, 64])

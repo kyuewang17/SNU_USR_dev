@@ -85,10 +85,10 @@ class snu_module(backbone):
         # Declare ROS Synchronization Switch Dictionary
         self.ros_sync_switch_dict = {
             "color": True,
-            "disparity": False, "aligned_disparity": True,
-            "thermal": True,
-            "infrared": True,
-            "nightvision": True,
+            "disparity": False, "aligned_disparity": False,
+            "thermal": False,
+            "infrared": False,
+            "nightvision": False,
         }
 
     @staticmethod

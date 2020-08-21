@@ -1,6 +1,6 @@
 agent:
-    type: "static"
-    name: "fixed-03"
+    type: "dynamic"
+    name: "mov-03"
     daytime: "day"
     screen_compensate: true
 
@@ -57,24 +57,23 @@ tracker:
         trk:
             init_age: 4
             destroy_age: 3
-            similarity_thresh: 0.6
+            similarity_thresh: 0.1
             similarity_weights:
-                histogram: 0.333333333
-                iou: 0.333333333
-                distance: 0.333333333
+                histogram: 0.3333
+                iou: 0.3333
+                distance: 0.3333
         trk_cand:
             destroy_age: 3
-            similarity_thresh: 0.3
+            similarity_thresh: 0.6
             similarity_weights:
                 iou: 0.5
                 distance: 0.5
     visualization:
         is_draw: true
-        is_show: true
+        is_show: false
         auto_save: false
         top_view:
             is_draw: false
-            is_show: false
             # map_size -> (depth_range, horizontal length*2)
             map_size: (30000, 5000)
             trk_radius: 100

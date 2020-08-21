@@ -1,5 +1,5 @@
 agent:
-    type: "base"
+    type: "dynamic"
     name: "unknown"
     daytime: "day"
     screen_compensate: true

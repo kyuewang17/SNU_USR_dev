@@ -188,9 +188,9 @@ class ros_sensor_image(ros_sensor):
         self._frame = frame
         self.update_stamp(stamp=stamp)
 
-        if self.WIDTH is None:
+        if self.WIDTH is None and frame is not None:
             self.WIDTH = frame.shape[1]
-        if self.HEIGHT is None:
+        if self.HEIGHT is None and frame is not None:
             self.HEIGHT = frame.shape[0]
 
     def get_data(self):
@@ -201,9 +201,12 @@ class ros_sensor_image(ros_sensor):
 
     def get_normalized_data(self, min_value=0.0, max_value=1.0):
         frame = self.get_data()
-        frame_max_value, frame_min_value = frame.max(), frame.min()
-        minmax_normalized_frame = (frame - frame_min_value) / (frame_max_value - frame_min_value)
-        normalized_frame = min_value + (max_value - min_value) * minmax_normalized_frame
+        if frame is not None:
+            frame_max_value, frame_min_value = frame.max(), frame.min()
+            minmax_normalized_frame = (frame - frame_min_value) / (frame_max_value - frame_min_value)
+            normalized_frame = min_value + (max_value - min_value) * minmax_normalized_frame
+        else:
+            normalized_frame = None
         return normalized_frame
 
     def get_z_normalized_data(self, stochastic_standard="channel"):
@@ -268,12 +271,13 @@ class ros_sensor_disparity(ros_sensor_image):
         self._processed_frame = None
 
     def process_data(self, disparity_sensor_opts):
-        frame = self.get_data().astype(np.float32)
-        self._processed_frame = np.where(
-            (frame < disparity_sensor_opts["clip_distance"]["min"]) |
-            (frame > disparity_sensor_opts["clip_distance"]["max"]),
-            disparity_sensor_opts["clip_value"], frame
-        )
+        if self.get_data() is not None:
+            frame = self.get_data().astype(np.float32)
+            self._processed_frame = np.where(
+                (frame < disparity_sensor_opts["clip_distance"]["min"]) |
+                (frame > disparity_sensor_opts["clip_distance"]["max"]),
+                disparity_sensor_opts["clip_value"], frame
+            )
 
     def get_data(self, is_processed=False):
         if is_processed is False:
