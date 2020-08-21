@@ -1,6 +1,6 @@
 agent:
     type: "static"
-    name: "01"
+    name: "fixed-01"
     daytime: "day"
     screen_compensate: true
 

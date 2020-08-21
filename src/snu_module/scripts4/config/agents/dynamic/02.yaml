@@ -1,6 +1,6 @@
 agent:
     type: "dynamic"
-    name: "02"
+    name: "mov-02"
     daytime: "day"
     screen_compensate: true
 
