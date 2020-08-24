@@ -5,6 +5,7 @@ SNU Integrated Module v2.05
 """
 import os
 import copy
+import cv2
 import numpy as np
 import scipy.misc
 import torch
@@ -71,11 +72,17 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
 
     if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
         img_size = thermal_frame.shape[:2]
-        img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
+        # img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
+        img = torch.from_numpy(
+            cv2.resize(thermal_frame, dsize=input_size)
+        ).unsqueeze(dim=2)
         img = torch.cat([img, img, img], dim=2)
     elif (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
         img_size = color_size
-        img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
+        # img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
+        img = torch.from_numpy(
+            cv2.resize(color_frame, dsize=input_size)
+        )
     else:
         raise NotImplementedError
 
