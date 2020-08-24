@@ -84,11 +84,11 @@ class snu_module(backbone):
 
         # Declare ROS Synchronization Switch Dictionary
         self.ros_sync_switch_dict = {
-            "color": True,
-            "disparity": False, "aligned_disparity": False,
-            "thermal": False,
-            "infrared": False,
-            "nightvision": False,
+            "color": opts.sensors.color["is_valid"],
+            "disparity": False, "aligned_disparity": opts.sensors.disparity["is_valid"],
+            "thermal": opts.sensors.thermal["is_valid"],
+            "infrared": opts.sensors.infrared["is_valid"],
+            "nightvision": opts.sensors.lidar["is_valid"],
         }
 
     @staticmethod

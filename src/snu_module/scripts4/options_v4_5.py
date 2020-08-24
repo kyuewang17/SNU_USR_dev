@@ -113,6 +113,9 @@ class sensor_options(object):
 
         # D435i RGB Camera
         self.color = {
+            # Valid Flag
+            "is_valid": cfg.sensors.color.is_valid,
+
             # ROS Message
             "imgmsg_to_cv2_encoding": cfg.sensors.color.encoding,
             "rostopic_name": cfg.sensors.color.rostopic_name,
@@ -124,6 +127,9 @@ class sensor_options(object):
 
         # D435i Depth Camera
         self.disparity = {
+            # Valid Flag
+            "is_valid": cfg.sensors.disparity.is_valid,
+
             # ROS Message
             "imgmsg_to_cv2_encoding": cfg.sensors.disparity.encoding,
             "rostopic_name": cfg.sensors.disparity.rostopic_name,
@@ -144,6 +150,9 @@ class sensor_options(object):
 
         # Thermal Camera
         self.thermal = {
+            # Valid Flag
+            "is_valid": cfg.sensors.thermal.is_valid,
+
             # ROS Message
             "imgmsg_to_cv2_encoding": cfg.sensors.thermal.encoding,
             "rostopic_name": cfg.sensors.thermal.rostopic_name,
@@ -155,6 +164,9 @@ class sensor_options(object):
 
         # Infrared Camera
         self.infrared = {
+            # Valid Flag
+            "is_valid": cfg.sensors.infrared.is_valid,
+
             # ROS Message
             "imgmsg_to_cv2_encoding": cfg.sensors.infrared.encoding,
             "rostopic_name": cfg.sensors.infrared.rostopic_name,
@@ -166,6 +178,9 @@ class sensor_options(object):
 
         # NightVision Camera
         self.nightvision = {
+            # Valid Flag
+            "is_valid": cfg.sensors.nightvision.is_valid,
+
             # ROS Message
             "imgmsg_to_cv2_encoding": cfg.sensors.nightvision.encoding,
             "rostopic_name": cfg.sensors.nightvision.rostopic_name,
@@ -177,6 +192,9 @@ class sensor_options(object):
 
         # LIDAR Point-cloud Image
         self.lidar = {
+            # Valid Flag
+            "is_valid": cfg.sensors.lidar.is_valid,
+
             # ROS Message
             "imgmsg_to_cv2_encoding": cfg.sensors.lidar.encoding,
             "rostopic_name": cfg.sensors.lidar.rostopic_name,

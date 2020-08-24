@@ -55,16 +55,16 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 4
+            init_age: 3
             destroy_age: 3
-            similarity_thresh: 0.75
+            similarity_thresh: 0.6
             similarity_weights:
                 histogram: 0.3333
                 iou: 0.3333
                 distance: 0.3333
         trk_cand:
             destroy_age: 3
-            similarity_thresh: 0.5
+            similarity_thresh: 0.4
             similarity_weights:
                 iou: 0.5
                 distance: 0.5
