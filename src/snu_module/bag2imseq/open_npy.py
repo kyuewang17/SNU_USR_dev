@@ -11,14 +11,14 @@ def open_npy_file(file_path):
 
 
 def main():
-    file_base_path = "/home/kyle/bag_files/__image_sequence__[BAG_FILE]_[field_notmoving_190927]"
-    sample_npy_file_path = os.path.join(file_base_path, "rgb_cam_params")
+    file_base_path = os.path.join(os.path.dirname(__file__), "test", "_cvt_data__[test]")
+    sample_npy_file_base_path = os.path.join(file_base_path, "camera_params", "color")
 
     # Sample npy file name
-    sample_npy_file_name = "rgb_camera_params__[P].npy"
+    sample_npy_file_name = "P.npy"
 
     # Open npy file
-    data_ndarray = open_npy_file(os.path.join(sample_npy_file_path, sample_npy_file_name))
+    data_ndarray = open_npy_file(os.path.join(sample_npy_file_base_path, sample_npy_file_name))
 
     return
 

@@ -218,7 +218,7 @@ class detector_options(object):
         self.is_result_publish = cfg.detector.is_result_publish
 
         # Tiny Area Threshold
-        self.tiny_area_threshold = 10
+        self.tiny_area_threshold = 64
 
         # Detection Arguments
         self.detection_args = {
@@ -359,7 +359,7 @@ class tracker_options(object):
             "lambda": 1e-4,
 
             # Padding
-            "padding": 1,
+            "padding": 0.5,
 
             # Kernel Sigma
             "sigma": 0.5,

@@ -165,3 +165,60 @@ class snu_algorithms(algorithms):
         # print(trk_time)
 
         return self.get_trajectories(), self.get_detections(), self.get_algorithm_fps()
+
+
+# Function for Testing on Synchronized Multimodal Image Sequence
+def run_on_img_seq():
+    import os
+    from config import cfg
+
+    # Set and Load Configuration File Path
+    config_file_path = os.path.join(os.path.dirname(__file__), "config", "agents", "dynamic", "base.yaml")
+    cfg.merge_from_file(config_file_path)
+
+    # Set 
+
+
+
+
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    run_on_img_seq()

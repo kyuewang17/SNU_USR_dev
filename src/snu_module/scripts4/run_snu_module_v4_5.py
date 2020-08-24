@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "--config", "-C",
-    default=os.path.join(os.path.dirname(__file__), "config", "agents", "static", "01.yaml")
+    default=os.path.join(os.path.dirname(__file__), "config", "agents", "dynamic", "base.yaml")
 )
 args = parser.parse_args()
 

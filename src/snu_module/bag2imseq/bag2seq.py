@@ -587,7 +587,7 @@ def main():
             raise AssertionError("Bag File Does Not Exist at Path: {}".format(bag_file_path))
     else:
         # Test Bag File Path
-        bag_file_path = os.path.join(os.path.dirname(__file__), "test", "test.bag")
+        bag_file_path = os.path.join(os.path.dirname(__file__), "test.bag")
         logger.info("Located Bag File at {}".format(bag_file_path))
         if os.path.isfile(bag_file_path):
             # Make Conversion Folder
