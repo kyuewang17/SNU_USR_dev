@@ -10,8 +10,8 @@ SNU Integrated Module v4.5
 # Import Modules
 import random
 from utils.profiling import Timer
+import cv2
 import numpy as np
-from scipy.misc import imresize
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
 
 # Import Custom Modules
@@ -139,7 +139,7 @@ class SNU_MOT(object):
             for trk_idx, trk in enumerate(self.trks):
                 det_zx = snu_bbox.bbox_to_zx(det)
 
-                # Get Predicted State of Tracklet
+                # Get Predicted State of Trajectory
                 trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
 
                 # Get RGBD Patches
@@ -147,8 +147,8 @@ class SNU_MOT(object):
                 trk_patch = snu_patch.get_patch(frame, trk_bbox)
 
                 # Resize RGBD Patches
-                resized_det_patch = imresize(det_patch, size=[64, 64])
-                resized_trk_patch = imresize(trk_patch, size=[64, 64])
+                resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
+                resized_trk_patch = cv2.resize(trk_patch, dsize=(64, 64))
 
                 # Get RGBD Histograms of Detection and Trajectory Patch
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
