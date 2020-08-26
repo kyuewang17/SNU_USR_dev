@@ -597,6 +597,12 @@ def main():
                 logger.info("Conversion Folder Generated...! (PATH: {})".format(cvt_folder_path))
             else:
                 logger.warn("Conversion Folder Already Exists..! (PATH: {})".format(cvt_folder_path))
+
+            # Make Identification Folder (hidden folder)
+            bag2seq_code_id_file_path = os.path.join(cvt_folder_path, ".bag2seq")
+            if os.path.isdsir(bag2seq_code_id_file_path) is False:
+                os.mkdir(bag2seq_code_id_file_path)
+            logger.info("< IMPORTANT > Identification Folder (Hidden) Generated...!")
         else:
             raise AssertionError("Bag File Does Not Exist at Path: {}".format(bag_file_path))
 

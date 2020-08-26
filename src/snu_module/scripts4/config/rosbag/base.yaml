@@ -1,5 +1,5 @@
 agent:
-    type: "base"
+    type: "rosbagfile"
     name: "unknown"
     daytime: "day"
     screen_compensate: true
