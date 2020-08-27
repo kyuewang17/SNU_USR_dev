@@ -1,55 +1,32 @@
-#!/usr/bin/env python
 """
-Outdoor Surveillance Robot SNU Module
+SNU Integrated Module v5.0
 
-- Algorithm Switcher
-
-    - Switches algorithm of below types
-
-        [1] ROS-embedded SNU Module
-        [2] SNU Module which runs on Image Sequences
-
-
-- TBA
+    - Algorithm Loading Functions
 
 """
 import os
-import importlib
-import argparse
-import time
 import logging
-import numpy as np
-
-
-# import snu_visualizer
-# from options_v4_5 import snu_option_class as options
-# from utils.ros.base import backbone
-# from utils.ros.sensors import snu_SyncSubscriber
-# from snu_algorithms_v4_5 import snu_algorithms
-# from utils.profiling import Timer
-#
-# from module_detection import load_model as load_det_model
-# from module_action import load_model as load_acl_model
-#
-# from config import cfg
+import time
+import argparse
+import importlib
 
 
 # Set Logger
 def set_logger(logging_level=logging.INFO):
     # Define Logger
-    _logger = logging.getLogger()
+    logger = logging.getLogger()
 
     # Set Logger Display Level
-    _logger.setLevel(level=logging_level)
+    logger.setLevel(level=logging_level)
 
     # Set Stream Handler
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(
         logging.Formatter("[%(levelname)s] | %(asctime)s : %(message)s")
     )
-    _logger.addHandler(stream_handler)
+    logger.addHandler(stream_handler)
 
-    return _logger
+    return logger
 
 
 # Argument Parser
@@ -185,57 +162,5 @@ def load_options(logger, args, cfg):
     return opts
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def main():
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
-    # Set Logger
-    logger = set_logger(logging_level=logging.INFO)
-
-    # Argument Parser
-    args = argument_parser(logger=logger, dev_version=4.5)
-
-    # Load Configuration from File
-    cfg = cfg_loader(logger=logger, args=args)
-
-    # Load Options
-    opts = load_options(logger=logger, args=args, cfg=cfg)
-
-
-
     pass

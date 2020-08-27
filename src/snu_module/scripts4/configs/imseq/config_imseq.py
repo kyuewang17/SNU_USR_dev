@@ -8,6 +8,7 @@ IMPORTANT : NEEDS TO BE EDITED....!
 """
 # Import Module
 import os
+import numpy as np
 
 # Import Config Module
 from yacs.config import CfgNode as CN
@@ -20,16 +21,21 @@ model_base_path = os.path.join(
 # Config Class Initialization
 __C = CN(new_allowed=False)
 
-# Data Environment
+# Load this Variable when importing this file as a module
+cfg = __C
+
+# Image Environment
 # (for [static/dynamic] robots, it is literal)
 # (for ROS Bag Files, describe the bag file's image sequence environment)
 __C.env = CN(new_allowed=True)
 __C.env.type = "NULL"
-__C.env.name = "NULL"
 __C.env.time = "day"
 
 # Screen Compensate Flag
 __C.screen_compensate = True
+
+# Machine Name
+__C.machine_name = "snu"
 
 # ROS Odometry Message
 __C.odometry_rostopic_name = "/robot_odom"
@@ -102,6 +108,8 @@ __C.detector.name = "YOLOv4"#"RefineDet"
 __C.detector.device = 0
 __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 
+__C.detector.tiny_area_threshold = 64
+
 __C.detector.visualization = CN(new_allowed=True)
 __C.detector.visualization.is_draw = True
 __C.detector.visualization.is_show = True
@@ -119,6 +127,69 @@ __C.tracker = CN(new_allowed=True)
 __C.tracker.name = "Custom"
 __C.tracker.device = 0
 
+# Kalman Filter Parameters
+__C.tracker.kalman_params = CN(new_allowed=False)
+
+# State Transition Matrix (Motion Model)
+__C.tracker.kalman_params.A = np.float32([[1, 0, 0, 1, 0, 0, 0],
+                                          [0, 1, 0, 0, 1, 0, 0],
+                                          [0, 0, 1, 0, 0, 0, 0],
+                                          [0, 0, 0, 1, 0, 0, 0],
+                                          [0, 0, 0, 0, 1, 0, 0],
+                                          [0, 0, 0, 0, 0, 1, 0],
+                                          [0, 0, 0, 0, 0, 0, 1]]).tolist()
+# Unit Transformation Matrix
+__C.tracker.kalman_params.H = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                                          [0, 1, 0, 0, 0, 0, 0],
+                                          [0, 0, 1, 0, 0, 0, 0],
+                                          [0, 0, 0, 1, 0, 0, 0],
+                                          [0, 0, 0, 0, 1, 0, 0],
+                                          [0, 0, 0, 0, 0, 1, 0],
+                                          [0, 0, 0, 0, 0, 0, 1]]).tolist()
+# Error Covariance Matrix
+P = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
+P = np.multiply(P, P)
+__C.tracker.kalman_params.P = P.tolist()
+
+# State Covariance Matrix
+Q = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
+Q = np.multiply(Q, Q) * 1e-1
+__C.tracker.kalman_params.Q = Q.tolist()
+
+# Measurement Covariance Matrix
+R = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
+R = np.multiply(R, R)
+__C.tracker.kalman_params.R = R.tolist()
+
+# Kalman Gain Matrix (for initialization)
+__C.tracker.kalman_params.K = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                                          [0, 1, 0, 0, 0, 0, 0],
+                                          [0, 0, 1, 0, 0, 0, 0],
+                                          [0, 0, 0, 1, 0, 0, 0],
+                                          [0, 0, 0, 0, 1, 0, 0],
+                                          [0, 0, 0, 0, 0, 1, 0],
+                                          [0, 0, 0, 0, 0, 0, 1]]).tolist()
+
+
+# Association Parameters
 __C.tracker.association = CN(new_allowed=True)
 
 __C.tracker.association.trk = CN(new_allowed=True)

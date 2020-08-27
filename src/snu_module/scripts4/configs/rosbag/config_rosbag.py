@@ -6,6 +6,7 @@ SNU Integrated Module v5.0
 """
 # Import Module
 import os
+import numpy as np
 
 # Import Config Module
 from yacs.config import CfgNode as CN
@@ -18,16 +19,21 @@ model_base_path = os.path.join(
 # Config Class Initialization
 __C = CN(new_allowed=False)
 
-# Data Environment
+# Load this Variable when importing this file as a module
+cfg = __C
+
+# Image Environment
 # (for [static/dynamic] robots, it is literal)
 # (for ROS Bag Files, describe the bag file's image sequence environment)
 __C.env = CN(new_allowed=True)
 __C.env.type = "NULL"
-__C.env.name = "NULL"
 __C.env.time = "day"
 
 # Screen Compensate Flag
 __C.screen_compensate = True
+
+# Machine Name
+__C.machine_name = "snu"
 
 # ROS Odometry Message
 __C.odometry_rostopic_name = "/robot_odom"
@@ -52,7 +58,6 @@ __C.sensors.color.encoding = "8UC3"
 __C.sensors.color.rostopic_name = "/osr/image_color"
 __C.sensors.color.camerainfo_rostopic_name = "/osr/image_color_camerainfo"
 
-
 __C.sensors.disparity = CN(new_allowed=True)
 __C.sensors.disparity.is_valid = True
 __C.sensors.disparity.encoding = "16UC1"
@@ -64,26 +69,22 @@ __C.sensors.disparity.clip.value = -1
 __C.sensors.disparity.clip.min_distance = 1000
 __C.sensors.disparity.clip.max_distance = 15000
 
-
 __C.sensors.thermal = CN(new_allowed=True)
 __C.sensors.thermal.is_valid = True
 __C.sensors.thermal.encoding = "16UC1"
 __C.sensors.thermal.rostopic_name = "/osr/image_thermal"
 __C.sensors.thermal.camerainfo_rostopic_name = "NULL"
 
-
 __C.sensors.infrared = CN(new_allowed=True)
 __C.sensors.infrared.is_valid = True
 __C.sensors.infrared.encoding = "8UC1"
 __C.sensors.infrared.rostopic_name = "/osr/image_ir"
-
 
 __C.sensors.nightvision = CN(new_allowed=True)
 __C.sensors.nightvision.is_valid = True
 __C.sensors.nightvision.encoding = "8UC3"
 __C.sensors.nightvision.rostopic_name = "/osr/image_nv1"
 __C.sensors.nightvision.camerainfo_rostopic_name = "NULL"
-
 
 __C.sensors.lidar = CN(new_allowed=True)
 __C.sensors.lidar.is_valid = True
@@ -96,9 +97,11 @@ __C.sensors.lidar.camerainfo_rostopic_name = "NULL"
 # ---------------- #
 # TODO: Add options/parameters that can be easily modified while impacting the overall performance
 __C.detector = CN(new_allowed=True)
-__C.detector.name = "YOLOv4"#"RefineDet"
+__C.detector.name = "YOLOv4"  # "RefineDet"
 __C.detector.device = 0
 __C.detector.model_base_path = os.path.join(model_base_path, "detector")
+
+__C.detector.tiny_area_threshold = 64
 
 __C.detector.visualization = CN(new_allowed=True)
 __C.detector.visualization.is_draw = True
@@ -117,6 +120,69 @@ __C.tracker = CN(new_allowed=True)
 __C.tracker.name = "Custom"
 __C.tracker.device = 0
 
+# Kalman Filter Parameters
+__C.tracker.kalman_params = CN(new_allowed=False)
+
+# State Transition Matrix (Motion Model)
+__C.tracker.kalman_params.A = np.float32([[1, 0, 0, 1, 0, 0, 0],
+                                          [0, 1, 0, 0, 1, 0, 0],
+                                          [0, 0, 1, 0, 0, 0, 0],
+                                          [0, 0, 0, 1, 0, 0, 0],
+                                          [0, 0, 0, 0, 1, 0, 0],
+                                          [0, 0, 0, 0, 0, 1, 0],
+                                          [0, 0, 0, 0, 0, 0, 1]]).tolist()
+# Unit Transformation Matrix
+__C.tracker.kalman_params.H = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                                          [0, 1, 0, 0, 0, 0, 0],
+                                          [0, 0, 1, 0, 0, 0, 0],
+                                          [0, 0, 0, 1, 0, 0, 0],
+                                          [0, 0, 0, 0, 1, 0, 0],
+                                          [0, 0, 0, 0, 0, 1, 0],
+                                          [0, 0, 0, 0, 0, 0, 1]]).tolist()
+# Error Covariance Matrix
+P = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
+P = np.multiply(P, P)
+__C.tracker.kalman_params.P = P.tolist()
+
+# State Covariance Matrix
+Q = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
+Q = np.multiply(Q, Q) * 1e-1
+__C.tracker.kalman_params.Q = Q.tolist()
+
+# Measurement Covariance Matrix
+R = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
+R = np.multiply(R, R)
+__C.tracker.kalman_params.R = R.tolist()
+
+# Kalman Gain Matrix (for initialization)
+__C.tracker.kalman_params.K = np.float32([[1, 0, 0, 0, 0, 0, 0],
+                                          [0, 1, 0, 0, 0, 0, 0],
+                                          [0, 0, 1, 0, 0, 0, 0],
+                                          [0, 0, 0, 1, 0, 0, 0],
+                                          [0, 0, 0, 0, 1, 0, 0],
+                                          [0, 0, 0, 0, 0, 1, 0],
+                                          [0, 0, 0, 0, 0, 0, 1]]).tolist()
+
+
+# Association Parameters
 __C.tracker.association = CN(new_allowed=True)
 
 __C.tracker.association.trk = CN(new_allowed=True)
@@ -167,7 +233,6 @@ __C.aclassifier.model_base_path = os.path.join(model_base_path, "aclassifier")
 __C.aclassifier.visualization = CN(new_allowed=True)
 __C.aclassifier.visualization.is_draw = True
 __C.aclassifier.visualization.is_show = True
-
 
 if __name__ == "__main__":
     pass

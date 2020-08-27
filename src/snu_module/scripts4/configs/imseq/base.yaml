@@ -1,9 +1,10 @@
 env:
     type: "imseq"
-    name: "unknown"
 #    time: "day"
 
 screen_compensate: true
+
+machine_name: "snu"
 
 sensors:
     color:

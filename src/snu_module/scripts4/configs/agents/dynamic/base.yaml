@@ -1,10 +1,11 @@
 env:
     type: "dynamic"
     id: "NULL"
-    name: "unknown"
 #    time: "day"
 
 screen_compensate: true
+
+machine_name: "snu"
 
 sensors:
     color:

@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 """
-SNU Integrated Module v4.5
+SNU Integrated Module v5.0
 
-- Code Massively Re-arranged
-    - Module Segmentation
-    - Multimodal Sensor Synchronization Source Code Customized (original from KIRO)
-    - LiDAR Point-Cloud Projection Optimized
-        - Do Projection on Trajectory BBOX
-    - Changed Mis-used Terminologies
-        - (ex) Tracklet -> Trajectory
-    - Optimize Trivial Things...
+    - ROS-embedded Code Version
+
+        - [1] Outdoor Surveillance Robot Agents
+
+            - Static (fixed)
+            - Dynamic (moving)
+
+        - [2] ROS Bag File
+
 
 """
 import os
@@ -22,7 +23,6 @@ import tf2_ros
 import numpy as np
 
 import snu_visualizer
-from options_v4_5 import snu_option_class as options
 from utils.ros.base import backbone
 from utils.ros.sensors import snu_SyncSubscriber
 from snu_algorithms_v4_5 import snu_algorithms
@@ -34,44 +34,15 @@ from module_action import load_model as load_acl_model
 from config import cfg
 
 
-# Argument Parser
-parser = argparse.ArgumentParser(
-    prog="SNU-Integrated-v4.5", description="SNU Integrated Algorithm"
-)
-parser.add_argument(
-    "--config", "-C",
-    default=os.path.join(os.path.dirname(__file__), "config", "agents", "dynamic", "base.yaml")
-)
-args = parser.parse_args()
-
-
-# Set Logger
-def set_logger(logging_level=logging.INFO):
-    # Define Logger
-    logger = logging.getLogger()
-
-    # Set Logger Display Level
-    logger.setLevel(level=logging_level)
-
-    # Set Stream Handler
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(
-        logging.Formatter("[%(levelname)s] | %(asctime)s : %(message)s")
-    )
-    logger.addHandler(stream_handler)
-
-    return logger
-
-
 # Define SNU Module Class
 class snu_module(backbone):
-    def __init__(self, opts):
+    def __init__(self, logger, opts):
         super(snu_module, self).__init__(
             opts=opts, is_sensor_param_file=self.sensor_param_file_check()
         )
 
         # Initialize Logger Variable
-        self.logger = set_logger(logging_level=logging.INFO)
+        self.logger = logger
 
         # Initialize Frame Index
         self.fidx = 0
@@ -241,19 +212,81 @@ class snu_module(backbone):
             rospy.logwarn("ShutDown SNU Module...!")
 
 
+# Argument Parser
+def argument_parser(dev_version):
+    parser = argparse.ArgumentParser(
+        prog="ros__run_snu_module.py", description="ROS-embedded SNU Module v{}".format(dev_version)
+    )
+    parser.add_argument("--dev-version", "-V", default=dev_version, help="SNU Module Development Version")
+
+    # Add Sub-Parser
+    subparser = parser.add_subparsers(help="Sub-Parser Commands")
+
+    # Sub-Parser for ROS Bag Files
+    rosbag_parser = subparser.add_parser(
+        "bag", help="for executing this code with ROS bag file"
+    )
+    rosbag_parser.add_argument(
+        "--cfg-file-name", "-C", type=str, default="base.yaml",
+        help="Configuration File Name, which matches the currently playing ROS bag file"
+    )
+    rosbag_parser.add_argument("--arg-opts", "-A", default="rosbag", help="Argument Option - ROS Bag File")
+
+    # Sub-Parser for Outdoor Surveillance Robot Agents
+    agent_parser = subparser.add_parser(
+        "agent", help="for executing this code on Outdoor Surveillance Robot Agents"
+    )
+    agent_parser.add_argument(
+        "--agent_type", "-T", type=str, choices=["static", "dynamic"],
+        help="Agent Type (choose btw 'static' and 'dynamic')"
+    )
+    agent_parser.add_argument("--agent-id", "-I", type=int, help="Agent ID Number")
+    agent_parser.add_argument("--arg-opts", "-A", default="agents", help="Argument Option - Agent Robot")
+
+    # Parse Arguments and Return
+    args = parser.parse_args()
+    return args
+
+
+# Configuration File Loader
+def cfg_loader(args):
+    # Load Configuration File, regarding the input arguments
+    if args.arg_opts == "rosbag":
+        from configs.rosbag.config_rosbag import cfg
+        cfg_file_path = os.path.join(os.path.dirname(__file__), "configs", "rosbag", args.cfg_file_name)
+        logger.info("Loading Configuration File from {}".format(cfg_file_path))
+    elif args.arg_opts == "imseq":
+        from configs.imseq.config_imseq import cfg
+        cfg_file_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", args.cfg_file_name)
+        logger.info("Loading Configuration File from {}".format(cfg_file_path))
+        raise NotImplementedError("Image Sequence-based Code Not Implemented Yet...!")
+    elif args.arg_opts == "agents":
+        from configs.agents.config_agents import cfg
+        cfg_file_path = os.path.join(
+            os.path.dirname(__file__), "configs", "imseq", args.agent_type, "{:02d}.yaml".format(args.agent_id)
+        )
+        logger.info("Loading Configuration File from {}".format(cfg_file_path))
+    else:
+        raise NotImplementedError("Current Argument Option [{}] not Defined...!".format(args.arg_opts))
+    time.sleep(0.5)
+    cfg.merge_from_file(cfg_filename=cfg_file_path)
+    return cfg
+
+
 def main():
-    # Load Configuration File
-    cfg.merge_from_file(args.config)
-
-    # Load Options
-    opts = options(cfg=cfg)
-    opts.visualization.correct_flag_options()
-
-    # Initialize SNU Module
-    snu_usr = snu_module(opts=opts)
-
-    # Run SNU Module
-    snu_usr(module_name="snu_module")
+    # # Load Configuration File
+    # cfg.merge_from_file(args.config)
+    #
+    # # Load Options
+    # opts = options(cfg=cfg)
+    # opts.visualization.correct_flag_options()
+    #
+    # # Initialize SNU Module
+    # snu_usr = snu_module(opts=opts)
+    #
+    # # Run SNU Module
+    # snu_usr(module_name="snu_module")
+    pass
 
 
 if __name__ == "__main__":

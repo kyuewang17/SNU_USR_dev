@@ -1,9 +1,10 @@
 env:
-    type: "rosbagfile"
-    name: "unknown"
+    type: "rosbag"
 #    time: "day"
 
 screen_compensate: true
+
+machine_name: "snu"
 
 sensors:
     color:
