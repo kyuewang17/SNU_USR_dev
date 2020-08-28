@@ -69,10 +69,9 @@ class snu_option_class(object):
 
         # Agent Type
         if run_type == "agents":
-            agent_type, agent_id = env_type, cfg.env.id if hasattr(cfg.env, "id") else None
+            self.agent_type, self.agent_id = env_type, cfg.env.id if hasattr(cfg.env, "id") else None
         else:
-            agent_type, agent_id = None, None
-        self.agent_type, self.agent_id = agent_type, agent_id
+            self.agent_type, self.agent_id = None, None
 
         # Development Version
         self.dev_version = dev_version
@@ -467,10 +466,10 @@ class visualizer_options(object):
 
     def correct_flag_options(self):
         if self.detection["is_draw"] is False:
-            self.detection["is_show"] = False
+            self.detection["is_show"], self.detection["auto_save"] = False, False
 
         if self.tracking["is_draw"] is False:
-            self.tracking["is_show"] = False
+            self.tracking["is_show"], self.tracking["auto_save"] = False, False
 
         if self.top_view["is_draw"] is False:
             self.top_view["is_show"] = False

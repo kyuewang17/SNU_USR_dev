@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-SNU Integrated Module
+SNU Integrated Module v5.0
 
     - ROS-embedded Code Version
 
@@ -25,16 +25,16 @@ import numpy as np
 
 import utils.loader
 from utils.ros.base import backbone
-from utils.ros.sensors import snu_SyncSubscriber
-import snu_visualizer
-from snu_algorithms_v4_5 import snu_algorithms
-from utils.profiling import Timer
+# from utils.ros.sensors import snu_SyncSubscriber
+# import snu_visualizer
+# from snu_algorithms_v4_5 import snu_algorithms
+# from utils.profiling import Timer
+#
+# from module_detection import load_model as load_det_model
+# from module_action import load_model as load_acl_model
 
-from module_detection import load_model as load_det_model
-from module_action import load_model as load_acl_model
 
-
-# Run Mode (choose btw ==>> bag / imseq / agent)
+# Run Mode
 RUN_MODE = "bag"
 
 

@@ -30,7 +30,7 @@ def set_logger(logging_level=logging.INFO):
 
 
 # Argument Parser
-def argument_parser(logger, dev_version=4.5):
+def argument_parser(logger, dev_version=4.5, mode_selection=None):
     # Attempt to Find the Agent Identification File from Computer
     agent_id_file_base_path = "/agent"
     agent_id_file_list = \
@@ -51,6 +51,14 @@ def argument_parser(logger, dev_version=4.5):
         else:
             agent_type = "static" if agent_type.lower() in ["static", "fixed"] else "dynamic"
     time.sleep(0.5)
+
+    # Detect Mode Selection
+    if mode_selection is None:
+        logger.info("Searching Argument Declaration...!")
+    else:
+        assert isinstance(mode_selection, str)
+        assert mode_selection in ["bag", "imseq", "agent"], "Manual Mode [{}] is Undefined...!".format(mode_selection)
+        logger.info("Manual Mode [{}] Selected...!".format(mode_selection))
 
     # Declare Argument Parser
     parser = argparse.ArgumentParser(
@@ -87,9 +95,7 @@ def argument_parser(logger, dev_version=4.5):
         help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
     )
     imseq_parser.add_argument(
-        "--cfg-file-name", "-C", type=str,
-        default="base.yaml",
-        # default=os.path.join(os.path.dirname(__file__), "config", "imseq", "base.yaml"),
+        "--cfg-file-name", "-C", type=str, default="base.yaml",
         help="Configuration File Name, which matches the designated Image Sequence Folder Name"
     )
     imseq_parser.add_argument("--arg-opts", "-A", default="imseq", help="Argument Option - Image Sequence")
@@ -113,7 +119,10 @@ def argument_parser(logger, dev_version=4.5):
     """"""
 
     # Parse Arguments and Return
-    args = parser.parse_args()
+    if mode_selection is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(["{}".format(mode_selection)])
     return args
 
 
@@ -122,17 +131,21 @@ def cfg_loader(logger, args):
     # Load Configuration File, regarding the input arguments
     if args.arg_opts == "rosbag":
         from configs.rosbag.config_rosbag import cfg
-        cfg_file_path = os.path.join(os.path.dirname(__file__), "configs", "rosbag", args.cfg_file_name)
-        logger.info("Loading Configuration File from {}".format(cfg_file_path))
+        cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "rosbag", args.cfg_file_name)
+        if os.path.isfile(cfg_file_path) is False:
+            logger.warn("")
+        else:
+            logger.info("Loading Configuration File from {}".format(cfg_file_path))
     elif args.arg_opts == "imseq":
         from configs.imseq.config_imseq import cfg
-        cfg_file_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", args.cfg_file_name)
+        cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "imseq", args.cfg_file_name)
         logger.info("Loading Configuration File from {}".format(cfg_file_path))
         raise NotImplementedError("Image Sequence-based Code Not Implemented Yet...!")
     elif args.arg_opts == "agents":
         from configs.agents.config_agents import cfg
         cfg_file_path = os.path.join(
-            os.path.dirname(__file__), "configs", "imseq", args.agent_type, "{:02d}.yaml".format(args.agent_id)
+            os.path.dirname(os.path.dirname(__file__)), "configs", "agents",
+            args.agent_type, "{:02d}.yaml".format(args.agent_id)
         )
         logger.info("Loading Configuration File from {}".format(cfg_file_path))
     else:
@@ -148,7 +161,8 @@ def load_options(logger, args, cfg):
     dev_version = str(args.dev_version)
     dev_main_version, dev_sub_version = dev_version.split(".")[0], dev_version.split(".")[-1]
     module_version_base_path = os.path.join(
-        os.path.dirname(__file__), "module_lib", "v{}_{}".format(dev_main_version, dev_sub_version)
+        os.path.dirname(os.path.dirname(__file__)),
+        "module_lib", "v{}_{}".format(dev_main_version, dev_sub_version)
     )
     if os.path.isdir(module_version_base_path) is False:
         raise AssertionError("Module Version [v{}] NOT Found...!".format(args.dev_version))

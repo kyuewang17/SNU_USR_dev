@@ -1,5 +1,6 @@
 env:
-    type: "bag"
+    type: "dynamic"
+    id: "NULL"
 #    time: "day"
 
 screen_compensate: true

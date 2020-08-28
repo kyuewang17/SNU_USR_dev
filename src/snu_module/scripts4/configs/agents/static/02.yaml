@@ -1,5 +1,6 @@
 env:
-    type: "bag"
+    type: "static"
+    id: "NULL"
 #    time: "day"
 
 screen_compensate: true
@@ -20,7 +21,7 @@ sensors:
             min_distance: 1000
             max_distance: 15000
     thermal:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
@@ -32,7 +33,7 @@ sensors:
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
