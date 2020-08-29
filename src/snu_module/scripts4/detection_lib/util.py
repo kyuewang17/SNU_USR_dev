@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
 import torch
-from config import cfg
-if cfg.detector.name == "RefineDet":
-    from . import _C
-
-    nms = _C.nms
+# from config import cfg
+# if cfg.detector.name == "RefineDet":
+#     from . import _C
+#     nms = _C.nms
 
 
 def sort_boxes_s(boxes_s, confs_s, labels_s=None):

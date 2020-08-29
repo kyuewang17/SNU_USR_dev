@@ -41,9 +41,7 @@ RUN_MODE = "bag"
 # Define SNU Module Class
 class snu_module(backbone):
     def __init__(self, logger, opts):
-        super(snu_module, self).__init__(
-            opts=opts, is_sensor_param_file=self.sensor_param_file_check()
-        )
+        super(snu_module, self).__init__(opts=opts)
 
         # Initialize Logger Variable
         self.logger = logger
@@ -66,31 +64,31 @@ class snu_module(backbone):
             "nightvision": opts.sensors.lidar["is_valid"],
         }
 
-    @staticmethod
-    def sensor_param_file_check():
-        sensor_params_path = os.path.join(os.path.dirname(args.config), "sensor_params")
-        if os.path.isdir(sensor_params_path):
-            return True
-        else:
-            return False
-
     def gather_all_sensor_params_via_files(self):
-        config_file_number = int(args.config.split("/")[-1].split(".")[0])
-        sensor_params_path = os.path.join(os.path.dirname(args.config), "sensor_params")
-        sensor_param_filenames = os.listdir(sensor_params_path)
+        # Get Sensor Parameter File Path
+        sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", self.opts.env_type, "sensor_params")
+        if os.path.isdir(sensor_params_path) is True:
+            # Collect List of Sensor Parameter for Each Modality
+            sensor_param_filenames = os.listdir(sensor_params_path)
 
-        for sensor_param_filename in sensor_param_filenames:
-            modal = sensor_param_filename.split(".")[0]
+            for sensor_param_filename in sensor_param_filenames:
+                modal_type = sensor_param_filename.split(".")[0]
 
-            # Get Sensor Parameters
-            sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
-            with open(sensor_param_filepath, "r") as stream:
-                tmp = yaml.safe_load(stream=stream)
-            sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(config_file_number)]["camera_param"])
+                # Get Sensor Parameters from YAML file
+                sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
+                with open(sensor_param_filepath, "r") as stream:
+                    tmp = yaml.safe_load(stream=stream)
 
-            # Update Sensor Parameter
-            modal_obj = getattr(self, modal)
-            modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
+                if self.opts.env_type in ["static", "dynamic"]:
+                    sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(self.opts.agent_id)]["camera_param"])
+                else:
+                    raise NotImplementedError()
+
+                # Update Sensor Parameter
+                modal_obj = getattr(self, modal_type)
+                modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
+        else:
+            rospy.loginfo("Sensor Parameter Directory Not Found...!")
 
     # Call as Function
     def __call__(self, module_name):
@@ -111,24 +109,29 @@ class snu_module(backbone):
         self.logger.info("ROS Node Initialization")
         rospy.init_node(name=module_name, anonymous=True)
 
-        if self.opts.agent_type == "dynamic" or self.opts.agent_type == "rosbagfile":
-            # Subscribe for tf_static
+        # Check for Sensor Parameter Files
+        rospy.loginfo("Checking Sensor Parameter Directory...!")
+        self.gather_all_sensor_params_via_files()
+
+        # Check for TF_STATIC, Sensor Parameter Files (yaml)
+        if self.opts.env_type in ["dynamic", "bag"]:
+
+            # Subscribe for TF_STATIC
             tf_buffer = tf2_ros.Buffer()
             tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
 
             # Iterate Loop until "tf_static is heard"
+            tmp_flag = False
             while self.tf_transform is None:
                 try:
                     self.tf_transform = tf_buffer.lookup_transform(
                         "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
                     )
                 except:
-                    rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...!")
+                    if tmp_flag is False:
+                        rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
+                        tmp_flag = True
                     continue
-
-        elif self.opts.agent_type == "static":
-            self.tf_transform = None
-            self.gather_all_sensor_params_via_files()
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")

@@ -62,13 +62,13 @@ class kalman_params(object):
 
 # Define Option Class
 class snu_option_class(object):
-    def __init__(self, cfg, run_type, dev_version=4.5):
+    def __init__(self, cfg, dev_version=4.5):
         # Image Environment Type
         env_type = cfg.env.type
         self.env_type = env_type
 
         # Agent Type
-        if run_type == "agents":
+        if env_type == "agent":
             self.agent_type, self.agent_id = env_type, cfg.env.id if hasattr(cfg.env, "id") else None
         else:
             self.agent_type, self.agent_id = None, None
@@ -256,7 +256,11 @@ class detector_options(object):
             # "thresh": 0.5, "hier_thresh": 0.5,
             "thresh": 0.65, "hier_thresh": 0.5,
             "nms_thresh": 0.45,
-            "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
+            "meta_path": os.path.join(
+                os.path.dirname(os.path.dirname(curr_file_path)),
+                "detection_lib", "darknet", "cfg", "coco.data"
+            ),
+            # "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
 
             # "name": "refinedet",
             # "is_bnorm": False, "tcb_ch": 256,

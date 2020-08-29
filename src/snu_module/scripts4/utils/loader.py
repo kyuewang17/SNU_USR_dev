@@ -81,7 +81,7 @@ def argument_parser(logger, dev_version=4.5, mode_selection=None):
         "--cfg-file-name", "-C", type=str, default="base.yaml",
         help="Configuration File Name, which matches the currently playing ROS bag file"
     )
-    rosbag_parser.add_argument("--arg-opts", "-A", default="rosbag", help="Argument Option - ROS Bag File")
+    rosbag_parser.add_argument("--arg-opts", "-A", default="bag", help="Argument Option - ROS Bag File")
     """"""
 
     # Image Sequences
@@ -115,7 +115,7 @@ def argument_parser(logger, dev_version=4.5, mode_selection=None):
             help="Agent Type (choose btw 'static' and 'dynamic')"
         )
         agent_parser.add_argument("--agent-id", "-I", type=int, help="Agent ID Number")
-    agent_parser.add_argument("--arg-opts", "-A", default="agents", help="Argument Option - Agent Robot")
+    agent_parser.add_argument("--arg-opts", "-A", default="agent", help="Argument Option - Agent Robot")
     """"""
 
     # Parse Arguments and Return
@@ -129,7 +129,7 @@ def argument_parser(logger, dev_version=4.5, mode_selection=None):
 # Configuration File Loader
 def cfg_loader(logger, args):
     # Load Configuration File, regarding the input arguments
-    if args.arg_opts == "rosbag":
+    if args.arg_opts == "bag":
         from configs.rosbag.config_rosbag import cfg
         cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "rosbag", args.cfg_file_name)
         if os.path.isfile(cfg_file_path) is False:
@@ -141,7 +141,7 @@ def cfg_loader(logger, args):
         cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "imseq", args.cfg_file_name)
         logger.info("Loading Configuration File from {}".format(cfg_file_path))
         raise NotImplementedError("Image Sequence-based Code Not Implemented Yet...!")
-    elif args.arg_opts == "agents":
+    elif args.arg_opts == "agent":
         from configs.agents.config_agents import cfg
         cfg_file_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "configs", "agents",
@@ -172,7 +172,7 @@ def load_options(logger, args, cfg):
 
     # Select Option based on Module Version
     options = importlib.import_module("module_lib.v{}_{}.options".format(dev_main_version, dev_sub_version))
-    opts = options.snu_option_class(cfg=cfg, run_type=args.arg_opts, dev_version=args.dev_version)
+    opts = options.snu_option_class(cfg=cfg, dev_version=args.dev_version)
     return opts
 
 

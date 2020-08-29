@@ -600,7 +600,7 @@ def main():
 
             # Make Identification Folder (hidden folder)
             bag2seq_code_id_file_path = os.path.join(cvt_folder_path, ".bag2seq")
-            if os.path.isdsir(bag2seq_code_id_file_path) is False:
+            if os.path.isdir(bag2seq_code_id_file_path) is False:
                 os.mkdir(bag2seq_code_id_file_path)
             logger.info("< IMPORTANT > Identification Folder (Hidden) Generated...!")
         else:
