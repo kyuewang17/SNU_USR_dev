@@ -417,6 +417,7 @@ class SNU_MOT(object):
         del new_trks
 
         # Get Pseudo-inverse of Projection Matrix
+        color_P = sync_data_dict["color"].get_sensor_params().projection_matrix
         color_P_inverse = sync_data_dict["color"].get_sensor_params().pinv_projection_matrix
 
         # Trajectory Prediction, Projection, and Message
@@ -425,9 +426,10 @@ class SNU_MOT(object):
             trk.predict()
 
             # Project Image Coordinate State (x3) to Camera Coordinate State (c3)
-            trk.img_coord_to_cam_coord(
-                inverse_projection_matrix=color_P_inverse, opts=self.opts
-            )
+            if self.opts.agent_type == "static":
+                trk.project_to_ground(projection_matrix=color_P)
+            else:
+                trk.img_coord_to_cam_coord(inverse_projection_matrix=color_P_inverse)
 
             # Compute RPY
             trk.compute_rpy(roll=0.0)

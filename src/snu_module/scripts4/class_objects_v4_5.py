@@ -398,12 +398,8 @@ class Trajectory(object_instance):
             self.depth.append(depth_value)
 
     # Image Coordinates(2D) to Camera Coordinates(3D) in meters (m)
-    def img_coord_to_cam_coord(self, inverse_projection_matrix, opts):
-        # If agent type is 'static', the reference point of image coordinate is the bottom center of the trajectory bounding box
-        if opts.agent_type == "static":
-            img_coord_pos = np.array([self.x3[0][0], (self.x3[1][0] + 0.5 * self.x3[6][0]), 1.0]).reshape((3, 1))
-        else:
-            img_coord_pos = np.array([self.x3[0][0], self.x3[1][0], 1.0]).reshape((3, 1))
+    def img_coord_to_cam_coord(self, inverse_projection_matrix):
+        img_coord_pos = np.array([self.x3[0][0], self.x3[1][0], 1.0]).reshape((3, 1))
         img_coord_vel = np.array([self.x3[3][0], self.x3[4][0], 1.0]).reshape((3, 1))
 
         cam_coord_pos = np.matmul(inverse_projection_matrix, img_coord_pos)
@@ -411,6 +407,28 @@ class Trajectory(object_instance):
 
         cam_coord_pos *= self.depth[-1]
         cam_coord_vel *= self.depth[-1]
+
+        # Consider Robot Coordinates
+        cam_coord_pos = np.array([cam_coord_pos[2][0], -cam_coord_pos[0][0], -cam_coord_pos[1][0]]).reshape((3, 1))
+        cam_coord_vel = np.array([cam_coord_vel[2][0], -cam_coord_vel[0][0], -cam_coord_vel[1][0]]).reshape((3, 1))
+
+        # Camera Coordinate State
+        self.c3 = np.array([cam_coord_pos[0][0], cam_coord_pos[1][0], cam_coord_pos[2][0],
+                            cam_coord_vel[0][0], cam_coord_vel[1][0], cam_coord_vel[2][0]]).reshape((6, 1))
+
+    # Project to Ground Plane (IMAGE COORDINATE to CAMERA COORDINATE)
+    def project_to_ground(self, projection_matrix):
+        # Get Image Coordinate Positions (bottom-center)
+        img_coord_pos = np.array([self.x3[0][0], (self.x3[1][0] + 0.5 * self.x3[6][0]), 1.0]).reshape((3, 1))
+        img_coord_vel = np.array([self.x3[3][0], self.x3[4][0], 1.0]).reshape((3, 1))
+
+        # Orthographic Projection (onto z-plane)
+        projection_matrix[2, 2] = 0.0
+        inverse_projection_matrix = np.linalg.pinv(projection_matrix)
+
+        # Camera Coordinate
+        cam_coord_pos = np.matmul(inverse_projection_matrix, img_coord_pos)
+        cam_coord_vel = np.matmul(inverse_projection_matrix, img_coord_vel)
 
         # Consider Robot Coordinates
         cam_coord_pos = np.array([cam_coord_pos[2][0], -cam_coord_pos[0][0], -cam_coord_pos[1][0]]).reshape((3, 1))
