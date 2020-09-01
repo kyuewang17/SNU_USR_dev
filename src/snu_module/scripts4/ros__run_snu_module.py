@@ -22,13 +22,12 @@ import logging
 import tf2_ros
 import numpy as np
 
-
 import utils.loader
+from utils.profiling import Timer
 from utils.ros.base import backbone
 from utils.ros.sensors import snu_SyncSubscriber
 import snu_visualizer
-from snu_algorithms_v4_5 import snu_algorithms
-from utils.profiling import Timer
+from module_bridge import snu_algorithms
 
 from module_detection import load_model as load_det_model
 from module_action import load_model as load_acl_model
