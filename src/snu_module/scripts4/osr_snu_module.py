@@ -70,5 +70,5 @@ if __name__ == "__main__":
     # Load SNU Module
     snu_usr = load_snu_module(logger=logger, opts=opts)
 
-
-    pass
+    # Run SNU Module
+    snu_usr(module_name="snu_module")

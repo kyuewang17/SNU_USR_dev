@@ -60,7 +60,7 @@ tracker:
             similarity_thresh: 0.6
     visualization:
         is_draw: true
-        is_show: false
+        is_show: true
         auto_save: false
         is_result_publish: true
         result_rostopic_name: "/osr/snu_trk_acl_result_image"

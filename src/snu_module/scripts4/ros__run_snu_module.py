@@ -29,9 +29,6 @@ from utils.ros.sensors import snu_SyncSubscriber
 import snu_visualizer
 from module_bridge import snu_algorithms
 
-from module_detection import load_model as load_det_model
-from module_action import load_model as load_acl_model
-
 
 # Run Mode (choose btw ==>> bag / imseq / agent)
 RUN_MODE = "bag"
@@ -47,6 +44,9 @@ class snu_module(backbone):
 
         # Initialize Frame Index
         self.fidx = 0
+
+        # Initialize Loop Timer
+        self.loop_timer = Timer(convert="FPS")
 
         # Synchronized Timestamp of Multimodal Sensors
         self.sync_stamp = None
@@ -91,17 +91,9 @@ class snu_module(backbone):
 
     # Call as Function
     def __call__(self, module_name):
-        # Load Detection and Action Classification Models
-        frameworks = {
-            "det": load_det_model(opts=self.opts),
-            "acl": load_acl_model(opts=self.opts),
-        }
-        self.logger.info("Detector and Action Classifier Neural Network Model Loaded...!")
-        time.sleep(0.01)
-
         # Initialize SNU Algorithm Class
-        snu_usr = snu_algorithms(frameworks=frameworks, opts=self.opts)
-        self.logger.info("SNU Algorithm Loaded...!")
+        snu_usr = snu_algorithms(opts=self.opts)
+        self.logger.info("SNU Algorithm and Neural Network Models Loaded...!")
         time.sleep(0.01)
 
         # ROS Node Initialization
@@ -120,17 +112,16 @@ class snu_module(backbone):
             tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
 
             # Iterate Loop until "tf_static is heard"
-            tmp_flag = False
+            tf_static_listened_flag = False
             while self.tf_transform is None:
                 try:
                     self.tf_transform = tf_buffer.lookup_transform(
                         "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
                     )
                 except:
-                    if tmp_flag is False:
+                    if tf_static_listened_flag is False:
                         rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
-                        tmp_flag = True
-                    continue
+                        tf_static_listened_flag = True
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
@@ -142,8 +133,7 @@ class snu_module(backbone):
         rospy.loginfo("Starting SNU Integrated Module...!")
         try:
             while not rospy.is_shutdown():
-                loop_timer = Timer(convert="FPS")
-                loop_timer.reset()
+                self.loop_timer.reset()
 
                 # Make Synchronized Data
                 sync_ss.make_sync_data()
@@ -155,7 +145,7 @@ class snu_module(backbone):
                 else:
                     self.update_all_modal_data(sync_data=sync_data)
                 self.sync_stamp = sync_data[0]
-                sensor_fps = loop_timer.elapsed
+                sensor_fps = self.loop_timer.elapsed
 
                 # Increase Frame Index
                 self.fidx += 1
@@ -176,18 +166,18 @@ class snu_module(backbone):
                 )
 
                 # Algorithm Total FPS
-                total_fps = loop_timer.elapsed
+                total_fps = self.loop_timer.elapsed
 
                 # Log Profile
-                rospy.loginfo(
-                    "FIDX: {} || # of Trajectories: <{}> || Total SNU Module Speed: {:.2f}fps".format(
-                        self.fidx, len(snu_usr), total_fps
-                    )
-                )
-                # rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
-                #     self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                # rospy.loginfo(
+                #     "FIDX: {} || # of Trajectories: <{}> || Total SNU Module Speed: {:.2f}fps".format(
+                #         self.fidx, len(snu_usr), total_fps
                 #     )
                 # )
+                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                    self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                    )
+                )
 
                 # Draw Results
                 result_frame_dict = self.visualizer(

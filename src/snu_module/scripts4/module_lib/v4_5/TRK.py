@@ -21,7 +21,7 @@ import utils.general_functions as snu_gfuncs
 import utils.histogram as snu_hist
 
 # Import Class Objects
-from class_objects_v4_5 import TrajectoryCandidate
+from tracking_objects import TrajectoryCandidate
 
 
 class SNU_MOT(object):
@@ -169,13 +169,10 @@ class SNU_MOT(object):
                     hist_similarity = hist_similarity[0, 0]
 
                 # [2] Get IOU Similarity
-                if self.opts.experiment.association.trk is True:
-                    aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
-                    aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
-                    aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
-                    iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
-                else:
-                    iou_similarity = snu_bbox.iou(det, trk_bbox)
+                aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
+                aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
+                aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
 
                 # [3] Get Distance Similarity
                 l2_distance = snu_gfuncs.l2_distance_dim2(
@@ -258,15 +255,9 @@ class SNU_MOT(object):
                     det_zx = snu_bbox.bbox_to_zx(det)
                     trk_cand_bbox, _ = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
-                    # [1] Get IOU Similarity
-                    if self.opts.experiment.association.trk_cand is True:
-                        # SOT-predicted BBOX
-                        predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
-                        predicted_zx = snu_bbox.bbox_to_zx(predicted_bbox)
-
-                        iou_similarity = snu_bbox.iou(det, predicted_bbox)
-                    else:
-                        iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
+                    # [1] Get IOU Similarity w.r.t. SOT-predicted BBOX
+                    predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
+                    iou_similarity = snu_bbox.iou(det, predicted_bbox)
 
                     # [2] Get Distance Similarity
                     l2_distance = snu_gfuncs.l2_distance_dim2(

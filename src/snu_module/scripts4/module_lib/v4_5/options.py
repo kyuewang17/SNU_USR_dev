@@ -223,6 +223,16 @@ class detector_options(object):
         self.model_dir = \
             os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
 
+        # Set Actually Using Sensor Modalities
+        self.sensor_dict = {
+            "color": cfg.detector.sensors.color,
+            "disparity": cfg.detector.sensors.disparity,
+            "thermal": cfg.detector.sensors.thermal,
+            "infrared": cfg.detector.sensors.infrared,
+            "nightvision": cfg.detector.sensors.nightvision,
+            "lidar": cfg.detector.sensors.lidar,
+        }
+
         # GPU-device
         self.device = cfg.detector.device
 
@@ -296,6 +306,16 @@ class tracker_options(object):
     def __init__(self, cfg):
         # Set Device for Tracking
         self.device = cfg.tracker.device
+
+        # Set Actually Using Sensor Modalities
+        self.sensor_dict = {
+            "color": cfg.tracker.sensors.color,
+            "disparity": cfg.tracker.sensors.disparity,
+            "thermal": cfg.tracker.sensors.thermal,
+            "infrared": cfg.tracker.sensors.infrared,
+            "nightvision": cfg.tracker.sensors.nightvision,
+            "lidar": cfg.tracker.sensors.lidar,
+        }
 
         # Result Image Publish Flag
         self.is_result_publish = cfg.tracker.visualization.is_result_publish
@@ -400,6 +420,16 @@ class aclassifier_options(object):
         # Get Model Path for Action Classifier
         self.model_dir = \
             os.path.join(cfg.aclassifier.model_base_path, cfg.aclassifier.name, cfg.env.time)
+
+        # Set Actually Using Sensor Modalities
+        self.sensor_dict = {
+            "color": cfg.aclassifier.sensors.color,
+            "disparity": cfg.aclassifier.sensors.disparity,
+            "thermal": cfg.aclassifier.sensors.thermal,
+            "infrared": cfg.aclassifier.sensors.infrared,
+            "nightvision": cfg.aclassifier.sensors.nightvision,
+            "lidar": cfg.aclassifier.sensors.lidar,
+        }
 
         # GPU-device for Action Classification
         self.device = cfg.aclassifier.device

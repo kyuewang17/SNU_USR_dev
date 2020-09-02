@@ -103,6 +103,14 @@ __C.detector.model_base_path = os.path.join(model_base_path, "detector")
 
 __C.detector.tiny_area_threshold = 64
 
+__C.detector.sensors = CN(new_allowed=False)
+__C.detector.sensors.color = True
+__C.detector.sensors.disparity = False
+__C.detector.sensors.thermal = False
+__C.detector.sensors.infrared = False
+__C.detector.sensors.nightvision = False
+__C.detector.sensors.lidar = False
+
 __C.detector.visualization = CN(new_allowed=True)
 __C.detector.visualization.is_draw = True
 __C.detector.visualization.is_show = True
@@ -119,6 +127,14 @@ __C.detector.visualization.result_rostopic_name = "/osr/snu_det_result_image"
 __C.tracker = CN(new_allowed=True)
 __C.tracker.name = "Custom"
 __C.tracker.device = 0
+
+__C.tracker.sensors = CN(new_allowed=False)
+__C.tracker.sensors.color = True
+__C.tracker.sensors.disparity = True
+__C.tracker.sensors.thermal = False
+__C.tracker.sensors.infrared = False
+__C.tracker.sensors.nightvision = False
+__C.tracker.sensors.lidar = True
 
 # Kalman Filter Parameters
 __C.tracker.kalman_params = CN(new_allowed=False)
@@ -228,6 +244,14 @@ __C.aclassifier = CN(new_allowed=True)
 __C.aclassifier.name = "Custom"
 __C.aclassifier.device = 0
 __C.aclassifier.model_base_path = os.path.join(model_base_path, "aclassifier")
+
+__C.aclassifier.sensors = CN(new_allowed=False)
+__C.aclassifier.sensors.color = True
+__C.aclassifier.sensors.disparity = False
+__C.aclassifier.sensors.thermal = False
+__C.aclassifier.sensors.infrared = False
+__C.aclassifier.sensors.nightvision = False
+__C.aclassifier.sensors.lidar = False
 
 # NOTE: For Action Classification, publishing result frame is done simultaneously with MOT result
 __C.aclassifier.visualization = CN(new_allowed=True)

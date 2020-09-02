@@ -71,12 +71,13 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
 
     if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
-        img_size = thermal_frame.shape[:2]
-        # img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
-        img = torch.from_numpy(
-            cv2.resize(thermal_frame, dsize=input_size)
-        ).unsqueeze(dim=2)
-        img = torch.cat([img, img, img], dim=2)
+        raise NotImplementedError()
+        # img_size = thermal_frame.shape[:2]
+        # # img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
+        # img = torch.from_numpy(
+        #     cv2.resize(thermal_frame, dsize=input_size).astype(np.float16)
+        # ).unsqueeze(dim=2)
+        # img = torch.cat([img, img, img], dim=2)
     elif (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
         img_size = color_size
         # img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))

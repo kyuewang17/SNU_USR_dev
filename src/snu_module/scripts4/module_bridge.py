@@ -4,11 +4,7 @@ SNU Integrated Module
     - Module Bridge for SNU Integrated Algorithms
 
 """
-import module_detection as snu_det
-import module_tracking_v4_5 as snu_trk
-import module_action as snu_acl
 import importlib
-
 from utils.profiling import Timer
 
 
@@ -24,23 +20,33 @@ class algorithms(object):
 
 
 class snu_algorithms(algorithms):
-    def __init__(self, frameworks, opts):
+    def __init__(self, opts):
         super(snu_algorithms, self).__init__()
 
         # Load Options
         self.opts = opts
 
-        # Load Developing Version
-        self.dev_version = opts.dev_version
+        # Module Import According to Development Version
+        dev_version = str(opts.dev_version)
+        dev_main_version, dev_sub_version = dev_version.split(".")[0], dev_version.split(".")[-1]
+        self.snu_det = importlib.import_module(
+            "module_lib.v{}_{}.DET".format(dev_main_version, dev_sub_version)
+        )
+        self.snu_trk = importlib.import_module(
+            "module_lib.v{}_{}.TRK".format(dev_main_version, dev_sub_version)
+        )
+        self.snu_acl = importlib.import_module(
+            "module_lib.v{}_{}.ACL".format(dev_main_version, dev_sub_version)
+        )
 
         # Load Detection Model
-        self.det_framework = frameworks["det"]
+        self.det_framework = self.snu_det.load_model(opts=opts)
 
         # Load Action Classification Model
-        self.acl_framework = frameworks["acl"]
+        self.acl_framework = self.snu_acl.load_model(opts=opts)
 
         # Initialize MOT Framework
-        self.snu_mot = snu_trk.SNU_MOT(opts=opts)
+        self.snu_mot = self.snu_trk.SNU_MOT(opts=opts)
 
         # Initialize Detections
         self.detections = {}
@@ -48,11 +54,16 @@ class snu_algorithms(algorithms):
         # Initialize Frame Index
         self.fidx = None
 
-        # Initialize Module FPS Dictionary
-        self.fps = {
+        # Initialize Timer Objects
+        self.det_fps_obj = Timer(convert="FPS")
+        self.trk_fps_obj = Timer(convert="FPS")
+        self.acl_fps_obj = Timer(convert="FPS")
+
+        # Initialize FPS Dictionary
+        self.fps_dict = {
             "det": None,
             "trk": None,
-            "acl": None,
+            "acl": None
         }
 
     def __repr__(self):
@@ -64,8 +75,7 @@ class snu_algorithms(algorithms):
     # Detection Module
     def osr_object_detection(self, sync_data_dict):
         # Start Time
-        det_fps_timer = Timer(convert="FPS")
-        det_fps_timer.reset()
+        self.det_fps_obj.reset()
 
         # Parse-out Required Sensor Modalities
         # TODO: Integrate this for all 3 modules
@@ -75,7 +85,7 @@ class snu_algorithms(algorithms):
                 detection_sensor_data[modal] = sync_data_dict[modal]
 
         # Activate Module
-        dets = snu_det.detect(
+        dets = self.snu_det.detect(
             detector=self.det_framework, sync_data_dict=detection_sensor_data,
             opts=self.opts
         )
@@ -94,13 +104,12 @@ class snu_algorithms(algorithms):
         self.detections = {"dets": dets, "confs": confs, "labels": labels}
 
         # End Time
-        self.fps["det"] = det_fps_timer.elapsed
+        self.fps_dict["det"] = self.det_fps_obj.elapsed
 
     # Multiple Target Tracking Module
     def osr_multiple_target_tracking(self, sync_data_dict):
         # Start Time
-        trk_fps_timer = Timer(convert="FPS")
-        trk_fps_timer.reset()
+        self.trk_fps_obj.reset()
 
         # Parse-out Required Sensor Modalities
         tracking_sensor_data = {}
@@ -114,13 +123,12 @@ class snu_algorithms(algorithms):
         )
 
         # End Time
-        self.fps["trk"] = trk_fps_timer.elapsed
+        self.fps_dict["trk"] = self.trk_fps_obj.elapsed
 
     # Action Classification Module
     def osr_action_classification(self, sync_data_dict):
         # Start Time
-        acl_fps_timer = Timer(convert="FPS")
-        acl_fps_timer.reset()
+        self.acl_fps_obj.reset()
 
         # Parse-out Required Sensor Modalities
         aclassify_sensor_data = {}
@@ -129,7 +137,7 @@ class snu_algorithms(algorithms):
                 aclassify_sensor_data[modal] = sync_data_dict[modal]
 
         # Activate Module
-        trks = snu_acl.aclassify(
+        trks = self.snu_acl.aclassify(
             model=self.acl_framework,
             sync_data_dict=aclassify_sensor_data,
             trackers=self.get_trajectories(), opts=self.opts
@@ -137,7 +145,7 @@ class snu_algorithms(algorithms):
         self.snu_mot.trks = trks
 
         # End Time
-        self.fps["acl"] = acl_fps_timer.elapsed
+        self.fps_dict["acl"] = self.acl_fps_obj.elapsed
 
     def get_trajectories(self):
         return self.snu_mot.trks
@@ -146,7 +154,7 @@ class snu_algorithms(algorithms):
         return self.detections
 
     def get_algorithm_fps(self):
-        return self.fps
+        return self.fps_dict
 
     # Call as Function
     def __call__(self, sync_data_dict, fidx):
@@ -171,58 +179,5 @@ class snu_algorithms(algorithms):
         return self.get_trajectories(), self.get_detections(), self.get_algorithm_fps()
 
 
-# Function for Testing on Synchronized Multimodal Image Sequence
-def run_on_img_seq():
-    import os
-    from config import cfg
-
-    # Set and Load Configuration File Path
-    config_file_path = os.path.join(os.path.dirname(__file__), "config", "agents", "dynamic", "base.yaml")
-    cfg.merge_from_file(config_file_path)
-
-    # Set 
-
-
-
-
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
-    run_on_img_seq()
+    pass

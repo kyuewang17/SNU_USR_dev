@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-SNU Integrated Module v5.0
+SNU Integrated Module
 
     - ROS-embedded Code Version
 
@@ -22,34 +22,31 @@ import logging
 import tf2_ros
 import numpy as np
 
-
 import utils.loader
+from utils.profiling import Timer
 from utils.ros.base import backbone
-# from utils.ros.sensors import snu_SyncSubscriber
-# import snu_visualizer
-# from snu_algorithms_v4_5 import snu_algorithms
-# from utils.profiling import Timer
-#
-# from module_detection import load_model as load_det_model
-# from module_action import load_model as load_acl_model
+from utils.ros.sensors import snu_SyncSubscriber
+import snu_visualizer
+from module_bridge import snu_algorithms
 
 
-# Run Mode
+# Run Mode (choose btw ==>> bag / imseq / agent)
 RUN_MODE = "bag"
 
 
 # Define SNU Module Class
 class snu_module(backbone):
     def __init__(self, logger, opts):
-        super(snu_module, self).__init__(
-            opts=opts, is_sensor_param_file=self.sensor_param_file_check()
-        )
+        super(snu_module, self).__init__(opts=opts)
 
         # Initialize Logger Variable
         self.logger = logger
 
         # Initialize Frame Index
         self.fidx = 0
+
+        # Initialize Loop Timer
+        self.loop_timer = Timer(convert="FPS")
 
         # Synchronized Timestamp of Multimodal Sensors
         self.sync_stamp = None
@@ -66,69 +63,65 @@ class snu_module(backbone):
             "nightvision": opts.sensors.lidar["is_valid"],
         }
 
-    @staticmethod
-    def sensor_param_file_check():
-        sensor_params_path = os.path.join(os.path.dirname(args.config), "sensor_params")
-        if os.path.isdir(sensor_params_path):
-            return True
-        else:
-            return False
-
     def gather_all_sensor_params_via_files(self):
-        config_file_number = int(args.config.split("/")[-1].split(".")[0])
-        sensor_params_path = os.path.join(os.path.dirname(args.config), "sensor_params")
-        sensor_param_filenames = os.listdir(sensor_params_path)
+        # Get Sensor Parameter File Path
+        sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", self.opts.env_type, "sensor_params")
+        if os.path.isdir(sensor_params_path) is True:
+            # Collect List of Sensor Parameter for Each Modality
+            sensor_param_filenames = os.listdir(sensor_params_path)
 
-        for sensor_param_filename in sensor_param_filenames:
-            modal = sensor_param_filename.split(".")[0]
+            for sensor_param_filename in sensor_param_filenames:
+                modal_type = sensor_param_filename.split(".")[0]
 
-            # Get Sensor Parameters
-            sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
-            with open(sensor_param_filepath, "r") as stream:
-                tmp = yaml.safe_load(stream=stream)
-            sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(config_file_number)]["camera_param"])
+                # Get Sensor Parameters from YAML file
+                sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
+                with open(sensor_param_filepath, "r") as stream:
+                    tmp = yaml.safe_load(stream=stream)
 
-            # Update Sensor Parameter
-            modal_obj = getattr(self, modal)
-            modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
+                if self.opts.env_type in ["static", "dynamic"]:
+                    sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(self.opts.agent_id)]["camera_param"])
+                else:
+                    raise NotImplementedError()
+
+                # Update Sensor Parameter
+                modal_obj = getattr(self, modal_type)
+                modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
+        else:
+            rospy.loginfo("Sensor Parameter Directory Not Found...!")
 
     # Call as Function
     def __call__(self, module_name):
-        # Load Detection and Action Classification Models
-        frameworks = {
-            "det": load_det_model(opts=self.opts),
-            "acl": load_acl_model(opts=self.opts),
-        }
-        self.logger.info("Detector and Action Classifier Neural Network Model Loaded...!")
-        time.sleep(0.01)
-
         # Initialize SNU Algorithm Class
-        snu_usr = snu_algorithms(frameworks=frameworks, opts=self.opts)
-        self.logger.info("SNU Algorithm Loaded...!")
+        snu_usr = snu_algorithms(opts=self.opts)
+        self.logger.info("SNU Algorithm and Neural Network Models Loaded...!")
         time.sleep(0.01)
 
         # ROS Node Initialization
         self.logger.info("ROS Node Initialization")
         rospy.init_node(name=module_name, anonymous=True)
 
-        if self.opts.agent_type == "dynamic" or self.opts.agent_type == "rosbagfile":
-            # Subscribe for tf_static
+        # Check for Sensor Parameter Files
+        rospy.loginfo("Checking Sensor Parameter Directory...!")
+        self.gather_all_sensor_params_via_files()
+
+        # Check for TF_STATIC, Sensor Parameter Files (yaml)
+        if self.opts.env_type in ["dynamic", "bag"]:
+
+            # Subscribe for TF_STATIC
             tf_buffer = tf2_ros.Buffer()
             tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
 
             # Iterate Loop until "tf_static is heard"
+            tf_static_listened_flag = False
             while self.tf_transform is None:
                 try:
                     self.tf_transform = tf_buffer.lookup_transform(
                         "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
                     )
                 except:
-                    rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...!")
-                    continue
-
-        elif self.opts.agent_type == "static":
-            self.tf_transform = None
-            self.gather_all_sensor_params_via_files()
+                    if tf_static_listened_flag is False:
+                        rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
+                        tf_static_listened_flag = True
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
@@ -140,8 +133,7 @@ class snu_module(backbone):
         rospy.loginfo("Starting SNU Integrated Module...!")
         try:
             while not rospy.is_shutdown():
-                loop_timer = Timer(convert="FPS")
-                loop_timer.reset()
+                self.loop_timer.reset()
 
                 # Make Synchronized Data
                 sync_ss.make_sync_data()
@@ -153,7 +145,7 @@ class snu_module(backbone):
                 else:
                     self.update_all_modal_data(sync_data=sync_data)
                 self.sync_stamp = sync_data[0]
-                sensor_fps = loop_timer.elapsed
+                sensor_fps = self.loop_timer.elapsed
 
                 # Increase Frame Index
                 self.fidx += 1
@@ -174,18 +166,18 @@ class snu_module(backbone):
                 )
 
                 # Algorithm Total FPS
-                total_fps = loop_timer.elapsed
+                total_fps = self.loop_timer.elapsed
 
                 # Log Profile
-                rospy.loginfo(
-                    "FIDX: {} || # of Trajectories: <{}> || Total SNU Module Speed: {:.2f}fps".format(
-                        self.fidx, len(snu_usr), total_fps
-                    )
-                )
-                # rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
-                #     self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                # rospy.loginfo(
+                #     "FIDX: {} || # of Trajectories: <{}> || Total SNU Module Speed: {:.2f}fps".format(
+                #         self.fidx, len(snu_usr), total_fps
                 #     )
                 # )
+                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                    self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                    )
+                )
 
                 # Draw Results
                 result_frame_dict = self.visualizer(
