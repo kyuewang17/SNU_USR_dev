@@ -58,7 +58,11 @@ if __name__ == "__main__":
     logger = set_logger(logging_level=logging.INFO)
 
     # Argument Parser
-    args = argument_parser(logger=logger, dev_version=4.5)
+    args = argument_parser(
+        logger=logger,
+        script_name=os.path.basename(__file__),
+        dev_version=4.5
+    )
 
     # Load Configuration from File
     cfg = cfg_loader(logger=logger, args=args)

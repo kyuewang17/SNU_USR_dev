@@ -516,6 +516,31 @@ class sensor_params_rostopic(sensor_params):
         self.pinv_projection_matrix = np.linalg.pinv(self.P)
 
 
+class sensor_params_imseq(sensor_params_rostopic):
+    def __init__(self, param_precision):
+        super(sensor_params_imseq, self).__init__(param_precision)
+
+    def update_params(self, npy_file_base_path):
+        import os
+        assert os.path.isdir(npy_file_base_path)
+        file_list = os.listdir(npy_file_base_path)
+        for file_name in file_list:
+            # Check for any None *.npy files
+            if file_name.split(".")[-1] != "npy":
+                raise AssertionError()
+
+            # Read npy file
+            file_data = np.load(os.path.join(npy_file_base_path, file_name))
+
+            # Set Variables
+            raw_file_name = file_name.split(".")[0]
+            setattr(self, raw_file_name, file_data)
+
+        if self.P is not None:
+            self.projection_matrix = self.P
+            self.pinv_projection_matrix = np.linalg.pinv(self.P)
+
+
 class sensor_params_file_array(sensor_params):
     def __init__(self, param_precision=np.float32):
         super(sensor_params_file_array, self).__init__(param_precision)

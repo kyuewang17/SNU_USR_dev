@@ -30,7 +30,10 @@ def set_logger(logging_level=logging.INFO):
 
 
 # Argument Parser
-def argument_parser(logger, dev_version=4.5, mode_selection=None):
+def argument_parser(logger, script_name, dev_version=4.5, mode_selection=None):
+    # Assertion
+    assert isinstance(script_name, str), "Argument 'script_name' should be a <str> type...!"
+
     # Attempt to Find the Agent Identification File from Computer
     agent_id_file_base_path = "/agent"
     agent_id_file_list = \
@@ -62,7 +65,7 @@ def argument_parser(logger, dev_version=4.5, mode_selection=None):
 
     # Declare Argument Parser
     parser = argparse.ArgumentParser(
-        prog="osr_snu_module.py", description="SNU Integrated Algorithm"
+        prog=script_name, description="SNU Integrated Algorithm"
     )
     parser.add_argument(
         "--dev-version", "-V", default=dev_version,
@@ -94,10 +97,6 @@ def argument_parser(logger, dev_version=4.5, mode_selection=None):
         "--imseq-base-path", "-I", type=str,
         help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
     )
-    imseq_parser.add_argument(
-        "--cfg-file-name", "-C", type=str, default="base.yaml",
-        help="Configuration File Name, which matches the designated Image Sequence Folder Name"
-    )
     imseq_parser.add_argument("--arg-opts", "-A", default="imseq", help="Argument Option - Image Sequence")
     """"""
 
@@ -122,7 +121,9 @@ def argument_parser(logger, dev_version=4.5, mode_selection=None):
     if mode_selection is None:
         args = parser.parse_args()
     else:
+        # Selective Parse Arguments
         args = parser.parse_args(["{}".format(mode_selection)])
+    # args = parser.parse_args()
     return args
 
 
@@ -133,14 +134,23 @@ def cfg_loader(logger, args):
         from configs.rosbag.config_rosbag import cfg
         cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "rosbag", args.cfg_file_name)
         if os.path.isfile(cfg_file_path) is False:
-            logger.warn("")
+            logger.warn("Could Not Find the Configuration File for Current Playing Bag File...!")
+            logger.warn("Loading Base Configuration File Instead...!")
+            cfg_file_path = os.path.join(os.path.dirname(cfg_file_path), "base.yaml")
+            time.sleep(0.5)
         else:
             logger.info("Loading Configuration File from {}".format(cfg_file_path))
     elif args.arg_opts == "imseq":
         from configs.imseq.config_imseq import cfg
-        cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "imseq", args.cfg_file_name)
-        logger.info("Loading Configuration File from {}".format(cfg_file_path))
-        raise NotImplementedError("Image Sequence-based Code Not Implemented Yet...!")
+        imseq_folder_name = args.imseq_base_path.split("/")[-1]
+        cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "imseq", imseq_folder_name)
+        if os.path.isfile(cfg_file_path) is False:
+            logger.warn("Could Not Find the Configuration File for Current Targeted Image Sequence...!")
+            logger.warn("Loading Base Configuration File Instead...!")
+            cfg_file_path = os.path.join(os.path.dirname(cfg_file_path), "base.yaml")
+            time.sleep(0.5)
+        else:
+            logger.info("Loading Configuration File from {}".format(cfg_file_path))
     elif args.arg_opts == "agent":
         from configs.agents.config_agents import cfg
         cfg_file_path = os.path.join(

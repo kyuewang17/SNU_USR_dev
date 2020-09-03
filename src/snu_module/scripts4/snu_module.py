@@ -2,15 +2,7 @@
 """
 SNU Integrated Module
 
-    - ROS-embedded Code Version
-
-        - [1] Outdoor Surveillance Robot Agents
-
-            - Static (fixed)
-            - Dynamic (moving)
-
-        - [2] ROS Bag File
-
+    - SNU Module Class Script
 
 """
 import os
@@ -30,15 +22,9 @@ import snu_visualizer
 from module_bridge import snu_algorithms
 
 
-# Run Mode (choose btw ==>> bag / imseq / agent)
-RUN_MODE = "bag"
-
-
-# Define SNU Module Class
-class snu_module(backbone):
+# Define SNU Module Base Class
+class snu_base_module(object):
     def __init__(self, logger, opts):
-        super(snu_module, self).__init__(opts=opts)
-
         # Initialize Logger Variable
         self.logger = logger
 
@@ -47,9 +33,6 @@ class snu_module(backbone):
 
         # Initialize Loop Timer
         self.loop_timer = Timer(convert="FPS")
-
-        # Synchronized Timestamp of Multimodal Sensors
-        self.sync_stamp = None
 
         # Declare SNU Visualizer
         self.visualizer = snu_visualizer.visualizer(opts=opts)
@@ -62,6 +45,25 @@ class snu_module(backbone):
             "infrared": opts.sensors.infrared["is_valid"],
             "nightvision": opts.sensors.lidar["is_valid"],
         }
+
+    def __repr__(self):
+        return "snu_base_module"
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError()
+
+
+# ROS-embedded SNU Module Class
+class ros_snu_module(backbone, snu_base_module):
+    def __init__(self, logger, opts):
+        snu_base_module.__init__(self, logger=logger, opts=opts)
+        backbone.__init__(self, opts=opts)
+
+        # Synchronized Timestamp of Multimodal Sensors
+        self.sync_stamp = None
+
+    def __repr__(self):
+        return "ros_snu_module"
 
     def gather_all_sensor_params_via_files(self):
         # Get Sensor Parameter File Path
@@ -89,7 +91,6 @@ class snu_module(backbone):
         else:
             rospy.loginfo("Sensor Parameter Directory Not Found...!")
 
-    # Call as Function
     def __call__(self, module_name):
         # Initialize SNU Algorithm Class
         snu_usr = snu_algorithms(opts=self.opts)
@@ -176,7 +177,7 @@ class snu_module(backbone):
                 # )
                 rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
                     self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
-                    )
+                )
                 )
 
                 # Draw Results
@@ -208,7 +209,67 @@ class snu_module(backbone):
             rospy.logwarn("ShutDown SNU Module...!")
 
 
+# ROS-embedded SNU Module Class
+class imseq_snu_module(backbone, snu_base_module):
+    def __init__(self, logger, opts):
+        snu_base_module.__init__(self, logger=logger, opts=opts)
+        backbone.__init__(self, opts=opts)
+
+    def __repr__(self):
+        return "imseq_snu_module"
+
+    # Load Sensor Parameters
+    def load_sensor_params(self, imseq_base_path):
+        from utils.ros.sensors import sensor_params_imseq
+        camera_param_base_path = os.path.join(imseq_base_path, "camera_params")
+        modal_list = os.listdir(camera_param_base_path)
+        for modal in modal_list:
+            if modal != "lidar":
+                modal_params_base_path = os.path.join(camera_param_base_path, modal)
+
+
+
+
+    def __call__(self, module_name, imseq_base_path):
+        # Initialize SNU Algorithm Class
+        snu_usr = snu_algorithms(opts=self.opts)
+        self.logger.info("SNU Algorithm and Neural Network Models Loaded...!")
+        time.sleep(0.01)
+
+        # Check for Image Sequence Path Validity
+        assert os.path.isdir(imseq_base_path), "Designated Path: [{}] Does Not Exist...!".format(imseq_base_path)
+        assert os.path.isdir(os.path.join(imseq_base_path, ".bag2seq")),\
+            "Signature Path '.bag2seq' Does Not Exist...!"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def main():
+    # Run Mode
+    RUN_MODE = "bag"
+
     # Set Logger
     logger = utils.loader.set_logger(logging_level=logging.INFO)
 
@@ -226,11 +287,14 @@ def main():
     opts.visualization.correct_flag_options()
 
     # Initialize SNU Module
-    ros_snu_usr = snu_module(logger=logger, opts=opts)
+    snu_usr = ros_snu_module(logger=logger, opts=opts)
 
     # Run SNU Module
-    ros_snu_usr(module_name="snu_module")
+    snu_usr(module_name="snu_module")
 
 
 if __name__ == "__main__":
+    # tmp_path = "/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/bag2imseq/_cvt_data__[test]/camera_params"
+    # print(os.path.isdir(tmp_path))
+
     main()

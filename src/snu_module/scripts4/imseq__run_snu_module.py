@@ -31,7 +31,7 @@ from module_bridge import snu_algorithms
 
 
 # Run Mode (choose btw ==>> bag / imseq / agent)
-RUN_MODE = "bag"
+RUN_MODE = "imseq"
 
 
 # Define SNU Module Class
@@ -213,7 +213,10 @@ def main():
     logger = utils.loader.set_logger(logging_level=logging.INFO)
 
     # Argument Parser
-    args = utils.loader.argument_parser(logger=logger, dev_version=4.5, mode_selection=RUN_MODE)
+    args = utils.loader.argument_parser(
+        logger=logger, script_name=os.path.basename(__file__),
+        dev_version=4.5, mode_selection=RUN_MODE
+    )
 
     # Load Configuration from File
     cfg = utils.loader.cfg_loader(logger=logger, args=args)
