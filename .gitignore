@@ -20,7 +20,7 @@
 /src/snu_module/scripts4/detection.egg-info/
 
 # Current Agent YAML file
-/src/snu_module/scripts4/config/curr_agent/config.yaml
+/src/snu_module/scripts4/config(deprecated)/curr_agent/config.yaml
 
 # Ignore YOLOv4 Weights
 /src/snu_module/models/detector/YOLOv4/day/*.weights

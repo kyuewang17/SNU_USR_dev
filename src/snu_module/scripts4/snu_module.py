@@ -224,11 +224,24 @@ class imseq_snu_module(backbone, snu_base_module):
         camera_param_base_path = os.path.join(imseq_base_path, "camera_params")
         modal_list = os.listdir(camera_param_base_path)
         for modal in modal_list:
+            # Get Modal Parameter Base Path
+            modal_params_base_path = os.path.join(camera_param_base_path, modal)
+
             if modal != "lidar":
+                # Initialize Sensor Parameter Object
+                modal_sensor_params = sensor_params_imseq(param_precision=np.float32)
+
+                # Update Sensor Parameters
+                modal_sensor_params.update_params(npy_file_base_path=modal_params_base_path)
+            else:
+                # Get LiDAR Sensor Calibration Params (with Color)
                 modal_params_base_path = os.path.join(camera_param_base_path, modal)
 
-
-
+                # Update RT (calibrated to Color Camera)
+                self.lidar.update_RT_color(
+                    tf_transform=None,
+                    RT_color_params_base_path=modal_params_base_path
+                )
 
     def __call__(self, module_name, imseq_base_path):
         # Initialize SNU Algorithm Class
@@ -241,7 +254,10 @@ class imseq_snu_module(backbone, snu_base_module):
         assert os.path.isdir(os.path.join(imseq_base_path, ".bag2seq")),\
             "Signature Path '.bag2seq' Does Not Exist...!"
 
+        # Load Sensor Parameters
+        self.load_sensor_params(imseq_base_path=imseq_base_path)
 
+        # Load
 
 
 

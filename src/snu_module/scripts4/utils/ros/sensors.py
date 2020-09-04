@@ -392,6 +392,38 @@ class ros_sensor_lidar(ros_sensor):
         else:
             self.projected_cloud = None
 
+    def update_RT_color(self, tf_transform=None, RT_color_params_base_path=None):
+        if tf_transform is not None and RT_color_params_base_path is not None:
+            raise AssertionError()
+        elif tf_transform is None and RT_color_params_base_path is None:
+            raise AssertionError()
+        else:
+            if tf_transform is not None:
+                # Update Rotation and Translation Matrices
+                if self.R__color is None:
+                    self.R__color = pyquaternion.Quaternion(
+                        tf_transform.transform.rotation.w,
+                        tf_transform.transform.rotation.x,
+                        tf_transform.transform.rotation.y,
+                        tf_transform.transform.rotation.z,
+                    ).rotation_matrix
+                if self.T__color is None:
+                    self.T__color = np.array([
+                        tf_transform.transform.translation.x,
+                        tf_transform.transform.translation.y,
+                        tf_transform.transform.translation.z
+                    ]).reshape(3, 1)
+            else:
+                import os
+                R__color_file = os.path.join(RT_color_params_base_path, "R__color.npy")
+                T__color_file = os.path.join(RT_color_params_base_path, "T__color.npy")
+                if os.path.isfile(R__color_file) is False:
+                    raise AssertionError()
+                if os.path.isfile(T__color_file) is False:
+                    raise AssertionError()
+                self.R__color = np.load(R__color_file)
+                self.T__color = np.load(T__color_file)
+
     def project_xyz_to_uv_by_sensor_data(self, sensor_data, random_sample_number=0):
         """
         Project XYZ PointCloud Numpy Array Data using Input Sensor Data's CameraInfo
@@ -536,9 +568,8 @@ class sensor_params_imseq(sensor_params_rostopic):
             raw_file_name = file_name.split(".")[0]
             setattr(self, raw_file_name, file_data)
 
-        if self.P is not None:
-            self.projection_matrix = self.P
-            self.pinv_projection_matrix = np.linalg.pinv(self.P)
+        self.projection_matrix = self.P
+        self.pinv_projection_matrix = np.linalg.pinv(self.P)
 
 
 class sensor_params_file_array(sensor_params):
