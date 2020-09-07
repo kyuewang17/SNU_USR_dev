@@ -48,7 +48,7 @@ def argument_parser(logger, script_name, dev_version=4.5, mode_selection=None):
         logger.info("Agent Identification File Found at PATH: {}".format(agent_id_file_base_path))
         is_agent_flag = True
         agent_id_file = agent_id_file_list[0]
-        agent_type, agent_id = agent_id_file.split("_")[0], int(agent_id_file.split("_")[1])
+        agent_type, agent_id = agent_id_file.split("-")[0], int(agent_id_file.split("-")[1])
         if agent_type.lower() not in ["static", "dynamic", "fixed", "moving"]:
             raise AssertionError("Agent Identification File [{}] is Erroneous...!".format(agent_id_file))
         else:
