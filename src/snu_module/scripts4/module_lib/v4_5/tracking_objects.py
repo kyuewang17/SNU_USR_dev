@@ -332,10 +332,28 @@ class Trajectory(object_instance):
         # If LiDAR is available, use LiDAR Window Method to Estimate Depth (on moving agent)
         if sync_data_dict["lidar"] is not None:
             # Project XYZ to uv-coordinate
-            uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
-                camerainfo_msg=sync_data_dict["color"].get_camerainfo_msg(),
-                bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
-            )
+            if sync_data_dict["lidar"].uv_cloud is None:
+                uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
+                    camerainfo_msg=sync_data_dict["color"].get_camerainfo_msg(),
+                    bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
+                )
+            else:
+                uv_array = sync_data_dict["lidar"].uv_cloud
+                pc_distances = sync_data_dict["lidar"].pc_distance
+
+                # Get UV Array and Distances Inside Patch BBOX
+                inrange = np.where((uv_array[:, 0] >= patch_bbox[0]) & (uv_array[:, 1] >= patch_bbox[1]) &
+                                   (uv_array[:, 0] < patch_bbox[2]) & (uv_array[:, 1] < patch_bbox[3]))
+                uv_array = uv_array[inrange[0]].round().astype('int')
+                pc_distances = pc_distances[inrange[0]]
+
+                random_sample_number = opts.tracker.lidar_params["sampling_number"]
+                import random
+                if random_sample_number > 0:
+                    random_sample_number = min(random_sample_number, len(uv_array))
+                    rand_indices = sorted(random.sample(range(len(uv_array)), random_sample_number))
+                    uv_array = uv_array[rand_indices]
+                    pc_distances = pc_distances[rand_indices]
 
             # Define LiDAR Windows
             fusion_depth_list = []

@@ -53,6 +53,9 @@ __C.publisher.tracks = "/osr/tracks"
 # ROS Sensor Option Initialization
 __C.sensors = CN(new_allowed=False)
 
+# Sensor Frequency (Hz)
+__C.sensors.frequency = 10
+
 # ROS Sensors Initialization
 __C.sensors.color = CN(new_allowed=True)
 __C.sensors.color.is_valid = True
@@ -113,7 +116,7 @@ __C.detector.tiny_area_threshold = 64
 __C.detector.sensors = CN(new_allowed=False)
 __C.detector.sensors.color = True
 __C.detector.sensors.disparity = False
-__C.detector.sensors.thermal = True
+__C.detector.sensors.thermal = False
 __C.detector.sensors.infrared = False
 __C.detector.sensors.nightvision = False
 __C.detector.sensors.lidar = False

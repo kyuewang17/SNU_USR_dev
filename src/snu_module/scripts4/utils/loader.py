@@ -93,10 +93,17 @@ def argument_parser(logger, script_name, dev_version=4.5, mode_selection=None):
     imseq_parser = subparser.add_parser(
         "imseq", help="for executing this code with Image Sequences, generated from the given 'bag2seq.py' python package"
     )
-    imseq_parser.add_argument(
-        "--imseq-base-path", "-I", type=str,
-        help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
-    )
+    if mode_selection is not None:
+        imseq_parser.add_argument(
+            "--imseq-base-path", "-I", type=str,
+            default="/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/bag2imseq/_cvt_data__[lidar_error]",
+            help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
+        )
+    else:
+        imseq_parser.add_argument(
+            "--imseq-base-path", "-I", type=str,
+            help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
+        )
     imseq_parser.add_argument("--arg-opts", "-A", default="imseq", help="Argument Option - Image Sequence")
     """"""
 

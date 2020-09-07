@@ -133,6 +133,9 @@ class sensor_options(object):
         # Initialize Sensor Image Width and Height
         self.width, self.height = None, None
 
+        # Sensor Frequency (for Image Sequence)
+        self.frequency = cfg.sensors.frequency if hasattr(cfg.sensors, "frequency") else None
+
         # D435i RGB Camera
         self.color = {
             # Valid Flag

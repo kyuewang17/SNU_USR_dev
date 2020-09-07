@@ -309,6 +309,9 @@ class ros_sensor_lidar(ros_sensor):
         self.cloud = None
         self.pc_distance, self.pc_colors = None, None
 
+        # Tentative, uv-cloud
+        self.uv_cloud = None
+
     def __add__(self, other):
         assert isinstance(other, ros_sensor_image) or isinstance(other, ros_sensor_disparity)
         # Get Added Sensor Data Frame
@@ -423,6 +426,12 @@ class ros_sensor_lidar(ros_sensor):
                     raise AssertionError()
                 self.R__color = np.load(R__color_file)
                 self.T__color = np.load(T__color_file)
+
+    def force_update_data(self, pc_data_dict, stamp):
+        self.uv_cloud = pc_data_dict["uv_cloud"]
+        self.pc_colors = pc_data_dict["cloud_colors"]
+        self.pc_distance = pc_data_dict["cloud_distance"]
+        self.update_stamp(stamp=stamp)
 
     def project_xyz_to_uv_by_sensor_data(self, sensor_data, random_sample_number=0):
         """
@@ -562,14 +571,17 @@ class sensor_params_imseq(sensor_params_rostopic):
                 raise AssertionError()
 
             # Read npy file
-            file_data = np.load(os.path.join(npy_file_base_path, file_name))
+            try:
+                file_data = np.load(os.path.join(npy_file_base_path, file_name))
+            except:
+                file_data = None
 
             # Set Variables
             raw_file_name = file_name.split(".")[0]
             setattr(self, raw_file_name, file_data)
 
         self.projection_matrix = self.P
-        self.pinv_projection_matrix = np.linalg.pinv(self.P)
+        self.pinv_projection_matrix = np.linalg.pinv(self.P) if self.P is not None else None
 
 
 class sensor_params_file_array(sensor_params):

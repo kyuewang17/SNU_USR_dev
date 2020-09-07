@@ -192,8 +192,8 @@ data_dict = {
     ),
 
     # D435-Depth
-    "depth": image_modal_obj(
-        modal_type="depth", is_convert=True, topic_name="/osr/image_aligned_depth", msg_encoding="16UC1",
+    "disparity": image_modal_obj(
+        modal_type="disparity", is_convert=True, topic_name="/osr/image_aligned_depth", msg_encoding="16UC1",
         camerainfo_topic_name="/osr/image_depth_camerainfo"
     ),
 
@@ -235,6 +235,10 @@ def argument_parser():
     parser = argparse.ArgumentParser(
         prog="bag2seq.py",
         description="Python Script to Convert ROS Bag file to Approximately Synchronized Sequence Data"
+    )
+    parser.add_argument(
+        "--sensor-frequency", "-F", type=float, default=20,
+        help="Time Difference Between Modalities for Approximate Synchronization"
     )
     subparser = parser.add_subparsers(help="Sub-parser Command")
 
@@ -537,12 +541,20 @@ def save_multimodal_data(save_base_path, logger):
             # If Object is a lidar type,
             else:
                 # PointCloud File Name
-                lidar_pc_filename = "{:08d}__{}.npy".format(obj_idx, stamp_data.to_nsec())
+                lidar_pc_filename = "{:08d}__{}.npz".format(obj_idx, stamp_data.to_nsec())
                 lidar_pc_filepath = os.path.join(curr_modal_data_save_path, lidar_pc_filename)
 
                 # Save PointCloud Data as Numpy Array (npy format)
                 if os.path.isfile(lidar_pc_filepath) is False:
-                    np.save(lidar_pc_filepath, frame_data)
+                    cloud_colors = frame_data["cloud_colors"]
+                    cloud_distance = frame_data["cloud_distance"]
+                    uv_cloud = frame_data["uv_cloud"]
+
+                    # Save as NPZ File Format
+                    np.savez(
+                        lidar_pc_filepath,
+                        cloud_colors=cloud_colors, cloud_distance=cloud_distance, uv_cloud=uv_cloud
+                    )
                     logger.info("Saving Modal [{}] ({}/{})".format(data_obj, obj_idx + 1, len(data_obj)))
                 else:
                     logger.warn("Modal [{}] | File {} Already Exists...!".format(data_obj, lidar_pc_filename))
@@ -636,7 +648,7 @@ def main():
     read_bag_data(bag_file_path=bag_file_path, logger=logger)
 
     # Synchronize Multimodal Data
-    synchronize_multimodal_data(dtime_thresh=1.0/50, logger=logger)
+    synchronize_multimodal_data(dtime_thresh=1.0/args.sensor_frequency, logger=logger)
 
     # Save Data
     save_multimodal_data(save_base_path=cvt_folder_path, logger=logger)

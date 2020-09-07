@@ -233,6 +233,10 @@ class imseq_snu_module(backbone, snu_base_module):
 
                 # Update Sensor Parameters
                 modal_sensor_params.update_params(npy_file_base_path=modal_params_base_path)
+
+                # Update to Modal Objects
+                modal_obj = getattr(self, modal)
+                modal_obj._sensor_params = modal_sensor_params
             else:
                 # Get LiDAR Sensor Calibration Params (with Color)
                 modal_params_base_path = os.path.join(camera_param_base_path, modal)
@@ -243,7 +247,32 @@ class imseq_snu_module(backbone, snu_base_module):
                     RT_color_params_base_path=modal_params_base_path
                 )
 
+    # Update All Modal Data
+    def update_all_modal_data(self, sync_data):
+        # Update Modal Frames
+        self.color.update_data(
+            frame=sync_data["color"]["data"], stamp=sync_data["color"]["timestamp"]
+        )
+        self.disparity.update_data(
+            frame=sync_data["disparity"]["data"], stamp=sync_data["disparity"]["timestamp"]
+        )
+        self.thermal.update_data(
+            frame=sync_data["thermal"]["data"], stamp=sync_data["thermal"]["timestamp"]
+        )
+        self.infrared.update_data(
+            frame=sync_data["infrared"]["data"], stamp=sync_data["infrared"]["timestamp"]
+        )
+        self.nightvision.update_data(
+            frame=sync_data["nightvision"]["data"], stamp=sync_data["nightvision"]["timestamp"]
+        )
+        self.lidar.force_update_data(
+            pc_data_dict=sync_data["lidar"]["data"], stamp=sync_data["lidar"]["timestamp"]
+        )
+
     def __call__(self, module_name, imseq_base_path):
+        # Import Multimodal Data Loader for Image Sequence
+        from utils.imseq.data_loader import multimodal_data_loader
+
         # Initialize SNU Algorithm Class
         snu_usr = snu_algorithms(opts=self.opts)
         self.logger.info("SNU Algorithm and Neural Network Models Loaded...!")
@@ -255,36 +284,67 @@ class imseq_snu_module(backbone, snu_base_module):
             "Signature Path '.bag2seq' Does Not Exist...!"
 
         # Load Sensor Parameters
+        self.logger.info("Loading Sensor Parameters...!")
         self.load_sensor_params(imseq_base_path=imseq_base_path)
 
-        # Load
+        # Initialize Multimodal Data Loader
+        self.logger.info("Loading Multimodal Sensor Data...!")
+        MDL = multimodal_data_loader(opts=self.opts, imseq_base_path=imseq_base_path)
 
+        # Algorithm Starts
+        for fidx in range(len(MDL)):
+            # Set Bottleneck Sensor Frequency
+            if self.opts.sensors.frequency is not None and fidx > 0:
+                if MDL.get_repr_timestamp(fidx) - MDL.get_repr_timestamp(fidx-1) <= 1/self.opts.sensors.frequency:
+                    continue
 
+            # Set Counting Frame Index
+            cnt_fidx = fidx + 1
+            self.fidx = fidx
 
+            # Initialize Loop Timer
+            self.loop_timer.reset()
 
+            # Get Synchronized Data and Update All Modal Data
+            sync_data = MDL[fidx]
+            self.update_all_modal_data(sync_data=sync_data)
 
+            # Update Sensor Image Frame Size
+            if fidx == 0:
+                self.opts.sensors.update_sensor_image_size(
+                    frame=self.color.get_data()
+                )
 
+            # Gather All Data and Process Disparity Frame
+            sync_data_dict = self.gather_all_modal_data()
+            sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
 
+            # SNU USR Integrated Algorithm Call
+            trajectories, detections, fps_dict = snu_usr(
+                sync_data_dict=sync_data_dict, fidx=self.fidx
+            )
 
+            # Algorithm Total FPS
+            total_fps = self.loop_timer.elapsed
 
+            # Algorithm INFO
+            self.logger.info("FIDX: {} || # of Tracklets: <{}> || [DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                self.fidx, len(snu_usr), fps_dict["det"], fps_dict["trk"], fps_dict["acl"])
+            )
 
+            # Draw Results
+            result_frame_dict = self.visualizer(
+                sensor_data=self.color, trajectories=trajectories, detections=detections, fidx=self.fidx
+            )
 
-
-
-
-
-
-
-
-
-
-
-
+            # Draw / Show / Publish Top-view Result
+            if self.opts.visualization.top_view["is_draw"] is True:
+                self.visualizer.visualize_top_view_trajectories(trajectories=trajectories)
 
 
 def main():
     # Run Mode
-    RUN_MODE = "bag"
+    RUN_MODE = "imseq"
 
     # Set Logger
     logger = utils.loader.set_logger(logging_level=logging.INFO)
@@ -303,10 +363,16 @@ def main():
     opts.visualization.correct_flag_options()
 
     # Initialize SNU Module
-    snu_usr = ros_snu_module(logger=logger, opts=opts)
+    if RUN_MODE == "bag":
+        snu_usr = ros_snu_module(logger=logger, opts=opts)
+        snu_usr(module_name="snu_module")
+    elif RUN_MODE == "imseq":
+        snu_usr = imseq_snu_module(logger=logger, opts=opts)
+        snu_usr(module_name="snu_module", imseq_base_path=args.imseq_base_path)
 
     # Run SNU Module
-    snu_usr(module_name="snu_module")
+    # snu_usr(module_name="snu_module")
+    # snu_usr(module_name="snu_module", imseq_base_path=args.imseq_base_path)
 
 
 if __name__ == "__main__":
