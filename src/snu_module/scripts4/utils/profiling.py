@@ -13,6 +13,9 @@ class Timer(object):
         self.start_time = None
         self.end_time = None
 
+        # Init Time
+        self.init_time = time.time()
+
     def __enter__(self):
         self.start_time = time.time()
         return self

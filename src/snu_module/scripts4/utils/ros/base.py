@@ -16,7 +16,7 @@ from nav_msgs.msg import Odometry
 
 
 class backbone(object):
-    def __init__(self, opts, is_sensor_param_file=True):
+    def __init__(self, opts):
         # Load Options
         self.opts = opts
 
@@ -35,10 +35,7 @@ class backbone(object):
         self.thermal = ros_sensor_image(modal_type="thermal")
         self.infrared = ros_sensor_image(modal_type="infrared")
         self.nightvision = ros_sensor_image(modal_type="nightvision")
-        if opts.agent_type == "static":
-            self.lidar = None
-        else:
-            self.lidar = ros_sensor_lidar()
+        self.lidar = ros_sensor_lidar()
 
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
@@ -54,30 +51,29 @@ class backbone(object):
         )
 
         # CameraInfo Subscribers
-        if is_sensor_param_file is False:
-            # Color CameraInfo Subscriber
-            self.color_camerainfo_sub = Subscriber(
-                opts.sensors.color["camerainfo_rostopic_name"], CameraInfo,
-                self.color_camerainfo_callback
-            )
+        # Color CameraInfo Subscriber
+        self.color_camerainfo_sub = Subscriber(
+            opts.sensors.color["camerainfo_rostopic_name"], CameraInfo,
+            self.color_camerainfo_callback
+        )
 
-            # Disparity CameraInfo Subscriber
-            self.disparity_camerainfo_sub = Subscriber(
-                opts.sensors.disparity["camerainfo_rostopic_name"], CameraInfo,
-                self.disparity_camerainfo_callback
-            )
+        # Disparity CameraInfo Subscriber
+        self.disparity_camerainfo_sub = Subscriber(
+            opts.sensors.disparity["camerainfo_rostopic_name"], CameraInfo,
+            self.disparity_camerainfo_callback
+        )
 
-            # Infrared CameraInfo Subscriber
-            self.infrared_camerainfo_sub = Subscriber(
-                opts.sensors.infrared["camerainfo_rostopic_name"], CameraInfo,
-                self.infrared_camerainfo_callback
-            )
+        # Infrared CameraInfo Subscriber
+        self.infrared_camerainfo_sub = Subscriber(
+            opts.sensors.infrared["camerainfo_rostopic_name"], CameraInfo,
+            self.infrared_camerainfo_callback
+        )
 
-            # Thermal CameraInfo Subscriber
-            self.thermal_camerainfo_sub = Subscriber(
-                opts.sensors.thermal["camerainfo_rostopic_name"], CameraInfo,
-                self.thermal_camerainfo_callback
-            )
+        # Thermal CameraInfo Subscriber
+        self.thermal_camerainfo_sub = Subscriber(
+            opts.sensors.thermal["camerainfo_rostopic_name"], CameraInfo,
+            self.thermal_camerainfo_callback
+        )
 
         # ROS Publisher
         self.tracks_pub = Publisher(
