@@ -309,6 +309,9 @@ class ros_sensor_lidar(ros_sensor):
         self.cloud = None
         self.pc_distance, self.pc_colors = None, None
 
+        # Tentative, uv-cloud
+        self.uv_cloud = None
+
     def __add__(self, other):
         assert isinstance(other, ros_sensor_image) or isinstance(other, ros_sensor_disparity)
         # Get Added Sensor Data Frame
@@ -391,6 +394,44 @@ class ros_sensor_lidar(ros_sensor):
             self.projected_cloud = np.dot(pc[:, 0:3], self.R__color.T) + self.T__color.T
         else:
             self.projected_cloud = None
+
+    def update_RT_color(self, tf_transform=None, RT_color_params_base_path=None):
+        if tf_transform is not None and RT_color_params_base_path is not None:
+            raise AssertionError()
+        elif tf_transform is None and RT_color_params_base_path is None:
+            raise AssertionError()
+        else:
+            if tf_transform is not None:
+                # Update Rotation and Translation Matrices
+                if self.R__color is None:
+                    self.R__color = pyquaternion.Quaternion(
+                        tf_transform.transform.rotation.w,
+                        tf_transform.transform.rotation.x,
+                        tf_transform.transform.rotation.y,
+                        tf_transform.transform.rotation.z,
+                    ).rotation_matrix
+                if self.T__color is None:
+                    self.T__color = np.array([
+                        tf_transform.transform.translation.x,
+                        tf_transform.transform.translation.y,
+                        tf_transform.transform.translation.z
+                    ]).reshape(3, 1)
+            else:
+                import os
+                R__color_file = os.path.join(RT_color_params_base_path, "R__color.npy")
+                T__color_file = os.path.join(RT_color_params_base_path, "T__color.npy")
+                if os.path.isfile(R__color_file) is False:
+                    raise AssertionError()
+                if os.path.isfile(T__color_file) is False:
+                    raise AssertionError()
+                self.R__color = np.load(R__color_file)
+                self.T__color = np.load(T__color_file)
+
+    def force_update_data(self, pc_data_dict, stamp):
+        self.uv_cloud = pc_data_dict["uv_cloud"]
+        self.pc_colors = pc_data_dict["cloud_colors"]
+        self.pc_distance = pc_data_dict["cloud_distance"]
+        self.update_stamp(stamp=stamp)
 
     def project_xyz_to_uv_by_sensor_data(self, sensor_data, random_sample_number=0):
         """
@@ -514,6 +555,33 @@ class sensor_params_rostopic(sensor_params):
 
         self.projection_matrix = self.P
         self.pinv_projection_matrix = np.linalg.pinv(self.P)
+
+
+class sensor_params_imseq(sensor_params_rostopic):
+    def __init__(self, param_precision):
+        super(sensor_params_imseq, self).__init__(param_precision)
+
+    def update_params(self, npy_file_base_path):
+        import os
+        assert os.path.isdir(npy_file_base_path)
+        file_list = os.listdir(npy_file_base_path)
+        for file_name in file_list:
+            # Check for any None *.npy files
+            if file_name.split(".")[-1] != "npy":
+                raise AssertionError()
+
+            # Read npy file
+            try:
+                file_data = np.load(os.path.join(npy_file_base_path, file_name))
+            except:
+                file_data = None
+
+            # Set Variables
+            raw_file_name = file_name.split(".")[0]
+            setattr(self, raw_file_name, file_data)
+
+        self.projection_matrix = self.P
+        self.pinv_projection_matrix = np.linalg.pinv(self.P) if self.P is not None else None
 
 
 class sensor_params_file_array(sensor_params):
