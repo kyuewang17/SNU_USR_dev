@@ -1,6 +1,6 @@
 env:
     type: "static"
-    id: "NULL"
+    id: "02"
 #    time: "day"
 
 screen_compensate: true
@@ -13,7 +13,7 @@ sensors:
         rostopic_name: "/osr/image_color"
         camerainfo_rostopic_name: "/osr/image_color_camerainfo"
     disparity:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_aligned_depth"
         camerainfo_rostopic_name: "/osr/image_depth_camerainfo"
         clip:
@@ -25,11 +25,11 @@ sensors:
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_ir"
         camerainfo_rostopic_name: "/osr/image_ir_camerainfo"
     nightvision:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
@@ -61,7 +61,7 @@ tracker:
             similarity_thresh: 0.6
     visualization:
         is_draw: true
-        is_show: false
+        is_show: true
         auto_save: false
         is_result_publish: true
         result_rostopic_name: "/osr/snu_trk_acl_result_image"
