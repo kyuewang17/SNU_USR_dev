@@ -201,7 +201,10 @@ class TrajectoryCandidate(object_instance):
     # Initialize Trajectory Class from TrajectoryCandidate
     def init_tracklet(self, disparity_frame, trk_id, fidx, opts):
         # Get Rough Depth
-        depth = self.get_rough_depth(disparity_frame, opts)
+        if disparity_frame is not None:
+            depth = self.get_rough_depth(disparity_frame, opts)
+        else:
+            depth = 1.0
 
         # Trajectory Initialization Dictionary
         init_trk_dict = {
@@ -217,7 +220,7 @@ class TrajectoryCandidate(object_instance):
 
 class Trajectory(object_instance):
     def __init__(self, trk_id, init_fidx, tracker_opts, **kwargs):
-        super(Trajectory, self).__init__(obj_id=trk_id, init_fidx=init_fidx, obj_type="Tracklet")
+        super(Trajectory, self).__init__(obj_id=trk_id, init_fidx=init_fidx, obj_type="Trajectory")
 
         # Unpack Input Dictionary
         self.asso_dets = kwargs["asso_dets"]
@@ -386,7 +389,10 @@ class Trajectory(object_instance):
         # If LiDAR is unavailable, use only Disparity Image to Estimate Depth (on fixed agent)
         else:
             # Get Disparity Frame
-            disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
+            if sync_data_dict["disparity"] is not None:
+                disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
+            else:
+                disparity_frame = None
 
             # Get Disparity Patch
             if disparity_frame is not None:

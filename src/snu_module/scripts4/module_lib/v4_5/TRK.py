@@ -124,9 +124,12 @@ class SNU_MOT(object):
         # disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
 
         # Normalize Disparity Frame to uint8 scale (0~255)
-        normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(
-            min_value=0.0, max_value=255.0
-        )
+        if sync_data_dict["disparity"] is not None:
+            normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(
+                min_value=0.0, max_value=255.0
+            )
+        else:
+            normalized_disparity_frame = None
 
         # Concatenate
         if normalized_disparity_frame is not None:
@@ -339,8 +342,9 @@ class SNU_MOT(object):
             new_trk_id = self.max_trk_id + 1 + sel_trkc_idx
 
             # Initialize New Trajectory
+            disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False) if sync_data_dict["disparity"] is not None else None
             new_trk = sel_trk_cand.init_tracklet(
-                disparity_frame=sync_data_dict["disparity"].get_data(is_processed=False),
+                disparity_frame=disparity_frame,
                 trk_id=new_trk_id, fidx=self.fidx, opts=self.opts
             )
             new_trks.append(new_trk)

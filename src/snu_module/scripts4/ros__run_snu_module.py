@@ -158,7 +158,8 @@ class snu_module(backbone):
 
                 # Gather All Data and Process Disparity Frame
                 sync_data_dict = self.gather_all_modal_data()
-                sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
+                if self.disparity is not None:
+                    sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
 
                 # SNU USR Integrated Algorithm Call
                 trajectories, detections, fps_dict = snu_usr(

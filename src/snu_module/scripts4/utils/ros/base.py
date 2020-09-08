@@ -30,12 +30,12 @@ class backbone(object):
         self.tf_transform = None
 
         # Initialize Modal Classes
-        self.color = ros_sensor_image(modal_type="color")
-        self.disparity = ros_sensor_disparity()
-        self.thermal = ros_sensor_image(modal_type="thermal")
-        self.infrared = ros_sensor_image(modal_type="infrared")
-        self.nightvision = ros_sensor_image(modal_type="nightvision")
-        self.lidar = ros_sensor_lidar()
+        self.color = ros_sensor_image(modal_type="color") if opts.modal_switch_dict["color"] is True else None
+        self.disparity = ros_sensor_disparity() if opts.modal_switch_dict["disparity"] is True else None
+        self.thermal = ros_sensor_image(modal_type="thermal") if opts.modal_switch_dict["thermal"] is True else None
+        self.infrared = ros_sensor_image(modal_type="infrared") if opts.modal_switch_dict["infrared"] is True else None
+        self.nightvision = ros_sensor_image(modal_type="nightvision") if opts.modal_switch_dict["nightvision"] is True else None
+        self.lidar = ros_sensor_lidar() if opts.modal_switch_dict["lidar"] is True else None
 
         # CvBridge for Publisher
         self.pub_bridge = CvBridge()
@@ -52,28 +52,32 @@ class backbone(object):
 
         # CameraInfo Subscribers
         # Color CameraInfo Subscriber
-        self.color_camerainfo_sub = Subscriber(
-            opts.sensors.color["camerainfo_rostopic_name"], CameraInfo,
-            self.color_camerainfo_callback
-        )
+        if self.color is not None:
+            self.color_camerainfo_sub = Subscriber(
+                opts.sensors.color["camerainfo_rostopic_name"], CameraInfo,
+                self.color_camerainfo_callback
+            )
 
         # Disparity CameraInfo Subscriber
-        self.disparity_camerainfo_sub = Subscriber(
-            opts.sensors.disparity["camerainfo_rostopic_name"], CameraInfo,
-            self.disparity_camerainfo_callback
-        )
+        if self.disparity is not None:
+            self.disparity_camerainfo_sub = Subscriber(
+                opts.sensors.disparity["camerainfo_rostopic_name"], CameraInfo,
+                self.disparity_camerainfo_callback
+            )
 
         # Infrared CameraInfo Subscriber
-        self.infrared_camerainfo_sub = Subscriber(
-            opts.sensors.infrared["camerainfo_rostopic_name"], CameraInfo,
-            self.infrared_camerainfo_callback
-        )
+        if self.infrared is not None:
+            self.infrared_camerainfo_sub = Subscriber(
+                opts.sensors.infrared["camerainfo_rostopic_name"], CameraInfo,
+                self.infrared_camerainfo_callback
+            )
 
         # Thermal CameraInfo Subscriber
-        self.thermal_camerainfo_sub = Subscriber(
-            opts.sensors.thermal["camerainfo_rostopic_name"], CameraInfo,
-            self.thermal_camerainfo_callback
-        )
+        if self.thermal is not None:
+            self.thermal_camerainfo_sub = Subscriber(
+                opts.sensors.thermal["camerainfo_rostopic_name"], CameraInfo,
+                self.thermal_camerainfo_callback
+            )
 
         # ROS Publisher
         self.tracks_pub = Publisher(
@@ -148,16 +152,21 @@ class backbone(object):
         sync_frame_dict = sync_data[1]
 
         # Update Modal Frames
-        self.color.update_data(frame=sync_frame_dict["color"], stamp=sync_stamp)
+        if self.color is not None:
+            self.color.update_data(frame=sync_frame_dict["color"], stamp=sync_stamp)
 
-        self.disparity.update_data(frame=sync_frame_dict["aligned_disparity"], stamp=sync_stamp)
-        self.disparity.update_raw_data(raw_data=sync_frame_dict["disparity"])
+        if self.disparity is not None:
+            self.disparity.update_data(frame=sync_frame_dict["aligned_disparity"], stamp=sync_stamp)
+            self.disparity.update_raw_data(raw_data=sync_frame_dict["disparity"])
 
-        self.thermal.update_data(frame=sync_frame_dict["thermal"], stamp=sync_stamp)
+        if self.thermal is not None:
+            self.thermal.update_data(frame=sync_frame_dict["thermal"], stamp=sync_stamp)
 
-        self.infrared.update_data(frame=sync_frame_dict["infrared"], stamp=sync_stamp)
+        if self.infrared is not None:
+            self.infrared.update_data(frame=sync_frame_dict["infrared"], stamp=sync_stamp)
 
-        self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
+        if self.nightvision is not None:
+            self.nightvision.update_data(frame=sync_frame_dict["nightvision"], stamp=sync_stamp)
 
         if self.lidar is not None:
             self.lidar.update_data(
