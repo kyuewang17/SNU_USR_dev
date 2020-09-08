@@ -371,17 +371,18 @@ class ros_sensor_lidar(ros_sensor):
         self.raw_pc_msg = lidar_pc_msg
 
         # Update Stamp
-        self.update_stamp(stamp=lidar_pc_msg.header.stamp)
+        if lidar_pc_msg is not None:
+            self.update_stamp(stamp=lidar_pc_msg.header.stamp)
 
         # Update Rotation and Translation Matrices
-        if self.R__color is None:
+        if self.R__color is None and tf_transform is not None:
             self.R__color = pyquaternion.Quaternion(
                 tf_transform.transform.rotation.w,
                 tf_transform.transform.rotation.x,
                 tf_transform.transform.rotation.y,
                 tf_transform.transform.rotation.z,
             ).rotation_matrix
-        if self.T__color is None:
+        if self.T__color is None and tf_transform is not None:
             self.T__color = np.array([
                 tf_transform.transform.translation.x,
                 tf_transform.transform.translation.y,

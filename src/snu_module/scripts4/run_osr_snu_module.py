@@ -39,7 +39,7 @@ from utils.loader import set_logger, argument_parser, cfg_loader, load_options
 # Module Loader
 def load_snu_module(logger, opts):
     # Import SNU Module, Initialize, and Return
-    if opts.env_type in ["bag", "agent"]:
+    if opts.env_type in ["bag", "static", "dynamic"]:
         from ros__run_snu_module import snu_module
         return snu_module(logger=logger, opts=opts)
     elif opts.env_type == "imseq":

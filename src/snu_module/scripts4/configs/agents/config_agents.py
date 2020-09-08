@@ -26,7 +26,8 @@ cfg = __C
 # (for [static/dynamic] robots, it is literal)
 # (for ROS Bag Files, describe the bag file's image sequence environment)
 __C.env = CN(new_allowed=True)
-__C.env.type = "NULL"
+__C.env.type = "agent"
+__C.env.time = "day"
 
 # Screen Compensate Flag
 __C.screen_compensate = True
@@ -110,7 +111,7 @@ __C.detector.tiny_area_threshold = 64
 __C.detector.sensors = CN(new_allowed=False)
 __C.detector.sensors.color = True
 __C.detector.sensors.disparity = False
-__C.detector.sensors.thermal = True
+__C.detector.sensors.thermal = False
 __C.detector.sensors.infrared = False
 __C.detector.sensors.nightvision = False
 __C.detector.sensors.lidar = False
