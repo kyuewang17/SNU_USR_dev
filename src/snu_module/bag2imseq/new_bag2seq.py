@@ -65,6 +65,7 @@ For Camera Parameter Specifics, refer to the following link
 
 """
 import os
+import copy
 import logging
 import argparse
 import time
@@ -77,154 +78,6 @@ import rosbag
 import ros_numpy
 import pyquaternion
 from cv_bridge import CvBridge
-
-
-# CameraInfo Object
-class camerainfo_obj(object):
-    def __init__(self):
-        # Distortion Matrix
-        self.D = None
-
-        # Intrinsic Camera Matrix
-        self.K = None
-
-        # Rectification Matrix (for Stereo Cameras Only)
-        self.R = None
-
-        # Projection Matrix
-        self.P = None
-
-    def update_matrix_from_msg(self, msg):
-        self.D = np.array(msg.D).reshape((1, 5))
-        self.K = np.array(msg.K).reshape((3, 3))
-        self.R = np.array(msg.R).reshape((3, 3))
-        self.P = np.array(msg.P).reshape((3, 4))
-
-
-# Modal Image Object
-class modal_obj(object):
-    def __init__(self, modal_type, is_convert, topic_name, msg_encoding=None, camerainfo_topic_name=None):
-
-        # Convert FLAG
-        self.is_convert = is_convert
-
-        # Modal Topic Name
-        self.topic_name = topic_name
-
-        # Encoding Message
-        self.msg_encoding = msg_encoding
-
-        # Modal CameraInfo Topic Name
-        self.camerainfo_topic_name = camerainfo_topic_name
-
-        # List for Saving Data and Timestamp
-        self.data_list, self.stamp_list = [], []
-
-        # CameraInfo Object
-        self.camerainfo = None if camerainfo_topic_name is None else camerainfo_obj()
-
-    def __repr__(self):
-        return self.modal_type
-
-    def __len__(self):
-        return len(self.data_list)
-
-    def __getitem__(self, idx):
-        return {"data": self.get_data(idx), "stamp": self.get_stamp(idx)}
-
-    def append_data(self, data, stamp):
-        self.data_list.append(data)
-        self.stamp_list.append(stamp)
-
-    def get_data(self, idx):
-        return self.data_list[idx]
-
-    def get_stamp(self, idx):
-        return self.stamp_list[idx]
-
-    def erase_data(self, indices_list):
-        for index in sorted(indices_list, reverse=True):
-            del self.data_list[index]
-
-    def erase_stamp(self, indices_list):
-        for index in sorted(indices_list, reverse=True):
-            del self.stamp_list[index]
-
-
-# Image-type Object
-class image_modal_obj(modal_obj):
-    def __init__(self, modal_type, is_convert, topic_name, msg_encoding=None, camerainfo_topic_name=None):
-        super(image_modal_obj, self).__init__(modal_type, is_convert, topic_name, msg_encoding, camerainfo_topic_name)
-
-
-# LiDAR Object
-class lidar_modal_obj(modal_obj):
-    def __init__(self, modal_type, is_convert, topic_name):
-        super(lidar_modal_obj, self).__init__(modal_type, is_convert, topic_name)
-
-        # 3D Raw PointCloud Data
-        self.raw_pc_data_list = []
-
-        # Rotation Matrix, Translation Matrix from TF Static
-        self.R__color, self.T__color = None, None
-
-    # Update [ R | T ] Matrices
-    def update_tf_static_matrices(self, R, T):
-        # Rotation Matrix
-        self.R__color = pyquaternion.Quaternion(
-            R.w, R.x, R.y, R.z
-        ).rotation_matrix
-
-        # Translation Matrix
-        self.T__color = np.array([
-            T.x, T.y, T.z
-        ]).reshape(3, 1)
-
-
-# Data Dictionary
-data_dict = {
-    # D435-Color
-    "color": image_modal_obj(
-        modal_type="color", is_convert=True, topic_name="/osr/image_color", msg_encoding="8UC3",
-        camerainfo_topic_name="/osr/image_color_camerainfo"
-    ),
-
-    # D435-Depth
-    "disparity": image_modal_obj(
-        modal_type="disparity", is_convert=True, topic_name="/osr/image_aligned_depth", msg_encoding="16UC1",
-        camerainfo_topic_name="/osr/image_depth_camerainfo"
-    ),
-
-    # Thermal
-    "thermal": image_modal_obj(
-        modal_type="thermal", is_convert=True, topic_name="/osr/image_thermal", msg_encoding="16UC1",
-        camerainfo_topic_name="/osr/image_thermal_camerainfo"
-    ),
-
-    # Infrared
-    "infrared": image_modal_obj(
-        modal_type="infrared", is_convert=True, topic_name="/osr/image_ir", msg_encoding="8UC1",
-        camerainfo_topic_name="/osr/image_infrared_camerainfo"
-    ),
-
-    # NightVision
-    "nightvision": image_modal_obj(
-        modal_type="nightvision", is_convert=True, topic_name="/osr/image_nv1", msg_encoding="8UC3"
-    ),
-
-    # LiDAR
-    "lidar": lidar_modal_obj(
-        modal_type="lidar", is_convert=True, topic_name="/osr/lidar_pointcloud"
-    )
-}
-
-# Get Conversion Target Modal Objects
-tmp = {}
-for __modal, __data_obj in data_dict.items():
-    if __data_obj.is_convert is True:
-        tmp[__modal] = __data_obj
-data_dict = tmp
-del tmp, __modal, __data_obj
 
 
 # Argument Parser Function
@@ -278,6 +131,233 @@ def set_logger(logging_level=logging.INFO):
     return logger
 
 
+class data_obj(object):
+    def __init__(self, modal_type, data, stamp):
+        # Modal Type
+        self.__modal_type = modal_type
+
+        # Data
+        self.__data = data
+
+        # Timestamp
+        self.__stamp = stamp
+
+        # Sync Data Object List
+        self.sync_data_obj_list = []
+
+    def __repr__(self):
+        return self.__modal_type
+
+    def __sub__(self, other):
+        assert isinstance(other, data_obj)
+        return self.get_stamp() - other.get_stamp()
+
+    def __eq__(self, other):
+        assert isinstance(other, data_obj)
+        if "{}".format(self) == "{}".format(other) and self.get_stamp() == other.get_stamp():
+            return True
+        else:
+            return False
+
+    def get_data(self):
+        return self.__data
+
+    def get_stamp(self):
+        return self.__stamp
+
+    def synchronize_data_obj(self, other):
+        assert isinstance(other, data_obj)
+        assert "{}".format(self) != "{}".format(other)
+        self.sync_data_obj_list.append(other)
+
+    def get_sync_info(self):
+        if len(self.sync_data_obj_list) == 0:
+            return None
+        else:
+            sync_info_dict = {}
+            for sync_data_obj in self.sync_data_obj_list:
+                sync_info_dict["{}".format(sync_data_obj)] = sync_data_obj
+            return sync_info_dict
+
+    def get_sync_data_obj_dict(self):
+        # Initial Setting (return dictionary and Look-ahead List)
+        sync_data_obj_dict = {"{}".format(self): self}
+        lookahead_data_obj_list = [self]
+
+        # Iterate until Termination Condition
+        curr_data_obj = self
+        while True:
+            # Left Data Object Initialization
+            left_most_data_obj = None
+
+            # Look-ahead and Append New Data Object
+            # terminate when all lookahead data objects are not new ones
+            new_lookahead_data_obj_cnt = 0
+            for sync_data_obj in curr_data_obj.sync_data_obj_list:
+                if sync_data_obj not in lookahead_data_obj_list:
+                    new_lookahead_data_obj_cnt += 1
+                    if left_most_data_obj is None:
+                        left_most_data_obj = sync_data_obj
+                    sync_data_obj_dict["{}".format(sync_data_obj)] = sync_data_obj
+                    lookahead_data_obj_list.append(sync_data_obj)
+            if new_lookahead_data_obj_cnt == 0:
+                return sync_data_obj_dict
+
+            # Update Current Data Object to the Left-most Leaf Data Object
+            curr_data_obj = left_most_data_obj
+
+
+# CameraInfo Object
+class camerainfo_obj(object):
+    def __init__(self):
+        # Distortion Matrix
+        self.D = None
+
+        # Intrinsic Camera Matrix
+        self.K = None
+
+        # Rectification Matrix (for Stereo Cameras Only)
+        self.R = None
+
+        # Projection Matrix
+        self.P = None
+
+    def update_matrix_from_msg(self, msg):
+        self.D = np.array(msg.D).reshape((1, 5))
+        self.K = np.array(msg.K).reshape((3, 3))
+        self.R = np.array(msg.R).reshape((3, 3))
+        self.P = np.array(msg.P).reshape((3, 4))
+
+
+class modal_data_obj(object):
+    def __init__(self, modal_type, is_convert, topic_name, msg_encoding=None, camerainfo_topic_name=None):
+        # Modal Name
+        self.modal_type = modal_type
+
+        # Convert Flag
+        self.is_convert = is_convert
+
+        # Modal Topic Name
+        self.topic_name = topic_name
+
+        # Encoding Message
+        self.msg_encoding = msg_encoding
+
+        # Modal CameraInfo Topic Name
+        self.camerainfo_topic_name = camerainfo_topic_name
+
+        # List for Saving Data Objects
+        self.data_obj_list = []
+
+        # CameraInfo Object
+        self.camerainfo = None if camerainfo_topic_name is None else camerainfo_obj()
+
+    def __repr__(self):
+        return "{}_container".format(self.modal_type)
+
+    def __len__(self):
+        return len(self.data_obj_list)
+
+    def __getitem__(self, idx):
+        return self.data_obj_list[idx]
+
+    def append_data_obj(self, data, stamp):
+        # Initialize Data Object
+        self.data_obj_list.append(
+            data_obj(modal_type=self.modal_type, data=data, stamp=stamp)
+        )
+
+    def get_index_data(self, idx):
+        self.data_obj_list[idx].get_data()
+
+    def get_index_stamp(self, idx):
+        self.data_obj_list[idx].get_stamp()
+
+    def erase_data_obj(self, indices_list):
+        for index in sorted(indices_list, reverse=True):
+            del self.data_obj_list[index]
+
+    def search_data_obj(self, input_data_obj):
+        assert isinstance(input_data_obj, data_obj)
+        for search_data_obj_idx, search_data_obj in enumerate(self.data_obj_list):
+            if search_data_obj == input_data_obj:
+                return search_data_obj_idx
+        return None
+
+class image_modal_data_obj(modal_data_obj):
+    def __init__(self, modal_type, is_convert, topic_name, msg_encoding=None, camerainfo_topic_name=None):
+        super(image_modal_data_obj, self).__init__(modal_type, is_convert, topic_name, msg_encoding, camerainfo_topic_name)
+
+
+class lidar_modal_data_obj(modal_data_obj):
+    def __init__(self, modal_type, is_convert, topic_name):
+        super(lidar_modal_data_obj, self).__init__(modal_type, is_convert, topic_name)
+
+        # Raw PointCloud Data
+        self.raw_pc_data_list = []
+
+        # Rotation Matrix, Translation Matrix from TF Static
+        self.R__color, self.T__color = None, None
+
+    # Update [ R | T ] Matrices
+    def update_tf_static_matrices(self, R, T):
+        # Rotation Matrix
+        self.R__color = pyquaternion.Quaternion(
+            R.w, R.x, R.y, R.z
+        ).rotation_matrix
+
+        # Translation Matrix
+        self.T__color = np.array([
+            T.x, T.y, T.z
+        ]).reshape(3, 1)
+
+
+# Data Dictionary
+modal_data_obj_dict = {
+    # D435-Color
+    "color": image_modal_data_obj(
+        modal_type="color", is_convert=True, topic_name="/osr/image_color", msg_encoding="8UC3",
+        camerainfo_topic_name="/osr/image_color_camerainfo"
+    ),
+
+    # D435-Disparity
+    "disparity": image_modal_data_obj(
+        modal_type="disparity", is_convert=True, topic_name="/osr/image_aligned_depth", msg_encoding="16UC1",
+        camerainfo_topic_name="/osr/image_depth_camerainfo"
+    ),
+
+    # Thermal
+    "thermal": image_modal_data_obj(
+        modal_type="thermal", is_convert=True, topic_name="/osr/image_thermal", msg_encoding="16UC1",
+        camerainfo_topic_name="/osr/image_thermal_camerainfo"
+    ),
+
+    # Infrared
+    "infrared": image_modal_data_obj(
+        modal_type="infrared", is_convert=True, topic_name="/osr/image_ir", msg_encoding="8UC1",
+        camerainfo_topic_name="/osr/image_infrared_camerainfo"
+    ),
+
+    # NightVision
+    "nightvision": image_modal_data_obj(
+        modal_type="nightvision", is_convert=True, topic_name="/osr/image_nv1", msg_encoding="8UC3"
+    ),
+
+    # LiDAR
+    "lidar": lidar_modal_data_obj(
+        modal_type="lidar", is_convert=True, topic_name="/osr/lidar_pointcloud"
+    )
+}
+
+# Get Conversion Target Modal Objects
+tmp = {}
+for __modal, __modal_data_obj in modal_data_obj_dict.items():
+    if __modal_data_obj.is_convert is True:
+        tmp[__modal] = __modal_data_obj
+modal_data_obj_dict = tmp
+del tmp, __modal, __modal_data_obj
+
+
 def read_bag_data(bag_file_path, logger):
     # Load Bag File
     bag = rosbag.Bag(bag_file_path, "r")
@@ -286,17 +366,17 @@ def read_bag_data(bag_file_path, logger):
     bridge = CvBridge()
 
     # Read CameraInfo Message from Bag File
-    for modal, data_obj in data_dict.items():
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
         # CameraInfo Break Flag
         camerainfo_break_flag = False
 
         # Continue to Next CameraInfo if CameraInfo is None or Conversion Flag is False
-        if data_obj.camerainfo is None or data_obj.is_convert is False:
+        if _modal_data_obj.camerainfo is None or _modal_data_obj.is_convert is False:
             logger.warn("Skipping CameraInfo [{}] Conversion...".format(modal))
             continue
 
         # Read CameraInfo
-        for _, msg, _ in bag.read_messages(topics=data_obj.camerainfo_topic_name):
+        for _, msg, _ in bag.read_messages(topics=_modal_data_obj.camerainfo_topic_name):
             if camerainfo_break_flag is True:
                 break
 
@@ -304,10 +384,10 @@ def read_bag_data(bag_file_path, logger):
             camerainfo_break_flag = True
 
             # Update Camera Parameter Matrix
-            data_obj.camerainfo.update_matrix_from_msg(msg=msg)
+            _modal_data_obj.camerainfo.update_matrix_from_msg(msg=msg)
 
             # CameraInfo Update Log
-            logger.info("CameraInfo [{}] Updated....!".format(data_obj.camerainfo_topic_name))
+            logger.info("CameraInfo [{}] Updated....!".format(_modal_data_obj.camerainfo_topic_name))
 
     # Read TF Static ( RGB-to-Velodyne [ R | T ] Matrix )
     tf_static_break_flag = False
@@ -316,7 +396,7 @@ def read_bag_data(bag_file_path, logger):
         tf_msg_list = msg.transforms
         for tf_msg in tf_msg_list:
             if tf_msg.child_frame_id == "velodyne_frame_from_rgb":
-                data_dict["lidar"].update_tf_static_matrices(
+                modal_data_obj_dict["lidar"].update_tf_static_matrices(
                     R=tf_msg.transform.rotation, T=tf_msg.transform.translation
                 )
                 tf_static_break_flag = True
@@ -335,9 +415,9 @@ def read_bag_data(bag_file_path, logger):
     time.sleep(1)
 
     # Read Data Message from Bag File
-    for modal, data_obj in data_dict.items():
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
         # Continue to Next Modal Topic if Conversion Flag is False
-        if data_obj.is_convert is False:
+        if _modal_data_obj.is_convert is False:
             logger.warn("Skipping Modal [{}] Conversion...".format(modal))
             continue
 
@@ -345,8 +425,8 @@ def read_bag_data(bag_file_path, logger):
         fidx_count = 0
 
         # Get Current Modal ROS Topic Name and Message Encoding
-        topic_name = data_obj.topic_name
-        msg_encoding = data_obj.msg_encoding
+        topic_name = _modal_data_obj.topic_name
+        msg_encoding = _modal_data_obj.msg_encoding
 
         # Time Sleep
         time.sleep(0.5)
@@ -364,7 +444,7 @@ def read_bag_data(bag_file_path, logger):
             )
 
             # Convert Data Message to Python-readable Data
-            if data_obj.modal_type != "lidar":
+            if _modal_data_obj.modal_type != "lidar":
                 # Get Modal Data
                 data = bridge.imgmsg_to_cv2(img_msg=msg, desired_encoding=msg_encoding)
 
@@ -373,18 +453,18 @@ def read_bag_data(bag_file_path, logger):
                     data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
 
                 # Append Data and Stamp
-                data_obj.append_data(data=data, stamp=stamp)
+                _modal_data_obj.append_data_obj(data=data, stamp=stamp)
 
             # For LiDAR Data
             else:
                 # Get Raw 3D PointCloud Data
                 raw_pc_data = np.array(ros_numpy.point_cloud2.pointcloud2_to_array(msg).tolist())
-                data_obj.raw_pc_data_list.append(raw_pc_data)
+                _modal_data_obj.raw_pc_data_list.append(raw_pc_data)
 
                 # Project Cloud If [ R | T ] Exists
-                if data_obj.R__color is not None and data_obj.T__color is not None:
-                    projected_cloud =\
-                        np.dot(raw_pc_data[:, 0:3], data_obj.R__color.T) + data_obj.T__color.T
+                if _modal_data_obj.R__color is not None and _modal_data_obj.T__color is not None:
+                    projected_cloud = \
+                        np.dot(raw_pc_data[:, 0:3], _modal_data_obj.R__color.T) + _modal_data_obj.T__color.T
 
                     # Filter-out Points not in-front-of Camera
                     in_range = np.where((projected_cloud[:, 0] > -8) &
@@ -402,7 +482,6 @@ def read_bag_data(bag_file_path, logger):
 
                     # Color Map for the Points (intensity color view)
                     cmap = matplotlib.cm.get_cmap('jet')
-
                     cloud_colors = cmap(valid_cloud[:, -1] / max_intensity) * 255
 
                     # Pack Data as Dictionary
@@ -413,106 +492,96 @@ def read_bag_data(bag_file_path, logger):
                     }
 
                     # Append Data and Stamp
-                    data_obj.append_data(data=data, stamp=stamp)
+                    _modal_data_obj.append_data_obj(data=data, stamp=stamp)
 
                 # If Not, Skip to Next Modal Data
                 else:
                     logger.warn("Since TF-STATIC is UNREADABLE, 2D Projected Cloud Data is Not Available....!")
                     time.sleep(1)
-                    break
 
 
 # Synchronize Multimodal Data
 def synchronize_multimodal_data(dtime_thresh, logger):
-    # Get Timestamp Dictionary
-    modal_stamp_dict = {}
-    for modal, data_obj in data_dict.items():
-        modal_stamp_dict[modal] = data_obj.stamp_list
-
-    modal_list, modal_stamp_list = [], []
-    for modal, stamp_list in modal_stamp_dict.items():
-        modal_list.append(modal)
-        modal_stamp_list.append(np.asarray(stamp_list))
-
     # Asynchronous Multimodal Data Synchronization based on Time Threshold
-    cp_idx = 0
-    sync_modal_stamp_idx_dict = []
-    for modal in data_dict.keys():
-        sync_modal_stamp_idx_dict[modal] = []
+    modal_list = modal_data_obj_dict.keys()
 
-    while cp_idx < len(modal_list) - 1:
-        i_modal, i_modal_stamp_arr = modal_list[cp_idx], modal_stamp_list[cp_idx]
-        j_modal, j_modal_stamp_arr = modal_list[cp_idx+1], modal_stamp_list[cp_idx+1]
-
-        # Log
-        logger.info(
-            "Comparing BTW Modals <{}> and <{}>.....!".format(i_modal, j_modal)
-        )
-
-        # Init Selected Indices Lists
-        selected_i_indices, selected_j_indices = [], []
-
-        for i_idx, i_modal_stamp in enumerate(i_modal_stamp_arr):
-            # Continue when Index is Previously Chosen
-            if i_idx in sync_modal_stamp_idx_dict[i_modal]:
-                continue
-
-            for j_idx, j_modal_stamp in enumerate(j_modal_stamp_arr):
-                # Continue when Index is Previously Chosen
-                if j_idx in sync_modal_stamp_idx_dict[j_modal]:
-                    continue
-
-                # Stamp Synchronized btw 2 Modals
-                if abs((i_modal_stamp - j_modal_stamp).to_sec()) <= dtime_thresh:
-                    # Append to Selected Indices List
-                    if cp_idx == 0:
-                        sync_modal_stamp_idx_dict[i_modal].append(i_idx)
-                        sync_modal_stamp_idx_dict[j_modal].append(j_idx)
-                    else:
-                        for
-
-
-
-
-                    # If First Synchronization,
-                    if cp_idx == 0:
-                        sync_modal_stamp_idx_dict[i_modal].append(i_idx)
-                        sync_modal_stamp_idx_dict[j_modal].append(j_idx)
-
-                    if cp_idx == 0:
-                        sync_modal_stamp_idx_list.append([i_idx, j_idx])
-                    else:
-                        for m_idx, m in enumerate(sync_modal_stamp_idx_list):
-                            if m[-1] == i_idx:
-                                sync_modal_stamp_idx_list[m_idx].append(j_idx)
-                                break
-
-        # Increase Index
-        cp_idx += 1
-
-    # Filter-out
-    filtered_sync_modal_stamp_idx_list = []
-    for m in sync_modal_stamp_idx_list:
-        if len(m) == len(data_dict):
-            filtered_sync_modal_stamp_idx_list.append(m)
-    fsms_arr = np.asarray(filtered_sync_modal_stamp_idx_list)
-
-    # Get Deletion Index for Each Modal Data and Synchronize Data
-    for modal_idx, (modal, data_obj) in enumerate(data_dict.items()):
-        curr_modal_fsms_set = set(fsms_arr[:, modal_idx])
-        del_indices_list = sorted(list(set(range(len(data_obj))).difference(curr_modal_fsms_set)))
+    cmp_idx = 0
+    while cmp_idx < len(modal_list):
+        if cmp_idx < len(modal_list) - 1:
+            i_modal, j_modal = modal_list[cmp_idx], modal_list[cmp_idx + 1]
+            i_modal_data_obj = modal_data_obj_dict[i_modal]
+            j_modal_data_obj = modal_data_obj_dict[j_modal]
+        else:
+            i_modal, j_modal = modal_list[cmp_idx], modal_list[0]
+            i_modal_data_obj = modal_data_obj_dict[i_modal]
+            j_modal_data_obj = modal_data_obj_dict[j_modal]
 
         # Log
-        logger.info("Synchronizing Modal [{}]".format(modal))
+        logger.info("[WAIT] Comparing BTW Modals <{}> and <{}>..!".format(i_modal, j_modal))
 
-        # Synchronize Data
-        data_obj.erase_data(indices_list=del_indices_list)
-        data_obj.erase_stamp(indices_list=del_indices_list)
+        # Compare
+        for i_modal_data_idx, i_data in enumerate(i_modal_data_obj):
+            for j_modal_data_idx, j_data in enumerate(j_modal_data_obj):
+                # Compare Timestamps BTW Two Data
+                if abs((i_data - j_data).to_sec()) <= dtime_thresh:
+                    # Synchronize Two Data Objects
+                    i_data.synchronize_data_obj(j_data)
+                    j_data.synchronize_data_obj(i_data)
+
+        # Increase Comparison Index
+        cmp_idx += 1
+
+    # Process Synchronization Results
+    color_modal_data_obj_list = modal_data_obj_dict["color"].data_obj_list
+    sync_dict_list = []
+    for color_modal_data_obj in color_modal_data_obj_list:
+        sync_dict = color_modal_data_obj.get_sync_data_obj_dict()
+        sync_dict_list.append(sync_dict)
+
+    # Result Management - Filter out Fully Synchronized Results
+    sync_target_modal_list = []
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
+        if _modal_data_obj.is_convert is True:
+            sync_target_modal_list.append(modal)
+    sync_target_modal_list = sorted(sync_target_modal_list)
+
+    fully_sync_dict_list = []
+    for sync_dict in sync_dict_list:
+        curr_sync_modal_list = sorted(sync_dict.keys())
+        if sync_target_modal_list == curr_sync_modal_list:
+            fully_sync_dict_list.append(sync_dict)
+
+    # Filter-out None-synchronized Data Objects from Data Dictionary
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
+        if _modal_data_obj.is_convert is False:
+            continue
+
+        erase_data_obj_list_indices = range(0, len(_modal_data_obj))
+        search_indices_list = []
+        for fully_sync_dict in fully_sync_dict_list:
+            curr_modal_fully_sync_obj = fully_sync_dict[modal]
+
+            # Search for Index in Current Modal Data Object
+            search_idx = _modal_data_obj.search_data_obj(input_data_obj=curr_modal_fully_sync_obj)
+            if search_idx is None:
+                raise AssertionError()
+            search_indices_list.append(search_idx)
+
+        """
+        Add Code HERE...!
+        """
+
+        pass
+
+        # Filter-out
+        _modal_data_obj.erase_data_obj(indices_list=erase_data_obj_list_indices)
+
+    print(1)
 
 
 def save_multimodal_data(save_base_path, logger):
     # Save Synchronized Data
-    for modal, data_obj in data_dict.items():
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
         curr_modal_data_save_path = os.path.join(save_base_path, "{}".format(modal))
         curr_modal_camera_params_save_path = os.path.join(
             save_base_path, "camera_params", "{}".format(modal)
@@ -523,7 +592,7 @@ def save_multimodal_data(save_base_path, logger):
             os.mkdir(curr_modal_camera_params_save_path)
 
         # Save Frame Data
-        for obj_idx, data in enumerate(data_obj):
+        for obj_idx, data in enumerate(_modal_data_obj):
             frame_data, stamp_data = data["data"], data["stamp"]
 
             # If Object is an image type,
@@ -639,12 +708,12 @@ def main():
         os.mkdir(camera_param_save_path)
 
     # Log Target Modal Type to Convert
-    for modal, data_obj in data_dict.items():
-        if data_obj.is_convert is True:
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
+        if _modal_data_obj.is_convert is True:
             # Log
             logger.info(
                 "Modal '{}' (topic name: {}) pending for Conversion... [CameraInfo Topic Name: {}]".format(
-                    data_obj, data_obj.topic_name, data_obj.camerainfo_topic_name
+                    _modal_data_obj, _modal_data_obj.topic_name, _modal_data_obj.camerainfo_topic_name
                 )
             )
 
@@ -660,7 +729,7 @@ def main():
     read_bag_data(bag_file_path=bag_file_path, logger=logger)
 
     # Synchronize Multimodal Data
-    synchronize_multimodal_data(dtime_thresh=1.0/args.sensor_frequency, logger=logger)
+    sync_dict_list = synchronize_multimodal_data(dtime_thresh=1.0 / args.sensor_frequency, logger=logger)
 
     # Save Data
     save_multimodal_data(save_base_path=cvt_folder_path, logger=logger)
