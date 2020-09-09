@@ -567,6 +567,10 @@ def synchronize_multimodal_data(dtime_thresh, logger):
                 raise AssertionError()
             search_indices_list.append(search_idx)
 
+        """
+        Add Code HERE...!
+        """
+
         pass
 
         # Filter-out
