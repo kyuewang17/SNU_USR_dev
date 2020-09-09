@@ -65,6 +65,7 @@ For Camera Parameter Specifics, refer to the following link
 
 """
 import os
+import copy
 import logging
 import argparse
 import time
@@ -141,8 +142,8 @@ class data_obj(object):
         # Timestamp
         self.__stamp = stamp
 
-        # Sync Data Object
-        self.sync_data_obj = []
+        # Sync Data Object List
+        self.sync_data_obj_list = []
 
     def __repr__(self):
         return self.__modal_type
@@ -150,6 +151,13 @@ class data_obj(object):
     def __sub__(self, other):
         assert isinstance(other, data_obj)
         return self.get_stamp() - other.get_stamp()
+
+    def __eq__(self, other):
+        assert isinstance(other, data_obj)
+        if "{}".format(self) == "{}".format(other) and self.get_stamp() == other.get_stamp():
+            return True
+        else:
+            return False
 
     def get_data(self):
         return self.__data
@@ -160,16 +168,56 @@ class data_obj(object):
     def synchronize_data_obj(self, other):
         assert isinstance(other, data_obj)
         assert "{}".format(self) != "{}".format(other)
-        self.sync_data_obj.append(other)
+        self.sync_data_obj_list.append(other)
 
     def get_sync_info(self):
-        if len(self.sync_data_obj) == 0:
+        if len(self.sync_data_obj_list) == 0:
             return None
         else:
             sync_info_dict = {}
-            for sync_data_obj in self.sync_data_obj:
+            for sync_data_obj in self.sync_data_obj_list:
                 sync_info_dict["{}".format(sync_data_obj)] = sync_data_obj
             return sync_info_dict
+
+    def get_sync_data_obj_dict(self, sync_data_obj_dict=None, observed_data_obj_list=None):
+        if sync_data_obj_dict is None:
+            # Initialize Self
+            sync_data_obj_dict = {"{}".format(self): self}
+
+            # Initialize Up to Two Levels
+            observed_data_obj_list = [self]
+            for sync_data_obj in self.sync_data_obj_list:
+                observed_data_obj_list.append(sync_data_obj)
+        else:
+            assert isinstance(sync_data_obj_dict, dict)
+            assert isinstance(observed_data_obj_list, list)
+
+        # Update Synchronized Data Object Dictionary
+        initial_sync_data_obj = None
+        for sync_data_obj in self.sync_data_obj_list:
+            if sync_data_obj not in sync_data_obj_dict.values():
+                sync_data_obj_dict["{}".format(sync_data_obj)] = sync_data_obj
+                if initial_sync_data_obj is None:
+                    initial_sync_data_obj = sync_data_obj
+
+                # Update Observed Leaf Data Objects
+                for leaf_sync_data_obj in sync_data_obj.sync_data_obj_list:
+                    observed_data_obj_list.append(leaf_sync_data_obj)
+
+        # Sort-out Duplicate Observed Data Objects
+        observed_data_obj_list = list(set(observed_data_obj_list))
+
+        # Check if Synchronized Data Object Dictionary Contains all Observed Data Objects
+        if len(list(set(observed_data_obj_list) - set(sync_data_obj_dict.values()))) == 0:
+            return sync_data_obj_dict
+        else:
+            if initial_sync_data_obj is None:
+                return sync_data_obj_dict
+            else:
+                return initial_sync_data_obj.get_sync_data_obj_dict(
+                    sync_data_obj_dict=sync_data_obj_dict,
+                    observed_data_obj_list=observed_data_obj_list
+                )
 
 
 # CameraInfo Object
@@ -422,7 +470,7 @@ def read_bag_data(bag_file_path, logger):
 
                 # Project Cloud If [ R | T ] Exists
                 if _modal_data_obj.R__color is not None and _modal_data_obj.T__color is not None:
-                    projected_cloud =\
+                    projected_cloud = \
                         np.dot(raw_pc_data[:, 0:3], _modal_data_obj.R__color.T) + _modal_data_obj.T__color.T
 
                     # Filter-out Points not in-front-of Camera
@@ -467,7 +515,7 @@ def synchronize_multimodal_data(dtime_thresh, logger):
     cmp_idx = 0
     while cmp_idx < len(modal_list):
         if cmp_idx < len(modal_list) - 1:
-            i_modal, j_modal = modal_list[cmp_idx], modal_list[cmp_idx+1]
+            i_modal, j_modal = modal_list[cmp_idx], modal_list[cmp_idx + 1]
             i_modal_data_obj = modal_data_obj_dict[i_modal]
             j_modal_data_obj = modal_data_obj_dict[j_modal]
         else:
@@ -491,12 +539,21 @@ def synchronize_multimodal_data(dtime_thresh, logger):
         cmp_idx += 1
 
     # Process Synchronization Results
+    color_modal_data_obj_list = modal_data_obj_dict["color"].data_obj_list
+    sync_dict_list = []
+    for color_modal_data_obj in color_modal_data_obj_list:
+        sync_dict = color_modal_data_obj.get_sync_data_obj_dict()
+        sync_dict_list.append(sync_dict)
+
+
+
     pass
+    print(1)
 
 
 def save_multimodal_data(save_base_path, logger):
     # Save Synchronized Data
-    for modal, data_obj in data_dict.items():
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
         curr_modal_data_save_path = os.path.join(save_base_path, "{}".format(modal))
         curr_modal_camera_params_save_path = os.path.join(
             save_base_path, "camera_params", "{}".format(modal)
@@ -507,7 +564,7 @@ def save_multimodal_data(save_base_path, logger):
             os.mkdir(curr_modal_camera_params_save_path)
 
         # Save Frame Data
-        for obj_idx, data in enumerate(data_obj):
+        for obj_idx, data in enumerate(_modal_data_obj):
             frame_data, stamp_data = data["data"], data["stamp"]
 
             # If Object is an image type,
@@ -644,7 +701,7 @@ def main():
     read_bag_data(bag_file_path=bag_file_path, logger=logger)
 
     # Synchronize Multimodal Data
-    synchronize_multimodal_data(dtime_thresh=1.0/args.sensor_frequency, logger=logger)
+    synchronize_multimodal_data(dtime_thresh=1.0 / args.sensor_frequency, logger=logger)
 
     # Save Data
     save_multimodal_data(save_base_path=cvt_folder_path, logger=logger)
