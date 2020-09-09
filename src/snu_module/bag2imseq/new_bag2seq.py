@@ -179,45 +179,32 @@ class data_obj(object):
                 sync_info_dict["{}".format(sync_data_obj)] = sync_data_obj
             return sync_info_dict
 
-    def get_sync_data_obj_dict(self, sync_data_obj_dict=None, observed_data_obj_list=None):
-        if sync_data_obj_dict is None:
-            # Initialize Self
-            sync_data_obj_dict = {"{}".format(self): self}
+    def get_sync_data_obj_dict(self):
+        # Initial Setting (return dictionary and Look-ahead List)
+        sync_data_obj_dict = {"{}".format(self): self}
+        lookahead_data_obj_list = [self]
 
-            # Initialize Up to Two Levels
-            observed_data_obj_list = [self]
-            for sync_data_obj in self.sync_data_obj_list:
-                observed_data_obj_list.append(sync_data_obj)
-        else:
-            assert isinstance(sync_data_obj_dict, dict)
-            assert isinstance(observed_data_obj_list, list)
+        # Iterate until Termination Condition
+        curr_data_obj = self
+        while True:
+            # Left Data Object Initialization
+            left_most_data_obj = None
 
-        # Update Synchronized Data Object Dictionary
-        initial_sync_data_obj = None
-        for sync_data_obj in self.sync_data_obj_list:
-            if sync_data_obj not in sync_data_obj_dict.values():
-                sync_data_obj_dict["{}".format(sync_data_obj)] = sync_data_obj
-                if initial_sync_data_obj is None:
-                    initial_sync_data_obj = sync_data_obj
-
-                # Update Observed Leaf Data Objects
-                for leaf_sync_data_obj in sync_data_obj.sync_data_obj_list:
-                    observed_data_obj_list.append(leaf_sync_data_obj)
-
-        # Sort-out Duplicate Observed Data Objects
-        observed_data_obj_list = list(set(observed_data_obj_list))
-
-        # Check if Synchronized Data Object Dictionary Contains all Observed Data Objects
-        if len(list(set(observed_data_obj_list) - set(sync_data_obj_dict.values()))) == 0:
-            return sync_data_obj_dict
-        else:
-            if initial_sync_data_obj is None:
+            # Look-ahead and Append New Data Object
+            # terminate when all lookahead data objects are not new ones
+            new_lookahead_data_obj_cnt = 0
+            for sync_data_obj in curr_data_obj.sync_data_obj_list:
+                if sync_data_obj not in lookahead_data_obj_list:
+                    new_lookahead_data_obj_cnt += 1
+                    if left_most_data_obj is None:
+                        left_most_data_obj = sync_data_obj
+                    sync_data_obj_dict["{}".format(sync_data_obj)] = sync_data_obj
+                    lookahead_data_obj_list.append(sync_data_obj)
+            if new_lookahead_data_obj_cnt == 0:
                 return sync_data_obj_dict
-            else:
-                return initial_sync_data_obj.get_sync_data_obj_dict(
-                    sync_data_obj_dict=sync_data_obj_dict,
-                    observed_data_obj_list=observed_data_obj_list
-                )
+
+            # Update Current Data Object to the Left-most Leaf Data Object
+            curr_data_obj = left_most_data_obj
 
 
 # CameraInfo Object
@@ -290,6 +277,12 @@ class modal_data_obj(object):
         for index in sorted(indices_list, reverse=True):
             del self.data_obj_list[index]
 
+    def search_data_obj(self, input_data_obj):
+        assert isinstance(input_data_obj, data_obj)
+        for search_data_obj_idx, search_data_obj in enumerate(self.data_obj_list):
+            if search_data_obj == input_data_obj:
+                return search_data_obj_idx
+        return None
 
 class image_modal_data_obj(modal_data_obj):
     def __init__(self, modal_type, is_convert, topic_name, msg_encoding=None, camerainfo_topic_name=None):
@@ -524,7 +517,7 @@ def synchronize_multimodal_data(dtime_thresh, logger):
             j_modal_data_obj = modal_data_obj_dict[j_modal]
 
         # Log
-        logger.info("Comparing BTW Modals <{}> and <{}>..!".format(i_modal, j_modal))
+        logger.info("[WAIT] Comparing BTW Modals <{}> and <{}>..!".format(i_modal, j_modal))
 
         # Compare
         for i_modal_data_idx, i_data in enumerate(i_modal_data_obj):
@@ -545,9 +538,40 @@ def synchronize_multimodal_data(dtime_thresh, logger):
         sync_dict = color_modal_data_obj.get_sync_data_obj_dict()
         sync_dict_list.append(sync_dict)
 
+    # Result Management - Filter out Fully Synchronized Results
+    sync_target_modal_list = []
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
+        if _modal_data_obj.is_convert is True:
+            sync_target_modal_list.append(modal)
+    sync_target_modal_list = sorted(sync_target_modal_list)
 
+    fully_sync_dict_list = []
+    for sync_dict in sync_dict_list:
+        curr_sync_modal_list = sorted(sync_dict.keys())
+        if sync_target_modal_list == curr_sync_modal_list:
+            fully_sync_dict_list.append(sync_dict)
 
-    pass
+    # Filter-out None-synchronized Data Objects from Data Dictionary
+    for modal, _modal_data_obj in modal_data_obj_dict.items():
+        if _modal_data_obj.is_convert is False:
+            continue
+
+        erase_data_obj_list_indices = range(0, len(_modal_data_obj))
+        search_indices_list = []
+        for fully_sync_dict in fully_sync_dict_list:
+            curr_modal_fully_sync_obj = fully_sync_dict[modal]
+
+            # Search for Index in Current Modal Data Object
+            search_idx = _modal_data_obj.search_data_obj(input_data_obj=curr_modal_fully_sync_obj)
+            if search_idx is None:
+                raise AssertionError()
+            search_indices_list.append(search_idx)
+
+        pass
+
+        # Filter-out
+        _modal_data_obj.erase_data_obj(indices_list=erase_data_obj_list_indices)
+
     print(1)
 
 
@@ -701,7 +725,7 @@ def main():
     read_bag_data(bag_file_path=bag_file_path, logger=logger)
 
     # Synchronize Multimodal Data
-    synchronize_multimodal_data(dtime_thresh=1.0 / args.sensor_frequency, logger=logger)
+    sync_dict_list = synchronize_multimodal_data(dtime_thresh=1.0 / args.sensor_frequency, logger=logger)
 
     # Save Data
     save_multimodal_data(save_base_path=cvt_folder_path, logger=logger)
