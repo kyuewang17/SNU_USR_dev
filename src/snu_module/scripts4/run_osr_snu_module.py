@@ -14,26 +14,9 @@ Outdoor Surveillance Robot SNU Module
 
 """
 import os
-import importlib
-import argparse
-import time
 import logging
-import numpy as np
 
 from utils.loader import set_logger, argument_parser, cfg_loader, load_options
-
-
-# import snu_visualizer
-# from options_v4_5 import snu_option_class as options
-# from utils.ros.base import backbone
-# from utils.ros.sensors import snu_SyncSubscriber
-# from snu_algorithms_v4_5 import snu_algorithms
-# from utils.profiling import Timer
-#
-# from module_detection import load_model as load_det_model
-# from module_action import load_model as load_acl_model
-#
-# from config import cfg
 
 
 # Module Loader
@@ -61,7 +44,7 @@ if __name__ == "__main__":
     args = argument_parser(
         logger=logger,
         script_name=os.path.basename(__file__),
-        dev_version=4.5
+        dev_version=4.6
     )
 
     # Load Configuration from File

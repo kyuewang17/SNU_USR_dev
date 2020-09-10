@@ -30,7 +30,7 @@ def set_logger(logging_level=logging.INFO):
 
 
 # Argument Parser
-def argument_parser(logger, script_name, dev_version=4.5, mode_selection=None):
+def argument_parser(logger, script_name, dev_version, mode_selection=None):
     # Assertion
     assert isinstance(script_name, str), "Argument 'script_name' should be a <str> type...!"
 
@@ -53,6 +53,8 @@ def argument_parser(logger, script_name, dev_version=4.5, mode_selection=None):
             raise AssertionError("Agent Identification File [{}] is Erroneous...!".format(agent_id_file))
         else:
             agent_type = "static" if agent_type.lower() in ["static", "fixed"] else "dynamic"
+
+    # Sleep
     time.sleep(0.5)
 
     # Detect Mode Selection
