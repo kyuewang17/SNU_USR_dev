@@ -44,7 +44,7 @@ if __name__ == "__main__":
     args = argument_parser(
         logger=logger,
         script_name=os.path.basename(__file__),
-        dev_version=4.6
+        dev_version=4.5
     )
 
     # Load Configuration from File

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 # Make Agent Identification File (use Flags)
-while getopts a:i:b flag
+while getopts a:i:v: flag
 do
   case "${flag}" in
       a) agent=${OPTARG};;
       i) id=${OPTARG};;
-      b) bag=${OPTARG};;
+      v) version=${OPTARG};;
   esac
 done
 
@@ -49,7 +49,6 @@ fi
 
 # Check if Agent Identification File Exists,
 agent_file_path=${agent_file_base_path}"/"${agent_file_name}
-echo ${agent_file_path}
 if [ ! -f ${agent_file_path} ]; then
   echo "Agent Identification File Does not Exist...!"
   sleep 0.5
@@ -73,7 +72,7 @@ iter_cnt=0
 # Iterate when SNU Module Crashes
 until [ "$iter_cnt" -ge $max_iter ]
 do
-  (rosrun snu_module run_osr_snu_module.py agent --agent-type ${agent} --agent-id ${id})
+  (rosrun snu_module run_osr_snu_module.py -V ${version} agent)
   iter_cnt=$((iter_cnt+1))
   sleep 0.5
 done

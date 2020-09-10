@@ -30,7 +30,7 @@ def set_logger(logging_level=logging.INFO):
 
 
 # Argument Parser
-def argument_parser(logger, script_name, dev_version, mode_selection=None):
+def argument_parser(logger, script_name, dev_version=None, mode_selection=None):
     # Assertion
     assert isinstance(script_name, str), "Argument 'script_name' should be a <str> type...!"
 
@@ -69,10 +69,16 @@ def argument_parser(logger, script_name, dev_version, mode_selection=None):
     parser = argparse.ArgumentParser(
         prog=script_name, description="SNU Integrated Algorithm"
     )
-    parser.add_argument(
-        "--dev-version", "-V", default=dev_version,
-        help="Integrated Algorithm Development Version"
-    )
+    if dev_version is not None:
+        parser.add_argument(
+            "--dev-version", "-V", default=dev_version,
+            help="Integrated Algorithm Development Version"
+        )
+    else:
+        parser.add_argument(
+            "--dev-version", "-V",
+            help="Integrated Algorithm Development Version"
+        )
 
     # Add Sub-Parser
     subparser = parser.add_subparsers(help="Sub-Parser Commands")
@@ -115,11 +121,11 @@ def argument_parser(logger, script_name, dev_version, mode_selection=None):
             "agent", help="for executing this code on Outdoor Surveillance Robot Agents"
     )
     if is_agent_flag is True:
-        agent_parser.add_argument("--agent-type", default=agent_type)
-        agent_parser.add_argument("--agent-id", default=agent_id)
+        agent_parser.add_argument("--agent-type", "-T", default=agent_type)
+        agent_parser.add_argument("--agent-id", "-I", type=int, default=agent_id)
     else:
         agent_parser.add_argument(
-            "--agent_type", "-T", type=str, choices=["static", "dynamic"],
+            "--agent-type", "-T", type=str, choices=["static", "dynamic"],
             help="Agent Type (choose btw 'static' and 'dynamic')"
         )
         agent_parser.add_argument("--agent-id", "-I", type=int, help="Agent ID Number")
