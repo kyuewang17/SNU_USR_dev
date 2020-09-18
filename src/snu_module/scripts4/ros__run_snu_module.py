@@ -112,16 +112,16 @@ class snu_module(backbone):
             tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
 
             # Iterate Loop until "tf_static is heard"
-            tf_static_listened_flag = False
+            tf_static_check_flag = False
             while self.tf_transform is None:
                 try:
                     self.tf_transform = tf_buffer.lookup_transform(
                         "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
                     )
                 except:
-                    if tf_static_listened_flag is False:
+                    if tf_static_check_flag is False:
                         rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
-                        tf_static_listened_flag = True
+                        tf_static_check_flag = True
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
