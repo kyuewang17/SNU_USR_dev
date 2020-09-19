@@ -65,27 +65,31 @@ class snu_module(backbone):
 
     def gather_all_sensor_params_via_files(self):
         # Get Sensor Parameter File Path
-        sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", self.opts.env_type, "sensor_params")
-        if os.path.isdir(sensor_params_path) is True:
-            # Collect List of Sensor Parameter for Each Modality
-            sensor_param_filenames = os.listdir(sensor_params_path)
+        if self.opts.env_type in ["static", "imseq"]:
+            if self.opts.env_type == "imseq":
+                sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", "sensor_params")
+            else:
+                sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "agents", "static", "sensor_params")
+            if os.path.isdir(sensor_params_path) is True:
+                # Collect List of Sensor Parameter for Each Modality
+                sensor_param_filenames = os.listdir(sensor_params_path)
 
-            for sensor_param_filename in sensor_param_filenames:
-                modal_type = sensor_param_filename.split(".")[0]
+                for sensor_param_filename in sensor_param_filenames:
+                    modal_type = sensor_param_filename.split(".")[0]
 
-                # Get Sensor Parameters from YAML file
-                sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
-                with open(sensor_param_filepath, "r") as stream:
-                    tmp = yaml.safe_load(stream=stream)
+                    # Get Sensor Parameters from YAML file
+                    sensor_param_filepath = os.path.join(sensor_params_path, sensor_param_filename)
+                    with open(sensor_param_filepath, "r") as stream:
+                        tmp = yaml.safe_load(stream=stream)
 
-                if self.opts.env_type in ["static", "dynamic"]:
-                    sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(self.opts.agent_id)]["camera_param"])
-                else:
-                    raise NotImplementedError()
+                    if self.opts.env_type in ["static", "dynamic"]:
+                        sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(self.opts.agent_id)]["camera_param"])
+                    else:
+                        raise NotImplementedError()
 
-                # Update Sensor Parameter
-                modal_obj = getattr(self, modal_type)
-                modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
+                    # Update Sensor Parameter
+                    modal_obj = getattr(self, modal_type)
+                    modal_obj.update_sensor_params_file_array(sensor_param_array=sensor_param_array)
         else:
             rospy.loginfo("Sensor Parameter Directory Not Found...!")
 
@@ -112,16 +116,49 @@ class snu_module(backbone):
             tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
 
             # Iterate Loop until "tf_static is heard"
-            tf_static_check_flag = False
+            tf_static_check_flag = 0
             while self.tf_transform is None:
                 try:
                     self.tf_transform = tf_buffer.lookup_transform(
                         "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
                     )
                 except:
-                    if tf_static_check_flag is False:
+                    if tf_static_check_flag == 0:
                         rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
-                        tf_static_check_flag = True
+                    tf_static_check_flag += 1
+
+                    if tf_static_check_flag >= 30 and self.opts.env_type == "bag":
+                        class TF_TRANSLATION(object):
+                            def __init__(self, x, y, z):
+                                self.x = x
+                                self.y = y
+                                self.z = z
+
+                        class TF_ROTATION(object):
+                            def __init__(self, x, y, z, w):
+                                self.x = x
+                                self.y = y
+                                self.z = z
+                                self.w = w
+
+                        class _TF_TRANSFORM(object):
+                            def __init__(self, translation, rotation):
+                                self.translation = translation
+                                self.rotation = rotation
+
+                        class TF_TRANSFORM(object):
+                            def __init__(self):
+                                translation = TF_TRANSLATION(
+                                    x=0.44415, y=0.128996, z=0.238593
+                                )
+                                rotation = TF_ROTATION(
+                                    x=0.482089, y=-0.501646, z=0.526684, w=0.488411
+                                )
+                                self.transform = _TF_TRANSFORM(
+                                    translation=translation, rotation=rotation
+                                )
+
+                        self.tf_transform = TF_TRANSFORM()
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
