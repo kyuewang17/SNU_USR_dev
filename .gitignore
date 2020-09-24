@@ -32,3 +32,6 @@
 !/src/snu_module/sample_results/*.sh
 
 /src/snu_module/bag2imseq/test/*
+
+# Add CoCo Data File
+/src/snu_module/scripts4/detection_lib/darknet/cfg/coco.data
