@@ -396,6 +396,7 @@ class ros_sensor_lidar(ros_sensor):
         else:
             self.projected_cloud = None
 
+    # Rescue for LiDAR
     def update_RT_color(self, tf_transform=None, RT_color_params_base_path=None):
         if tf_transform is not None and RT_color_params_base_path is not None:
             raise AssertionError()

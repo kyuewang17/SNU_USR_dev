@@ -369,7 +369,7 @@ class Trajectory(object_instance):
                 )
                 fusion_depth_list.append(l_window.get_window_average_depth())
 
-            # Get Depth Histogram from Fusion Depth List
+            # TODO: < FIX THIS > Get Depth Histogram from Fusion Depth List
             if len(fusion_depth_list) >= np.floor(0.1 * opts.tracker.lidar_params["sampling_number"]):
                 depth_hist, depth_hist_idx = np.histogram(fusion_depth_list)
 
