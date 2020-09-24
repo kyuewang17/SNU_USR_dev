@@ -40,13 +40,17 @@ class lidar_window(object):
         # u-coordinate compensation (column)
         u_min = np.round(self.c_u - 0.5*self.window_size).astype(int)
         u_min = 0 if u_min < 0 else u_min
+        u_min = frame.shape[1] - 1 if u_min >= frame.shape[1] else u_min
         u_max = np.round(self.c_u + 0.5*self.window_size).astype(int)
+        u_max = 0 if u_max < 0 else u_max
         u_max = frame.shape[1] - 1 if u_max >= frame.shape[1] else u_max
 
         # v-coordinate compensation (row)
         v_min = np.round(self.c_v - 0.5*self.window_size).astype(int)
         v_min = 0 if v_min < 0 else v_min
+        v_min = frame.shape[0] - 1 if v_min >= frame.shape[1] else v_min
         v_max = np.round(self.c_v + 0.5*self.window_size).astype(int)
+        v_max = 0 if v_max < 0 else v_max
         v_max = frame.shape[0] - 1 if v_max >= frame.shape[0] else v_max
 
         # Initialize Kernel Patch
