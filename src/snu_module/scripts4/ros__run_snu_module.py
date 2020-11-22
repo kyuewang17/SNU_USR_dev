@@ -124,10 +124,12 @@ class snu_module(backbone):
                     )
                 except:
                     if tf_static_check_flag == 0:
-                        rospy.logwarn("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
+                        rospy.loginfo("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
                     tf_static_check_flag += 1
 
                     if tf_static_check_flag >= 30 and self.opts.env_type == "bag":
+                        rospy.loginfo("TF_STATIC: Custom TF Static Transform Loaded...!")
+
                         class TF_TRANSLATION(object):
                             def __init__(self, x, y, z):
                                 self.x = x

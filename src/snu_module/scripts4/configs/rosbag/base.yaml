@@ -24,11 +24,11 @@ sensors:
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_ir"
         camerainfo_rostopic_name: "/osr/image_ir_camerainfo"
     nightvision:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
@@ -52,12 +52,12 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 3
+            init_age: 2
             destroy_age: 3
             similarity_thresh: 0.1
         trk_cand:
-            destroy_age: 3
-            similarity_thresh: 0.6
+            destroy_age: 2
+            similarity_thresh: 0.4
     visualization:
         is_draw: true
         is_show: true
