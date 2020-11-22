@@ -443,6 +443,10 @@ class Trajectory(object_instance):
         self.c3 = np.array([cam_coord_pos[0][0], cam_coord_pos[1][0], cam_coord_pos[2][0],
                             cam_coord_vel[0][0], cam_coord_vel[1][0], cam_coord_vel[2][0]]).reshape((6, 1))
 
+    # Image Coordinates(2D) to Ground Plane in meters (m)
+    def img_coord_to_ground_plane(self, inverse_projection):
+        pass
+
     # Camera Coordinates(3D) to Image Coordinates(2D)
     def cam_coord_to_img_coord(self):
         raise NotImplementedError()
