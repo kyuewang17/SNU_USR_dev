@@ -36,6 +36,16 @@ sensors:
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
+segmentation:
+    name: "DeepLabv3"
+    device: 0
+    visualization:
+        is_draw: true
+        is_show: true
+        auto_save: false
+        is_result_publish: false
+        result_rostopic_name: "/osr/snu_seg_result_image"
+
 detector:
     name: "YOLOv4"
     device: 0

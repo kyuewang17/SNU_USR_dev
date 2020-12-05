@@ -31,6 +31,25 @@ class vis_obj(object):
     def draw_objects(self, frame, winname):
         raise NotImplementedError
 
+# Define Detection Result Visualization Object
+class vis_seg_obj(vis_obj):
+    def __init__(self, vopts):
+        """
+        vopts: visualizer_options
+        """
+        super(vis_seg_obj, self).__init__(vopts)
+
+
+    # Update Detection BBOX Objects
+    def update_objects(self, result_segmentation):
+        self.mask = result_segmentation
+
+    # Draw Detection Result on Selected Modal Frame
+    def draw_objects(self, opencv_winname):
+        opencv_winname += " {SEG}"
+
+        return self.mask, opencv_winname
+
 
 # Define Detection Result Visualization Object
 class vis_det_obj(vis_obj):
@@ -186,6 +205,7 @@ class visualizer(object):
                 self.modal_frames[modal] = None
 
         # Initialize Visualization Objects
+        self.SEG_VIS_OBJ = vis_seg_obj(vopts=self.vopts)
         self.DET_VIS_OBJ = vis_det_obj(vopts=self.vopts)
         self.TRK_ACL_VIS_OBJ = vis_trk_acl_obj(vopts=self.vopts)
 
@@ -294,7 +314,7 @@ class visualizer(object):
             cv2.waitKey(1)
 
     # Functional Visualizer Call
-    def __call__(self, sensor_data, trajectories, detections, fidx, _check_run_time=False):
+    def __call__(self, sensor_data, trajectories, detections, fidx, _check_run_time=False, segmentation=None):
         # Get Visualization Sensor Data Modality
         modal_type = sensor_data.get_modal_type()
 
@@ -303,6 +323,27 @@ class visualizer(object):
 
         # OpenCV Window Name
         winname = self.winname + "(%s)" % modal_type
+
+        # Update Module Results
+        if self.vopts.segmentation["is_draw"] is True:
+            self.SEG_VIS_OBJ.update_objects(segmentation)
+            # Draw Segmentation Results on Frame
+            seg_vis_frame, seg_winname = self.SEG_VIS_OBJ.draw_objects(
+                opencv_winname=winname
+            )
+            if self.vopts.segmentation["auto_save"] is True:
+                auto_save_segmentation_base_dir = \
+                    os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results", "segmentation")
+                if os.path.isdir(auto_save_segmentation_base_dir) is False:
+                    os.mkdir(auto_save_segmentation_base_dir)
+        else:
+            seg_vis_frame, seg_winname = None, None
+
+        if self.vopts.segmentation["is_show"] is True :
+            # Make NamedWindow
+            cv2.namedWindow(seg_winname)
+            # IMSHOW
+            cv2.imshow(seg_winname, seg_vis_frame)
 
         # Update Module Results
         if self.vopts.detection["is_draw"] is True:
@@ -384,7 +425,8 @@ class visualizer(object):
             self.visualize_top_view_trajectories(trajectories=trajectories)
 
         if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
-                self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True:
+                self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True or \
+                self.vopts.segmentation["is_show"] is True :
             cv2.waitKey(1)
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}

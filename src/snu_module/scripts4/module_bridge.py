@@ -38,6 +38,13 @@ class snu_algorithms(algorithms):
         self.snu_acl = importlib.import_module(
             "module_lib.v{}_{}.ACL".format(dev_main_version, dev_sub_version)
         )
+        self.snu_seg = importlib.import_module(
+            "module_lib.v{}_{}.SEG".format(dev_main_version, dev_sub_version)
+        )
+
+        # Segmentation
+        self.seg_framework = self.snu_seg.load_model(opts=opts) \
+            if opts.segnet.run else None
 
         # Load Detection Model
         self.det_framework = self.snu_det.load_model(opts=opts)
@@ -51,16 +58,21 @@ class snu_algorithms(algorithms):
         # Initialize Detections
         self.detections = {}
 
+        # Initialize Heatmap
+        self.heatmap = None
+
         # Initialize Frame Index
         self.fidx = None
 
         # Initialize Timer Objects
+        self.seg_fpn_obj = Timer(convert="FPS")
         self.det_fps_obj = Timer(convert="FPS")
         self.trk_fps_obj = Timer(convert="FPS")
         self.acl_fps_obj = Timer(convert="FPS")
 
         # Initialize FPS Dictionary
         self.fps_dict = {
+            "seg": None,
             "det": None,
             "trk": None,
             "acl": None
@@ -71,6 +83,25 @@ class snu_algorithms(algorithms):
 
     def __len__(self):
         return len(self.get_trajectories())
+
+    # Segmentation Module
+    def osr_segmentation(self, sync_data_dict):
+        # Start Time
+        self.seg_fpn_obj.reset()
+
+        if self.seg_framework is None:
+            pass
+        else:
+            # Activate Module
+            heatmap = self.snu_seg.run(
+                segnet=self.seg_framework,
+                sync_data_dict=sync_data_dict,
+                opts=self.opts,
+            )
+            self.heatmap = heatmap
+
+        # End Time
+        self.fps_dict["seg"] = self.seg_fpn_obj.elapsed
 
     # Detection Module
     def osr_object_detection(self, sync_data_dict):
@@ -147,6 +178,9 @@ class snu_algorithms(algorithms):
         # End Time
         self.fps_dict["acl"] = self.acl_fps_obj.elapsed
 
+    def get_heatmap(self):
+        return self.heatmap
+
     def get_trajectories(self):
         return self.snu_mot.trks
 
@@ -160,6 +194,9 @@ class snu_algorithms(algorithms):
     def __call__(self, sync_data_dict, fidx):
         # Update Frame Index
         self.fidx = fidx
+
+        # SNU Segmentation Module
+        self.osr_segmentation(sync_data_dict=sync_data_dict)
 
         # SNU Object Detector Module
         self.osr_object_detection(sync_data_dict=sync_data_dict)
@@ -176,7 +213,7 @@ class snu_algorithms(algorithms):
         #            % (self.fidx, 1/self.module_time_dict["det"], 1/self.module_time_dict["trk"])
         # print(trk_time)
 
-        return self.get_trajectories(), self.get_detections(), self.get_algorithm_fps()
+        return self.get_trajectories(), self.get_detections(), self.get_heatmap(), self.get_algorithm_fps()
 
 
 if __name__ == "__main__":

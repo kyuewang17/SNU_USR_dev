@@ -97,6 +97,9 @@ class snu_option_class(object):
         else:
             self.screen_imshow_x, self.screen_imshow_y = None, None
 
+        # Segmnet Options
+        self.segnet = segnet_options(cfg=cfg)
+
         # Detector Options
         self.detector = detector_options(cfg=cfg)
 
@@ -217,6 +220,21 @@ class sensor_options(object):
 
     def update_sensor_image_size(self, frame):
         self.width, self.height = frame.shape[1], frame.shape[0]
+
+
+class segnet_options(object):
+    def __init__(self, cfg):
+        self.run = True
+        self.device = 0
+        self.segmentation_args = {
+            "input_h": 480, "input_w": 640,
+        }
+        # self.segnet_args = {
+        #     "classes": [2, 6, 7, 14, 15],
+        # }
+        self.segnet_args = {
+            "classes": [0, 2, 6, 7, 14, 15],
+        }
 
 
 # Detector Option Class
@@ -451,6 +469,11 @@ class visualizer_options(object):
         self.pad_pixels = 2
         self.info_interval = 4
 
+        self.segmentation = {
+            "is_draw": cfg.segmentation.visualization.is_draw,
+            "is_show": cfg.segmentation.visualization.is_show,
+            "auto_save": cfg.segmentation.visualization.auto_save,
+        }
         self.detection = {
             "is_draw": cfg.detector.visualization.is_draw,
             "is_show": cfg.detector.visualization.is_show,

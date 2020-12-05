@@ -201,7 +201,7 @@ class snu_module(backbone):
                     sync_data_dict["disparity"].process_data(self.opts.sensors.disparity)
 
                 # SNU USR Integrated Algorithm Call
-                trajectories, detections, fps_dict = snu_usr(
+                trajectories, detections, heatmap, fps_dict = snu_usr(
                     sync_data_dict=sync_data_dict, fidx=self.fidx
                 )
 
@@ -221,7 +221,8 @@ class snu_module(backbone):
 
                 # Draw Results
                 result_frame_dict = self.visualizer(
-                    sensor_data=self.color, trajectories=trajectories, detections=detections, fidx=self.fidx
+                    sensor_data=self.color, trajectories=trajectories, detections=detections, fidx=self.fidx,
+                    segmentation=heatmap
                 )
 
                 # Publish Tracks
