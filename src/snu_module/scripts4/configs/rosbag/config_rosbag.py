@@ -116,6 +116,12 @@ __C.segmentation.visualization.auto_save = False
 __C.segmentation.visualization.is_result_publish = False
 __C.segmentation.visualization.result_rostopic_name = "/osr/snu_seg_result_image"
 
+# ---------------- #
+# Segmentation Options #
+# ---------------- #
+# TODO: Add options/parameters that can be easily modified while impacting the overall performance
+__C.attnet = CN(new_allowed=True)
+__C.attnet.device = 0
 
 # ---------------- #
 # Detector Options #
@@ -133,7 +139,7 @@ __C.detector.sensors.color = True
 __C.detector.sensors.disparity = False
 __C.detector.sensors.thermal = False
 __C.detector.sensors.infrared = False
-__C.detector.sensors.nightvision = False
+__C.detector.sensors.nightvision = True
 __C.detector.sensors.lidar = False
 
 __C.detector.visualization = CN(new_allowed=True)
