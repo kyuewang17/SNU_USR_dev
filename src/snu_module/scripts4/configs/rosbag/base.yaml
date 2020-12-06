@@ -39,12 +39,18 @@ sensors:
 segmentation:
     name: "DeepLabv3"
     device: 0
+    run: True
     visualization:
         is_draw: true
         is_show: true
         auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_seg_result_image"
+
+attnet:
+    name: "ATT"
+    device: 0
+    run: True
 
 detector:
     name: "YOLOv4"

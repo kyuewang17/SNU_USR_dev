@@ -12,6 +12,9 @@ import torch
 from detection_lib.detector import RefineDet, YOLOv4
 from detection_lib import util
 
+from torch.nn import functional as F
+
+
 thermal_camera_params = util.ThermalHeuristicCameraParams()
 
 detector_dict = {
@@ -60,6 +63,10 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     color_frame = (sync_data_dict["color"].get_data() if "color" in sync_data_dict.keys() else None)
     thermal_frame = (sync_data_dict["thermal"].get_data() if "thermal" in sync_data_dict.keys() else None)
 
+    import time
+    if 'att_tensor' in sync_data_dict.keys():
+        img = sync_data_dict['att_tensor'][0].permute(1,2,0).cpu().numpy()
+        # print(time.time()-start)
     ######## by JIS (maybe...?) #########
     # global cnt
     # scipy.misc.imsave(os.path.join('/home/mipal/Project/MUIN/png_img/',str(cnt)+'.png'), color_frame)
@@ -70,6 +77,8 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     color_size = (color_frame.shape[0], color_frame.shape[1])
     input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
 
+    img_size = color_size
+
     if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
         img_size = thermal_frame.shape[:2]
         # img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
@@ -78,11 +87,12 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
         ).unsqueeze(dim=2)
         img = torch.cat([img, img, img], dim=2)
     elif (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
-        img_size = color_size
-        # img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
-        img = torch.from_numpy(
-            cv2.resize(color_frame, dsize=input_size)
-        )
+        # img_size = color_size
+        # # img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
+        # img = torch.from_numpy(
+        #     cv2.resize(color_frame, dsize=input_size)
+        # )
+        img = color_frame
     else:
         raise NotImplementedError
 

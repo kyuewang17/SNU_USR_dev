@@ -57,7 +57,7 @@ class YOLOv4(DetectorBase):
         # img = darknet.load_image(img_path, 0, 0)
         # print(img.data)
         # print(type(img.data), img.data.shape)
-        img = img.numpy()
+        # img = img.numpy()
         img = cv2.resize(img, (self.net_width, self.net_height), interpolation=cv2.INTER_LINEAR)
         img = img.transpose(2, 0, 1)
         img_arr = np.ascontiguousarray(img.flat, dtype=np.float32) / 255.0

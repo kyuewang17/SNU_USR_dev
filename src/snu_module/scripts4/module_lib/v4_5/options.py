@@ -99,6 +99,9 @@ class snu_option_class(object):
 
         # Segmnet Options
         self.segnet = segnet_options(cfg=cfg)
+        
+        # Det input Att Options # TODO
+        self.attnet = attnet_options(cfg=cfg)
 
         # Detector Options
         self.detector = detector_options(cfg=cfg)
@@ -224,8 +227,8 @@ class sensor_options(object):
 
 class segnet_options(object):
     def __init__(self, cfg):
-        self.run = True
-        self.device = 0
+        self.run = cfg.segmentation.run
+        self.device = cfg.segmentation.device
         self.segmentation_args = {
             "input_h": 480, "input_w": 640,
         }
@@ -235,6 +238,13 @@ class segnet_options(object):
         self.segnet_args = {
             "classes": [0, 2, 6, 7, 14, 15],
         }
+
+class attnet_options(object):
+    def __init__(self, cfg):
+        self.run = cfg.attnet.run
+        self.device = cfg.attnet.device
+        self.model_dir =\
+            os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
 
 
 # Detector Option Class
