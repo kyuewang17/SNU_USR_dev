@@ -149,6 +149,12 @@ class SNU_MOT(object):
                 det_patch = snu_patch.get_patch(frame, det)
                 trk_patch = snu_patch.get_patch(frame, trk_bbox)
 
+                # Skip Association Conditions
+                if trk_patch.shape[0] <= 0 or trk_patch.shape[1] <= 0:
+                    continue
+                if trk.label != labels[det_idx]:
+                    continue
+
                 # Resize RGBD Patches
                 resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
                 resized_trk_patch = cv2.resize(trk_patch, dsize=(64, 64))
@@ -190,7 +196,7 @@ class SNU_MOT(object):
                     s_w_dict["histogram"] * hist_similarity + \
                     s_w_dict["iou"] * iou_similarity + \
                     s_w_dict["distance"] * dist_similarity
-                # print("T2D Similarity Value: {:.3f}".format(similarity))
+                print("T2D Similarity Value: {:.3f}".format(similarity))
 
                 # to Similarity Matrix
                 similarity_matrix[det_idx, trk_idx] = similarity

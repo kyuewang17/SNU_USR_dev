@@ -180,6 +180,7 @@ class snu_module(backbone):
                 # Get Synchronized Data, Loop Until Synchronized
                 sync_data = sync_ss.get_sync_data()
                 if sync_data is None:
+                    # print("LOOPING...!")
                     continue
                 else:
                     self.update_all_modal_data(sync_data=sync_data)

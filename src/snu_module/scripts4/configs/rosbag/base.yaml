@@ -20,15 +20,15 @@ sensors:
             min_distance: 1000
             max_distance: 15000
     thermal:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/image_ir"
         camerainfo_rostopic_name: "/osr/image_ir_camerainfo"
     nightvision:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
@@ -64,10 +64,10 @@ tracker:
         trk:
             init_age: 2
             destroy_age: 3
-            similarity_thresh: 0.1
+            similarity_thresh: 0.33
         trk_cand:
             destroy_age: 2
-            similarity_thresh: 0.4
+            similarity_thresh: 0.6
     visualization:
         is_draw: true
         is_show: true
