@@ -96,7 +96,8 @@ class snu_algorithms(algorithms):
         self.seg_fpn_obj.reset()
 
         if self.seg_framework is None:
-            pass
+            # End Time
+            self.fps_dict["seg"] = -1
         else:
             # Activate Module
             heatmap = self.snu_seg.run(
@@ -106,8 +107,8 @@ class snu_algorithms(algorithms):
             )
             self.heatmap = heatmap
 
-        # End Time
-        self.fps_dict["seg"] = self.seg_fpn_obj.elapsed
+            # End Time
+            self.fps_dict["seg"] = self.seg_fpn_obj.elapsed
 
     # Detection Module
     def osr_object_detection(self, sync_data_dict):
@@ -141,6 +142,7 @@ class snu_algorithms(algorithms):
         labels = labels[keep_indices, :]
 
         self.detections = {"dets": dets, "confs": confs, "labels": labels}
+        # print(self.detections)
 
         # End Time
         self.fps_dict["det"] = self.det_fps_obj.elapsed

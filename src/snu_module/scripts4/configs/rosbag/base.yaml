@@ -39,26 +39,27 @@ sensors:
 segmentation:
     name: "DeepLabv3"
     device: 0
-    run: True
+    run: true
     visualization:
         is_draw: true
         is_show: true
-        auto_save: false
+        auto_save: true
         is_result_publish: false
         result_rostopic_name: "/osr/snu_seg_result_image"
 
 attnet:
     name: "ATT"
     device: 0
-    run: True
+    run: true
 
 detector:
     name: "YOLOv4"
     device: 0
+    module_switch: false
     visualization:
         is_draw: true
         is_show: false
-        auto_save: false
+        auto_save: true
         bbox_color: (255, 0, 0)
         is_result_publish: true
         result_rostopic_name: "/osr/snu_det_result_image"
@@ -68,16 +69,16 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 2
-            destroy_age: 3
-            similarity_thresh: 0.33
+            init_age: 1
+            destroy_age: 2
+            similarity_thresh: 0.3
         trk_cand:
             destroy_age: 2
-            similarity_thresh: 0.6
+            similarity_thresh: 0.8
     visualization:
         is_draw: true
         is_show: true
-        auto_save: false
+        auto_save: true
         is_result_publish: true
         result_rostopic_name: "/osr/snu_trk_acl_result_image"
         top_view:
@@ -94,4 +95,4 @@ aclassifier:
     device: 0
     visualization:
         is_draw: true
-        is_show: false
+        is_show: true

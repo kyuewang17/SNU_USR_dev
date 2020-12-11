@@ -196,7 +196,7 @@ class SNU_MOT(object):
                     s_w_dict["histogram"] * hist_similarity + \
                     s_w_dict["iou"] * iou_similarity + \
                     s_w_dict["distance"] * dist_similarity
-                print("T2D Similarity Value: {:.3f}".format(similarity))
+                # print("T2D Similarity Value: {:.3f}".format(similarity))
 
                 # to Similarity Matrix
                 similarity_matrix[det_idx, trk_idx] = similarity

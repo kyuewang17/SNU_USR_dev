@@ -129,7 +129,8 @@ def generate_multimodal_bag_file(MMT_OBJ, base_path):
                     modal_encoding = "mono16"
                     modal_frame_id = "osr/image_" + modal.lower()
                 elif modal == "thermal":
-                    modal_encoding = "mono16"
+                    # modal_encoding = "mono16"
+                    modal_encoding = "mono8"
                     modal_frame_id = "osr/image_" + modal.lower()
                 elif modal == "infrared":
                     modal_encoding = "mono8"
@@ -193,7 +194,7 @@ def generate_multimodal_bag_file(MMT_OBJ, base_path):
 
 
 if __name__ == "__main__":
-    base_path = "/home/snu/DATA/USR_4th_Final_Demo"
+    base_path = "/home/snu/DATA/4th-year-dynamic/005"
     MMT_DATA_OBJ = load_multimodal_data(base_path=base_path)
     generate_multimodal_bag_file(MMT_OBJ=MMT_DATA_OBJ, base_path=base_path)
     pass

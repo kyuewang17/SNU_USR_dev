@@ -96,9 +96,11 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     else:
         raise NotImplementedError
 
+    img = color_frame
     # Feed-forward / Get BBOX, Confidence, Labels
     # result_dict = darknet.inference_(framework, img)
     boxes, confs, labels = detector.forward(img)
+
     boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
     boxes[:, [1, 3]] *= (float(img_size[0]) / float(input_size[0]))
 
