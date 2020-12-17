@@ -130,6 +130,21 @@ def iou(bbox1, bbox2):
     return ret_iou
 
 
+# Get Intersection-over-Component between two BBOXES
+def ioc(bbox1, bbox2, denom_comp=2):
+    assert (denom_comp == 1 or denom_comp == 2)
+    common_bbox = intersection_bbox(bbox1, bbox2)
+    w = np.maximum(0., common_bbox[2])
+    h = np.maximum(0., common_bbox[3])
+    intersection_area = w * h
+    if denom_comp == 1:
+        denom_area = bbox1[2] * bbox1[3]
+    else:
+        denom_area = bbox2[2] * bbox2[3]
+    return float(intersection_area) / float(denom_area)
+
+
+
 if __name__ == '__main__':
     b1 = [0, 0, 100, 100]
     b2 = [101, 101, 200, 200]

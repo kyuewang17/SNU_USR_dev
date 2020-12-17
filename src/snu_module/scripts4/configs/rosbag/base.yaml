@@ -39,11 +39,11 @@ sensors:
 segmentation:
     name: "DeepLabv3"
     device: 0
-    run: true
+    run: false
     visualization:
-        is_draw: true
-        is_show: true
-        auto_save: true
+        is_draw: false
+        is_show: false
+        auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_seg_result_image"
 
@@ -57,11 +57,11 @@ detector:
     device: 0
     module_switch: false
     visualization:
-        is_draw: true
+        is_draw: false
         is_show: false
-        auto_save: true
+        auto_save: false
         bbox_color: (255, 0, 0)
-        is_result_publish: true
+        is_result_publish: false
         result_rostopic_name: "/osr/snu_det_result_image"
 
 tracker:
@@ -69,9 +69,9 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 1
+            init_age: 2
             destroy_age: 2
-            similarity_thresh: 0.3
+            similarity_thresh: 0.33
         trk_cand:
             destroy_age: 2
             similarity_thresh: 0.8
@@ -94,5 +94,5 @@ aclassifier:
     name: "Custom"
     device: 0
     visualization:
-        is_draw: true
-        is_show: true
+        is_draw: false
+        is_show: false
