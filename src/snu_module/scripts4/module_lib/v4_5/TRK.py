@@ -182,9 +182,10 @@ class SNU_MOT(object):
                 aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
                 aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
                 # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+
                 # iou_similarity = snu_bbox.ioc(det, aug_trk_bbox, denom_comp=1)
-                # iou_similarity = snu_bbox.iou(det, trk_bbox)
-                iou_similarity = snu_bbox.iou(det, aug_trk_bbox)
+                # iou_similarity = snu_bbox.iou(det, aug_trk_bbox)
+                iou_similarity = snu_bbox.iou(det, trk_bbox)
                 # iou_similarity = 1.0
 
                 # [3] Get Distance Similarity
@@ -266,12 +267,19 @@ class SNU_MOT(object):
                     similarity = -1
                 else:
                     det_zx = snu_bbox.bbox_to_zx(det)
-                    trk_cand_bbox, _ = snu_bbox.zx_to_bbox(trk_cand.z[-1])
+                    trk_cand_bbox, trk_cand_vel = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
                     # [1] Get IOU Similarity w.r.t. SOT-predicted BBOX
                     # predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
                     # iou_similarity = snu_bbox.iou(det, predicted_bbox)
                     iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
+
+                    # # IOC
+                    # aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
+                    # aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
+                    # aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                    # # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+                    # iou_similarity = snu_bbox.ioc(det, aug_trk_cand_bbox, denom_comp=1)
 
                     # [2] Get Distance Similarity
                     l2_distance = snu_gfuncs.l2_distance_dim2(
@@ -285,7 +293,7 @@ class SNU_MOT(object):
                     similarity = \
                         s_w_dict["iou"] * iou_similarity + \
                         s_w_dict["distance"] * dist_similarity
-                    # print("D2D Similarity Value: {:.3f}".format(similarity))
+                    print("D2D Similarity Value: {:.3f}".format(similarity))
 
                 # to Similarity Matrix
                 similarity_matrix[det_idx, trk_cand_idx] = similarity
