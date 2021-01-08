@@ -45,7 +45,7 @@ class ROS_CAMERA_PARAMS_OBJ(BASE_CAMERA_PARAMS_OBJ):
 
 class FILE_CAMERA_PARAMS_OBJ(BASE_CAMERA_PARAMS_OBJ):
     """ Used for Static Camera (YAML-based Camera Parameter) """
-    def __init__(self, param_precision=np.float32):
+    def __init__(self, static_agent_id, param_precision=np.float32):
         super(FILE_CAMERA_PARAMS_OBJ, self).__init__(param_precision)
 
 

@@ -1,0 +1,83 @@
+env:
+    type: "dynamic"
+    id: "01"
+#    time: "day"
+
+screen_compensate: true
+
+machine_name: "snu"
+
+sensors:
+    color:
+        is_valid: true
+        rostopic_name: "/osr/image_color"
+        camerainfo_rostopic_name: "/osr/image_color_camerainfo"
+    disparity:
+        is_valid: true
+        rostopic_name: "/osr/image_aligned_depth"
+        camerainfo_rostopic_name: "/osr/image_depth_camerainfo"
+        clip:
+            value: -1
+            min_distance: 1000
+            max_distance: 15000
+    thermal:
+        is_valid: true
+        rostopic_name: "/osr/image_thermal"
+        camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
+    infrared:
+        is_valid: true
+        rostopic_name: "/osr/image_ir"
+        camerainfo_rostopic_name: "/osr/image_ir_camerainfo"
+    nightvision:
+        is_valid: true
+        rostopic_name: "/osr/image_nv1"
+        camerainfo_rostopic_name: "NULL"
+    lidar:
+        is_valid: true
+        rostopic_name: "/osr/lidar_pointcloud"
+        camerainfo_rostopic_name: "NULL"
+
+detector:
+    name: "YOLOv4"
+    device: 0
+    tiny_area_threshold: 300
+    visualization:
+        is_draw: true
+        is_show: false
+        auto_save: false
+        bbox_color: (255, 0, 0)
+        is_result_publish: true
+        result_rostopic_name: "/osr/snu_det_result_image"
+
+tracker:
+    name: "Custom"
+    device: 0
+    association:
+        trk:
+            init_age: 3
+            destroy_age: 3
+            similarity_thresh: 0.1
+        trk_cand:
+            destroy_age: 3
+            similarity_thresh: 0.6
+    visualization:
+        is_draw: true
+        is_show: false
+        auto_save: false
+        is_result_publish: true
+        result_rostopic_name: "/osr/snu_trk_acl_result_image"
+        top_view:
+            is_draw: false
+            is_show: false
+            # map_size -> (depth_range, horizontal length*2)
+            map_size: (30000, 5000)
+            trk_radius: 100
+            is_result_publish: false
+            result_rostopic_name: "/osr/trk_top_view_image"
+
+aclassifier:
+    name: "Custom"
+    device: 0
+    visualization:
+        is_draw: true
+        is_show: false

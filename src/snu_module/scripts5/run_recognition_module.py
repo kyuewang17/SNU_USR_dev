@@ -3,7 +3,7 @@
 Object Recognition Module (SNU Integrated Module)
 for Outdoor Surveillance Robots
 
-    -
+    - TBA
 
 """
 import os, argparse, time, logging, yaml
@@ -12,9 +12,9 @@ import rospy
 import tf2_ros
 
 
-
-
-
+def load_osr_recognition_module(logger, opts):
+    # Import SNU Module, Initialize and Return
+    if opts.env_type in ["bag", "static", "dynamic"]:
 
 
 
