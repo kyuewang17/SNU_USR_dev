@@ -97,7 +97,7 @@ class options(object):
         else:
             self.screen_imshow_x, self.screen_imshow_y = None, None
 
-        # Segmnet Options
+        # Segnet Options
         self.segnet = segnet_options(cfg=cfg)
 
         # Det input Att Options # TODO
@@ -117,16 +117,13 @@ class options(object):
 
         # Sensor Options
         self.sensors = sensor_options(cfg=cfg)
-        self.sensor_frame_rate = 10
+        self.sync_fps = 10
 
         # Rostopic Message for Publisher
-        self.publish_mesg = {
+        self.publish_msg = {
             "tracks": cfg.publisher.tracks,
-
-            "det_result_rostopic_name": cfg.detector.visualization.result_rostopic_name,
-            "trk_acl_result_rostopic_name": cfg.tracker.visualization.result_rostopic_name,
-
-            "trk_top_view_rostopic_name": cfg.tracker.visualization.top_view.result_rostopic_name,
+            "det_results": cfg.detector.visualization.result_rostopic_name,
+            "trk_acl_results": cfg.tracker.visualization.result_rostopic_name,
         }
 
     def __repr__(self):
@@ -154,22 +151,22 @@ class sensor_options(object):
         }
 
         # D435i Depth Camera
-        self.disparity = {
+        self.depth = {
             # Valid Flag
-            "is_valid": cfg.sensors.disparity.is_valid,
+            "is_valid": cfg.sensors.depth.is_valid,
 
             # ROS Message
-            "imgmsg_to_cv2_encoding": cfg.sensors.disparity.encoding,
-            "rostopic_name": cfg.sensors.disparity.rostopic_name,
-            "camerainfo_rostopic_name": cfg.sensors.disparity.camerainfo_rostopic_name,
+            "imgmsg_to_cv2_encoding": cfg.sensors.depth.encoding,
+            "rostopic_name": cfg.sensors.depth.rostopic_name,
+            "camerainfo_rostopic_name": cfg.sensors.depth.camerainfo_rostopic_name,
 
-            # Disparity Image Clip Value
-            "clip_value": cfg.sensors.disparity.clip.value,
+            # depth Image Clip Value
+            "clip_value": cfg.sensors.depth.clip.value,
 
-            # Disparity Image Clip Distance (in "millimeters")
+            # depth Image Clip Distance (in "millimeters")
             "clip_distance": {
-                "min": cfg.sensors.disparity.clip.min_distance,
-                "max": cfg.sensors.disparity.clip.max_distance,
+                "min": cfg.sensors.depth.clip.min_distance,
+                "max": cfg.sensors.depth.clip.max_distance,
             }
         }
 
