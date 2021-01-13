@@ -102,7 +102,6 @@ class MULTIMODAL_SENSORS_OBJ(object):
                 setattr(self, "{}".format(modal),
                         rospy.Subscriber(topic_name, CameraInfo, modal_camerainfo_callback_fn))
 
-
         """ Private Attributes """
         # Get Synchronized Frame Rate of All Sensors
         self.__sync_fps = sensor_opts.sync_fps
@@ -140,6 +139,8 @@ class MULTIMODAL_SENSORS_OBJ(object):
                     self.nightvision.update(frame=sync_frame_dict["nightvision"], timestamp=sync_timestamp)
                     self.lidar.update_data(lidar_pc_msg=self.__lidar_msg, tf_transform=self.tf_transform)
 
+                    break
+
         elif update_method == "force":
             self.__force_update()
         else:
@@ -165,6 +166,12 @@ class MULTIMODAL_SENSORS_OBJ(object):
                     if tf_static_check_attempts >= attempt_thresh:
                         print("TF_STATIC: Custom TF Static Transform Loaded...!")
                         self.tf_transform = TF_TRANSFORM()
+
+    def get_all_modal_objects(self):
+        return {
+            "color": self.color, "depth": self.depth, "infrared": self.infrared,
+            "thermal": self.thermal, "nightvision": self.nightvision, "lidar": self.lidar
+        }
 
     def __get_multimodal_sensor_valid_dict(self, sensor_type="all"):
         assert (sensor_type == "all" or sensor_type == "img")

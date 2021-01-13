@@ -18,7 +18,7 @@ from tf.transformations import quaternion_from_euler
 from nav_msgs.msg import Odometry
 
 
-class TARGET_RECOGNITION(object):
+class RECOGNITION_BASE_OBJECT(object):
     def __init__(self, opts):
         # Options
         self.opts = opts
@@ -168,29 +168,6 @@ class TARGET_RECOGNITION(object):
             out_tracks.tracks.append(track)
 
         return out_tracks
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
