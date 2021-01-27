@@ -1,5 +1,6 @@
 """
-SNU Integrated Module v5.0
+Object Recognition Module (SNU Integrated Module)
+for Outdoor Surveillance Robots
 
     - Algorithm Loading Functions
 
@@ -59,9 +60,10 @@ def argument_parser(logger, script_name, dev_version=None, mode_selection=None):
 
     # Detect Mode Selection
     if mode_selection is None:
-        logger.info("Searching Argument Declaration...!")
+        logger.info("Searching Execution Mode...!")
     else:
-        assert isinstance(mode_selection, str)
+        assert isinstance(mode_selection, str), "Manual Mode must be a <str> type...!"
+        mode_selection = mode_selection.lower()
         assert mode_selection in ["bag", "agent"], "Manual Mode [{}] is Undefined...!".format(mode_selection)
         logger.info("Manual Mode [{}] Selected...!".format(mode_selection))
 
@@ -185,10 +187,10 @@ def cfg_loader(logger, args):
 def load_options(logger, args, cfg):
     # Get Module Version and Selected Base Path
     dev_version = str(args.dev_version)
-    dev_main_version, dev_sub_version = dev_version.split(".")[0], dev_version.split(".")[-1]
+    main_dev_version, sub_dev_version = dev_version.split(".")[0], dev_version.split(".")[1]
     module_version_base_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
-        "module_lib", "v{}_{}".format(dev_main_version, dev_sub_version)
+        "libs", "modules", "v{}_{}".format(main_dev_version, sub_dev_version)
     )
     if os.path.isdir(module_version_base_path) is False:
         raise AssertionError("Module Version [v{}] NOT Found...!".format(args.dev_version))
@@ -197,8 +199,8 @@ def load_options(logger, args, cfg):
     time.sleep(0.5)
 
     # Select Option based on Module Version
-    options = importlib.import_module("module_lib.v{}_{}.options".format(dev_main_version, dev_sub_version))
-    opts = options.snu_option_class(cfg=cfg, dev_version=args.dev_version)
+    options = importlib.import_module("libs.modules.v{}_{}.options".format(main_dev_version, sub_dev_version))
+    opts = options.options(cfg=cfg, dev_version=args.dev_version)
     return opts
 
 

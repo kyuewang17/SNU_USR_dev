@@ -49,9 +49,9 @@ class RECOGNITION_BASE_OBJECT(object):
         )
         self.tracks_pub.publish(out_tracks)
 
-    # Publish SNU Result Image ( DET / TRK + ACL )
-    def publish_snu_result_image(self, result_frame_dict):
-        for module, result_frame in result_frame_dict.items():
+    # Publish Recognition Result Image ( DET / TRK + ACL )
+    def publish_recognition_result_image(self, results_frame_dict):
+        for module, result_frame in results_frame_dict.items():
             if result_frame is not None:
                 if module.lower() == "det":
                     if self.opts.detector.is_result_publish is True:

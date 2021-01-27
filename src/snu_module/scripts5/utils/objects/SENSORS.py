@@ -404,11 +404,12 @@ class DEPTH_SENSOR_OBJ(IMAGE_SENSOR_BASE_OBJ):
 
     def update_data(self, frame, clip_mode=True):
         self.__update_frame(frame=frame)
-        self.clip_depth_frame()
+        if clip_mode is True:
+            self.clip_depth_frame()
         self.__raw_depth_frame = frame
 
-    def update(self, frame, timestamp):
-        self.update_data(frame=frame)
+    def update(self, frame, timestamp, clip_mode=True):
+        self.update_data(frame=frame, clip_mode=clip_mode)
         self.update_timestamp(timestamp=timestamp)
 
     def __update_frame(self, frame):

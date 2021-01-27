@@ -20,14 +20,17 @@ for Outdoor Surveillance Robots
 # Import Modules
 import cv2
 import os
+import sys
 import copy
 import numpy as np
 
 # Import Colormap, Screen Geometry
+__CURR_FILE_PATH__ = os.path.dirname(__file__)
+__SCRIPT_MASTER_PATH__ = os.path.dirname(
+    os.path.dirname(os.path.dirname(__CURR_FILE_PATH__))
+)
+sys.path.insert(0, __SCRIPT_MASTER_PATH__)
 from utils.general_functions import colormap, get_screen_geometry
-
-# Current File Path
-curr_file_path = os.path.dirname(__file__)
 
 
 # Kalman Filter Parameters
@@ -296,7 +299,7 @@ class detector_options(object):
             "thresh": 0.65, "hier_thresh": 0.5,
             "nms_thresh": 0.45,
             "meta_path": os.path.join(
-                os.path.dirname(os.path.dirname(curr_file_path)),
+                os.path.dirname(os.path.dirname(__CURR_FILE_PATH__)),
                 "detection_lib", "darknet", "cfg", "coco.data"
             ),
             # "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),

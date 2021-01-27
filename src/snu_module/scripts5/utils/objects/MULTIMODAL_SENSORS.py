@@ -17,9 +17,6 @@ from nav_msgs.msg import Odometry
 """ TF_TRANSFORM related Object """
 
 
-# TODO: Check for "ros__run_snu_module.py" script from <script4>
-
-
 class TF_TRANSLATION(object):
     def __init__(self, x, y, z):
         self.x = x
@@ -59,8 +56,6 @@ class TF_TRANSFORM(object):
 
 class MULTIMODAL_SENSORS_OBJ(object):
     def __init__(self, sensor_opts):
-        # Initialize Synchronized Frame Index
-        self.fidx = 0
 
         # Initialize Synchronized Timestamp
         self.sync_timestamp = None
@@ -120,15 +115,19 @@ class MULTIMODAL_SENSORS_OBJ(object):
                 repr_str = repr_str + "+{}".format(key)
         return repr_str
 
-    def update_sensors(self, update_method="synchronous"):
+    def make_sync_data(self):
+        self.sync_subscriber.make_sync_data()
+
+    def update_sensors(self, update_method="synchronous", MAXIMUM_ATTEMPT=50):
         if update_method == "synchronous":
-            while True:
+            _ATTEMPTS = 0
+            while _ATTEMPTS < MAXIMUM_ATTEMPT:
+                _ATTEMPTS += 1
                 sync_data = self.__synchronous_update()
                 if sync_data is not None:
                     sync_timestamp, sync_frame_dict = sync_data[0], sync_data[1]
 
                     # Update Synchronized Timestamp and Frame Index
-                    self.fidx += 1
                     self.sync_timestamp = sync_timestamp
 
                     # Update Multimodal Sensor Data (except LiDAR)
@@ -172,6 +171,9 @@ class MULTIMODAL_SENSORS_OBJ(object):
             "color": self.color, "depth": self.depth, "infrared": self.infrared,
             "thermal": self.thermal, "nightvision": self.nightvision, "lidar": self.lidar
         }
+
+    def get_odom_msg(self):
+        return self.__odom_msg
 
     def __get_multimodal_sensor_valid_dict(self, sensor_type="all"):
         assert (sensor_type == "all" or sensor_type == "img")
@@ -228,7 +230,6 @@ class MULTIMODAL_SENSORS_OBJ(object):
 
     def __nightvision_camerainfo_callback(self, msg):
         self.nightvision.sensor_params.update_sensor_params(mode="ROS", msg=msg)
-
 
     def __force_update(self, *args, **kwargs):
         raise NotImplementedError()
