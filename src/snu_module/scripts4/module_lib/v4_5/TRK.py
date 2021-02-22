@@ -183,9 +183,9 @@ class SNU_MOT(object):
                 aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
                 # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
 
-                # iou_similarity = snu_bbox.ioc(det, aug_trk_bbox, denom_comp=1)
+                iou_similarity = snu_bbox.ioc(det, aug_trk_bbox, denom_comp=1)
                 # iou_similarity = snu_bbox.iou(det, aug_trk_bbox)
-                iou_similarity = snu_bbox.iou(det, trk_bbox)
+                # iou_similarity = snu_bbox.iou(det, trk_bbox)
                 # iou_similarity = 1.0
 
                 # [3] Get Distance Similarity

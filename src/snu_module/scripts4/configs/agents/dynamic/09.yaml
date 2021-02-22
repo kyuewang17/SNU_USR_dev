@@ -1,5 +1,6 @@
 env:
-    type: "bag"
+    type: "dynamic"
+    id: "09"
 #    time: "day"
 
 screen_compensate: true
@@ -20,7 +21,7 @@ sensors:
             min_distance: 1000
             max_distance: 15000
     thermal:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
@@ -36,32 +37,16 @@ sensors:
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
-segmentation:
-    name: "DeepLabv3"
-    device: 0
-    run: false
-    visualization:
-        is_draw: false
-        is_show: false
-        auto_save: false
-        is_result_publish: false
-        result_rostopic_name: "/osr/snu_seg_result_image"
-
-attnet:
-    name: "ATT"
-    device: 0
-    run: true
-
 detector:
     name: "YOLOv4"
     device: 0
-    module_switch: false
+    tiny_area_threshold: 300
     visualization:
-        is_draw: false
+        is_draw: true
         is_show: false
         auto_save: false
         bbox_color: (255, 0, 0)
-        is_result_publish: false
+        is_result_publish: true
         result_rostopic_name: "/osr/snu_det_result_image"
 
 tracker:
@@ -69,16 +54,16 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 2
-            destroy_age: 2
-            similarity_thresh: 0.33
+            init_age: 3
+            destroy_age: 3
+            similarity_thresh: 0.1
         trk_cand:
-            destroy_age: 2
-            similarity_thresh: 0.8
+            destroy_age: 3
+            similarity_thresh: 0.6
     visualization:
         is_draw: true
-        is_show: true
-        auto_save: true
+        is_show: false
+        auto_save: false
         is_result_publish: true
         result_rostopic_name: "/osr/snu_trk_acl_result_image"
         top_view:
@@ -95,4 +80,4 @@ aclassifier:
     device: 0
     visualization:
         is_draw: true
-        is_show: true
+        is_show: false

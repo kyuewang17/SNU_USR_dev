@@ -11,7 +11,7 @@ sensors:
         is_valid: true
         rostopic_name: "/osr/image_color"
         camerainfo_rostopic_name: "/osr/image_color_camerainfo"
-    disparity:
+    depth:
         is_valid: true
         rostopic_name: "/osr/image_aligned_depth"
         camerainfo_rostopic_name: "/osr/image_depth_camerainfo"
@@ -94,5 +94,5 @@ aclassifier:
     name: "Custom"
     device: 0
     visualization:
-        is_draw: true
-        is_show: true
+        is_draw: false
+        is_show: false
