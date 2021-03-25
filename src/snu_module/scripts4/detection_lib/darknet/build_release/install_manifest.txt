@@ -1,0 +1,9 @@
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/libdark.so
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/include/darknet/darknet.h
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/include/darknet/yolo_v2_class.hpp
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/uselib
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/darknet
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetTargets.cmake
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetTargets-release.cmake
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetConfig.cmake
+/home/mipal/Project/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetConfigVersion.cmake
