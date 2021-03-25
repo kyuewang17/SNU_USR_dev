@@ -1,8 +1,6 @@
 """
 SNU Integrated Module v5.0
     - Configuration File for ROS Bag File
-
-
 """
 # Import Module
 import os

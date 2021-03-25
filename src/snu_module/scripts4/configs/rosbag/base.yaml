@@ -1,6 +1,6 @@
 env:
     type: "bag"
-#    time: "day"
+    time: "day"
 
 screen_compensate: true
 
@@ -12,7 +12,7 @@ sensors:
         rostopic_name: "/osr/image_color"
         camerainfo_rostopic_name: "/osr/image_color_camerainfo"
     disparity:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_aligned_depth"
         camerainfo_rostopic_name: "/osr/image_depth_camerainfo"
         clip:
@@ -20,7 +20,7 @@ sensors:
             min_distance: 1000
             max_distance: 15000
     thermal:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
@@ -28,11 +28,11 @@ sensors:
         rostopic_name: "/osr/image_ir"
         camerainfo_rostopic_name: "/osr/image_ir_camerainfo"
     nightvision:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
-        is_valid: true
+        is_valid: false
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
@@ -50,14 +50,14 @@ segmentation:
 attnet:
     name: "ATT"
     device: 0
-    run: True
+    run: false
 
 detector:
     name: "YOLOv4"
     device: 0
     visualization:
         is_draw: true
-        is_show: false
+        is_show: true
         auto_save: false
         bbox_color: (255, 0, 0)
         is_result_publish: true
@@ -75,10 +75,10 @@ tracker:
             destroy_age: 2
             similarity_thresh: 0.4
     visualization:
-        is_draw: true
-        is_show: true
+        is_draw: false
+        is_show: false
         auto_save: false
-        is_result_publish: true
+        is_result_publish: false
         result_rostopic_name: "/osr/snu_trk_acl_result_image"
         top_view:
             is_draw: false
@@ -93,5 +93,5 @@ aclassifier:
     name: "Custom"
     device: 0
     visualization:
-        is_draw: true
+        is_draw: false
         is_show: false

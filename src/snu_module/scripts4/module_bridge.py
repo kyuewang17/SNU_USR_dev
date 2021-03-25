@@ -7,7 +7,6 @@ SNU Integrated Module
 import importlib
 from utils.profiling import Timer
 
-
 class algorithms(object):
     def __init__(self):
         pass
@@ -41,7 +40,6 @@ class snu_algorithms(algorithms):
         self.snu_seg = importlib.import_module(
             "module_lib.v{}_{}.SEG".format(dev_main_version, dev_sub_version)
         )
-
         self.snu_ATT = importlib.import_module(
             "module_lib.v{}_{}.ATT".format(dev_main_version, dev_sub_version)
         )
@@ -53,6 +51,7 @@ class snu_algorithms(algorithms):
         # Load Detection Model
         self.att_net = self.snu_ATT.load_model(opts=opts)\
             if opts.attnet.run else None
+
         self.det_framework = self.snu_det.load_model(opts=opts)
 
         # Load Action Classification Model
@@ -123,11 +122,9 @@ class snu_algorithms(algorithms):
         if self.att_net is not None:
             output = self.snu_ATT.run(attnet=self.att_net, sync_data_dict=detection_sensor_data, opts=self.opts)
             detection_sensor_data['att_tensor'] = output
+
         # Activate Module
-        dets = self.snu_det.detect(
-            detector=self.det_framework, sync_data_dict=detection_sensor_data,
-            opts=self.opts
-        )
+        dets = self.snu_det.detect(detector=self.det_framework, sync_data_dict=detection_sensor_data, opts=self.opts)
         confs, labels = dets[:, 4:5], dets[:, 5:6]
         dets = dets[:, 0:4]
 

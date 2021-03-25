@@ -8,21 +8,14 @@ SNU Integrated Module v4.5
 """
 
 # Import Modules
-import cv2
 import math
-import torch
-import torch.nn.functional as F
 import numpy as np
 import filterpy.kalman.kalman_filter as kalmanfilter
 
 # Import Custom Modules
-import utils.bounding_box as snu_bbox
-import kalman_params as kparams
-import utils.patch as snu_patch
-import utils.histogram as snu_hist
-from utils.profiling import Timer
-from utils.lidar import lidar_window
-from utils.kcf import KCF_PREDICTOR
+from detection_lib.yolov5 import utils as snu_bbox, utils as snu_patch, utils as snu_hist
+from detection_lib.yolov5.utils import lidar_window
+from detection_lib.yolov5.utils import KCF_PREDICTOR
 
 
 # Object Instance Class

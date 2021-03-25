@@ -28,10 +28,9 @@ def run(segnet, sync_data_dict, opts):
     img = cv2.resize(color_frame, dsize=input_size)
     img = preprocess(img).unsqueeze(0).cuda(opts.segnet.device)
 
-
     output = segnet(img)["out"][0]
     heatmap = output[opts.segnet.segnet_args["classes"]].argmax(0)
-    heatmap = (heatmap!=0).int()
+    heatmap = (heatmap != 0).int()
     # heatmap = heatmap.unsqueeze(2).repeat(1,1,3)
     heatmap = cv2.resize((heatmap * 255).detach().cpu().numpy().astype(np.uint8), dsize=(img_size[1], img_size[0]))
     # heatmap = (torch.sum(output[opts.segnet.segnet_args["classes"]], dim=0)).long()

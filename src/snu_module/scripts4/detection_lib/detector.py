@@ -7,10 +7,73 @@ import cv2
 import torch
 import torch.nn as nn
 from detection_lib.darknet import darknet
+# from detection_lib.yolov5.models.experimental import attempt_load
+# from detection_lib.yolov5.utils.general import non_max_suppression
 from .backbone import RefineDetResNet34
 from .postproc import RefineDetPostProc
 from .__base__ import DetectorBase
 from .__module__ import FirstTCB, TCB
+
+# class YOLOv5(DetectorBase):
+#     def __init__(self, global_args, network_args):
+#         super(YOLOv5, self).__init__(global_args, network_args)
+#         self.n_classes = global_args['n_classes']
+#         self.augment = network_args['augment']
+#         self.conf_thres = network_args['conf_thres']
+#         self.iou_thres = network_args['iou_thres']
+#         self.agnostic_nms = network_args['agnostic_nms']
+#
+#         self.net = None
+#         self.name2number_map = {
+#             # 'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorcycle': 4,
+#             'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorbike': 4,
+#             'airplane': 5, 'bus': 6, 'train': 7, 'truck': 8, 'boat': 9, 'traffic light': 10,
+#             'fire hydrant': 11, 'stop sign': 12, 'parking meter': 13, 'bench': 14, 'bird': 15,
+#             'cat': 16, 'dog': 17, 'horse': 18, 'sheep': 19, 'cow': 20, 'elephant': 21, 'bear': 22,
+#             'zebra': 23, 'giraffe': 24, 'backpack': 25, 'umbrella': 26, 'handbag': 27,
+#             'tie': 28, 'suitcase': 29, 'frisbee': 30, 'skis': 31, 'snowboard': 32,
+#             'sports ball': 33, 'kite': 34, 'baseball bat': 35, 'baseball glove': 36,
+#             'skateboard': 37, 'surfboard': 38, 'tennis racket': 39, 'bottle': 40,
+#             'wine glass': 41, 'cup': 42, 'fork': 43, 'knife': 44, 'spoon': 45, 'bowl': 46,
+#             'banana': 47, 'apple': 48, 'sandwich': 49, 'orange': 50, 'broccoli': 51,
+#             'carrot': 52, 'hot dog': 53, 'pizza': 54, 'donut': 55, 'cake': 56,
+#             'chair': 57, 'couch': 58, 'potted plant': 59, 'bed': 60, 'dining table': 61,
+#             'toilet': 62, 'tv': 63, 'laptop': 64, 'mouse': 65, 'remote': 66, 'keyboard': 67,
+#             'cell phone': 68, 'microwave': 69, 'oven': 70, 'toaster': 71, 'sink': 72,
+#             'refrigerator': 73, 'book': 74, 'clock': 75, 'vase': 76, 'scissors': 77,
+#             'teddy bear': 78, 'hair drier': 79, 'toothbrush': 80
+#         }
+#         self.name2number_map_reduced = {
+#             'background': 0, 'person': 1, 'car': 2, 'bike': 3
+#         }
+#
+#     def build(self):
+#         pass
+#
+#     def load(self, load_dir):
+#         weight_path = os.path.join(load_dir, 'yolov5m.pt')
+#         self.net = attempt_load(weight_path)
+#
+#     def forward(self, img):
+#         # Inference
+#         pred = self.detector(img, augment=self.augment)[0]
+#
+#         # Apply NMS
+#         det = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=self.n_classes, agnostic=self.agnostic_nms)[0]
+#
+#         boxes, confs, labels = list(), list(), list()
+#         if len(det) == 0:
+#             boxes.append((0.0, 0.0, 0.0, 0.0))
+#             confs.append(float(1.0))
+#             labels.append(self.name2number_map_reduced['background'])
+#         else:
+#             for xyxy, conf, cls in det:
+#                 boxes.append(xyxy)
+#                 confs.append(conf)
+#                 labels.append(self.name2number_map_reduced[cls])
+#         boxes = boxes
+#         return boxes, confs, labels
+
 
 
 class YOLOv4(DetectorBase):
@@ -89,13 +152,16 @@ class YOLOv4(DetectorBase):
         labels = np.expand_dims(np.array(labels), axis=1)
         # cv2.waitKey(0)
         # print("inf_time:", time.time() - s_t)
+
+        # print(boxes.shape, confs.shape, labels.shape)
+        # boxes : (#obj, 4), confs : (#obj, 1), labels : (#obj, 1)
+
         return boxes, confs, labels
 
     def load(self, load_dir):
         config_path = os.path.join(load_dir, 'yolov4.cfg')
         weight_path = os.path.join(load_dir, 'yolov4.weights')
-        self.net = darknet.load_net_custom(
-            config_path.encode('utf-8'), weight_path.encode('utf-8'), 0, 1)
+        self.net = darknet.load_net_custom(config_path.encode('utf-8'), weight_path.encode('utf-8'), 0, 1)
 
 
 class RefineDet(DetectorBase):

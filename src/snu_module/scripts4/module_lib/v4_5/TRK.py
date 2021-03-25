@@ -6,7 +6,6 @@ SNU Integrated Module v4.5
         - Cost -> (corrected regarding to its definition)
 
 """
-
 # Import Modules
 import random
 from utils.profiling import Timer

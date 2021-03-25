@@ -28,7 +28,7 @@ class Input_Att(nn.Module):
 
     def load(self, load_path):
         net_dict = torch.load(load_path, map_location='cpu')
-        net_dict = {k.partition('attention.')[2]:net_dict[k] for k in net_dict.keys()}
+        net_dict = {k.partition('attention.')[2]: net_dict[k] for k in net_dict.keys()}
         self.attention.load_state_dict(net_dict)
 
 preprocess = transforms.Compose([
@@ -38,7 +38,6 @@ preprocess = transforms.Compose([
 preprocess_to_tensor = transforms.Compose([
     transforms.ToTensor(),
 ])
-
 
 def load_model(opts, is_default_device=True):
     torch.autograd.set_grad_enabled(False)
@@ -55,10 +54,11 @@ def run(attnet, sync_data_dict, opts):
     color_frame = (sync_data_dict["color"].get_data() if "color" in sync_data_dict.keys() else None)
     nv_frame = (sync_data_dict["nightvision"].get_data() if "nightvision" in sync_data_dict.keys() else None)
 
-    nv_frame = cv2.resize(nv_frame[87:-98, 155:-165,:], dsize=(color_frame.shape[1], color_frame.shape[0]))
+    nv_frame = cv2.resize(nv_frame[87:-98, 155:-165, :], dsize=(color_frame.shape[1], color_frame.shape[0]))
     nv_frame = (preprocess_to_tensor(nv_frame)/255.0).unsqueeze(0).cuda(opts.attnet.device)
     img = preprocess(color_frame).unsqueeze(0).cuda(opts.attnet.device)
     
     output = attnet(img, nv_frame)
     img *= output
     return img
+

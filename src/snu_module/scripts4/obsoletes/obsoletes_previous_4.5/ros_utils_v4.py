@@ -22,11 +22,9 @@ from geometry_msgs.msg import Pose, Twist, Point, Quaternion, Vector3
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from nav_msgs.msg import Odometry
-from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud, transform_to_kdl
-from rospy.numpy_msg import numpy_msg
 
 # Import KIRO's Synchronized Subscriber
-from utils.sync_subscriber import SyncSubscriber
+from detection_lib.yolov5.utils import SyncSubscriber
 
 
 # RUN SNU Module Coverage Class Source

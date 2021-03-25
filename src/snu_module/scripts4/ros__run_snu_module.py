@@ -11,7 +11,6 @@ SNU Integrated Module
 
         - [2] ROS Bag File
 
-
 """
 import os
 import argparse

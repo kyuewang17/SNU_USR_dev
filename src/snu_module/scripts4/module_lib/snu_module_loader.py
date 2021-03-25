@@ -8,7 +8,7 @@ import module_detection as snu_det
 import module_tracking_v4_5 as snu_trk
 import module_action as snu_acl
 
-from utils.profiling import Timer
+from detection_lib.yolov5.utils import Timer
 
 
 class algorithms(object):

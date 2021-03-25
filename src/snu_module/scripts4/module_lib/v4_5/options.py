@@ -12,9 +12,6 @@ SNU Integrated Module v4.5
             - [infrared] Infrared Camera (TODO: Find Camera Model)
             - [Nightvision] NightVision Camera (TODO: Find Camera Model)
             - [LIDAR] Velodyne LiDAR Sensor (TODO: Check Sensor Model and Type)
-
-
-
 """
 
 # Import Modules
@@ -122,10 +119,8 @@ class snu_option_class(object):
         # Rostopic Message for Publisher
         self.publish_mesg = {
             "tracks": cfg.publisher.tracks,
-
             "det_result_rostopic_name": cfg.detector.visualization.result_rostopic_name,
             "trk_acl_result_rostopic_name": cfg.tracker.visualization.result_rostopic_name,
-
             "trk_top_view_rostopic_name": cfg.tracker.visualization.top_view.result_rostopic_name,
         }
 
@@ -237,6 +232,7 @@ class segnet_options(object):
         # }
         self.segnet_args = {
             "classes": [0, 2, 6, 7, 14, 15],
+            # background, bicycle, bus, car, motorbike, person
         }
 
 class attnet_options(object):
@@ -291,18 +287,24 @@ class detector_options(object):
         # Detector Arguments
         # ( what is the difference between 'detection_args' ?!?! )
         self.detector_args = {
+            # "name": "yolov5",
+            # "augment": False,
+            # "conf_thres": 0.25,
+            # "iou_thres": 0.45,
+            # "agnostic_nms": False
+
             "name": "yolov4",
             # "net_width": 448, "net_height": 320,
             "net_width": 512, "net_height": 512,
-            # "thresh": 0.5, "hier_thresh": 0.5,
-            "thresh": 0.65, "hier_thresh": 0.5,
+            "thresh": 0.25, "hier_thresh": 0.5,
+            # "thresh": 0.65, "hier_thresh": 0.5,
             "nms_thresh": 0.45,
             "meta_path": os.path.join(
                 os.path.dirname(os.path.dirname(curr_file_path)),
                 "detection_lib", "darknet", "cfg", "coco.data"
             ),
-            # "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
 
+            # "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
             # "name": "refinedet",
             # "is_bnorm": False, "tcb_ch": 256,
             # 'fmap_chs': [128, 256, 512, 128],

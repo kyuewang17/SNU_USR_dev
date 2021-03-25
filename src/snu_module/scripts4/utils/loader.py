@@ -36,8 +36,7 @@ def argument_parser(logger, script_name, dev_version=None, mode_selection=None):
 
     # Attempt to Find the Agent Identification File from Computer
     agent_id_file_base_path = "/agent"
-    agent_id_file_list = \
-        os.listdir(agent_id_file_base_path) if os.path.isdir(agent_id_file_base_path) else []
+    agent_id_file_list = os.listdir(agent_id_file_base_path) if os.path.isdir(agent_id_file_base_path) else []
     if len(agent_id_file_list) == 0:
         logger.info("Agent Identification File Not Found...!")
         is_agent_flag = False

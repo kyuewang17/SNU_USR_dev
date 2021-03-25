@@ -1,7 +1,6 @@
 """
 SNU Integrated Module v2.05
   - Detection (RefineDet)
-
 """
 import os
 import copy
@@ -9,29 +8,25 @@ import cv2
 import numpy as np
 import scipy.misc
 import torch
-from detection_lib.detector import RefineDet, YOLOv4
+from detection_lib.detector import RefineDet, YOLOv4 #, YOLOv5
 from detection_lib import util
 
 from torch.nn import functional as F
-
 
 thermal_camera_params = util.ThermalHeuristicCameraParams()
 
 detector_dict = {
     "refinedet": RefineDet,
     "yolov4": YOLOv4,
+    # "yolov5": YOLOv5,
 }
-
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align
 cnt = 0
 def load_model(opts, is_default_device=True):
-    device = 0 if is_default_device else opts.detector.device 
-
+    device = 0 if is_default_device else opts.detector.device
     detection_args = opts.detector.detection_args
     detector_args = opts.detector.detector_args
-
-    detector = detector_dict[detector_args["name"]](
-        detection_args, detector_args)
+    detector = detector_dict[detector_args["name"]](detection_args, detector_args)
     detector.build()
     detector.cuda(device)
     detector.load(opts.detector.model_dir)
@@ -42,7 +37,6 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     """
     [MEMO]
     -> Develop this code more~
-
     """
     # Select GPU Device for Detector Model
     device = (0 if is_default_device is True else opts.detector.device)
@@ -65,8 +59,9 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
 
     import time
     if 'att_tensor' in sync_data_dict.keys():
-        img = sync_data_dict['att_tensor'][0].permute(1,2,0).cpu().numpy()
+        img = sync_data_dict['att_tensor'][0].permute(1, 2, 0).cpu().numpy()
         # print(time.time()-start)
+
     ######## by JIS (maybe...?) #########
     # global cnt
     # scipy.misc.imsave(os.path.join('/home/mipal/Project/MUIN/png_img/',str(cnt)+'.png'), color_frame)
@@ -76,22 +71,17 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     # Get Color Frame Size
     color_size = (color_frame.shape[0], color_frame.shape[1])
     input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
-
     img_size = color_size
 
     if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
         img_size = thermal_frame.shape[:2]
         # img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
-        img = torch.from_numpy(
-            cv2.resize(thermal_frame, dsize=input_size)
-        ).unsqueeze(dim=2)
+        img = torch.from_numpy(cv2.resize(thermal_frame, dsize=input_size)).unsqueeze(dim=2)
         img = torch.cat([img, img, img], dim=2)
     elif (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
         # img_size = color_size
         # # img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
-        # img = torch.from_numpy(
-        #     cv2.resize(color_frame, dsize=input_size)
-        # )
+        # img = torch.from_numpy(cv2.resize(color_frame, dsize=input_size))
         img = color_frame
     else:
         raise NotImplementedError
