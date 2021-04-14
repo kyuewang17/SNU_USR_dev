@@ -1,5 +1,5 @@
 import os
-import time
+import yaml
 import math
 import itertools
 import numpy as np
@@ -7,73 +7,111 @@ import cv2
 import torch
 import torch.nn as nn
 from detection_lib.darknet import darknet
-# from detection_lib.yolov5.models.experimental import attempt_load
-# from detection_lib.yolov5.utils.general import non_max_suppression
+from detection_lib.yolov5.models.common import Conv
+from detection_lib.yolov5.models.yolo import Model
+from detection_lib.yolov5.utils.general import non_max_suppression, scale_coords
+from detection_lib.yolov5.utils.activations import Hardswish, SiLU
 from .backbone import RefineDetResNet34
 from .postproc import RefineDetPostProc
 from .__base__ import DetectorBase
 from .__module__ import FirstTCB, TCB
 
-# class YOLOv5(DetectorBase):
-#     def __init__(self, global_args, network_args):
-#         super(YOLOv5, self).__init__(global_args, network_args)
-#         self.n_classes = global_args['n_classes']
-#         self.augment = network_args['augment']
-#         self.conf_thres = network_args['conf_thres']
-#         self.iou_thres = network_args['iou_thres']
-#         self.agnostic_nms = network_args['agnostic_nms']
-#
-#         self.net = None
-#         self.name2number_map = {
-#             # 'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorcycle': 4,
-#             'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorbike': 4,
-#             'airplane': 5, 'bus': 6, 'train': 7, 'truck': 8, 'boat': 9, 'traffic light': 10,
-#             'fire hydrant': 11, 'stop sign': 12, 'parking meter': 13, 'bench': 14, 'bird': 15,
-#             'cat': 16, 'dog': 17, 'horse': 18, 'sheep': 19, 'cow': 20, 'elephant': 21, 'bear': 22,
-#             'zebra': 23, 'giraffe': 24, 'backpack': 25, 'umbrella': 26, 'handbag': 27,
-#             'tie': 28, 'suitcase': 29, 'frisbee': 30, 'skis': 31, 'snowboard': 32,
-#             'sports ball': 33, 'kite': 34, 'baseball bat': 35, 'baseball glove': 36,
-#             'skateboard': 37, 'surfboard': 38, 'tennis racket': 39, 'bottle': 40,
-#             'wine glass': 41, 'cup': 42, 'fork': 43, 'knife': 44, 'spoon': 45, 'bowl': 46,
-#             'banana': 47, 'apple': 48, 'sandwich': 49, 'orange': 50, 'broccoli': 51,
-#             'carrot': 52, 'hot dog': 53, 'pizza': 54, 'donut': 55, 'cake': 56,
-#             'chair': 57, 'couch': 58, 'potted plant': 59, 'bed': 60, 'dining table': 61,
-#             'toilet': 62, 'tv': 63, 'laptop': 64, 'mouse': 65, 'remote': 66, 'keyboard': 67,
-#             'cell phone': 68, 'microwave': 69, 'oven': 70, 'toaster': 71, 'sink': 72,
-#             'refrigerator': 73, 'book': 74, 'clock': 75, 'vase': 76, 'scissors': 77,
-#             'teddy bear': 78, 'hair drier': 79, 'toothbrush': 80
-#         }
-#         self.name2number_map_reduced = {
-#             'background': 0, 'person': 1, 'car': 2, 'bike': 3
-#         }
-#
-#     def build(self):
-#         pass
-#
-#     def load(self, load_dir):
-#         weight_path = os.path.join(load_dir, 'yolov5m.pt')
-#         self.net = attempt_load(weight_path)
-#
-#     def forward(self, img):
-#         # Inference
-#         pred = self.detector(img, augment=self.augment)[0]
-#
-#         # Apply NMS
-#         det = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=self.n_classes, agnostic=self.agnostic_nms)[0]
-#
-#         boxes, confs, labels = list(), list(), list()
-#         if len(det) == 0:
-#             boxes.append((0.0, 0.0, 0.0, 0.0))
-#             confs.append(float(1.0))
-#             labels.append(self.name2number_map_reduced['background'])
-#         else:
-#             for xyxy, conf, cls in det:
-#                 boxes.append(xyxy)
-#                 confs.append(conf)
-#                 labels.append(self.name2number_map_reduced[cls])
-#         boxes = boxes
-#         return boxes, confs, labels
 
+class YOLOv5(DetectorBase):
+    def __init__(self, global_args, network_args):
+        super(YOLOv5, self).__init__(global_args, network_args)
+        self.n_classes = global_args['n_classes']
+        self.augment = network_args['augment']
+        self.conf_thres = network_args['conf_thres']
+        self.iou_thres = network_args['iou_thres']
+        self.weight_path = network_args['weight_path']
+        self.net = None
+        self.name = ['background', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
+                     'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep',
+                     'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase',
+                     'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+                     'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich',
+                     'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+                     'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+                     'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+
+    def build(self):
+        with open(os.path.join(self.weight_path, 'hyp.scratch.yaml')) as f:
+            hyp = yaml.load(f, Loader=yaml.SafeLoader)
+        weight_path = os.path.join(self.weight_path, 'yolov5m.yaml')
+        self.net = Model(weight_path, ch=3, nc=80, anchors=hyp.get('anchors')).cuda()
+        print(self.name)
+        print(len(self.name))
+        print("Build DONE!")
+
+    def replace_Identity(self, module):
+        '''
+        Recursively put desired batch norm in nn.module module.
+
+        set module = net to start code.
+        '''
+        # go through all attributes of module nn.module (e.g. network or layer) and put batch norms if present
+        for attr_str in dir(module):
+            target_attr = getattr(module, attr_str)
+            if type(target_attr) == torch.nn.Identity:
+                new_layer = SiLU()
+                setattr(module, attr_str, new_layer)
+        # iterate through immediate child modules. Note, the recursion is done by our code no need to use named_modules()
+        for name, immediate_child_module in module.named_children():
+            self.replace_Identity(immediate_child_module)
+
+    def load(self, load_dir):
+        weight_path = os.path.join(self.weight_path, 'yolov5m.pth')
+        ckpt = torch.load(weight_path, map_location=lambda storage, loc: storage.cuda())
+        self.net.load_state_dict(ckpt)
+        self.replace_Identity(self.net)
+        print("Loading Done")
+
+        # Compatibility updates
+        for idx, m in enumerate(self.net.modules()):
+            # print(m, type(m))
+            if type(m) in [Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, SiLU]:
+                m.inplace = True  # pytorch 1.7.0 compatibility
+            elif type(m) is Conv:
+                m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
+
+        self.net.eval()
+
+    def class_thresh(self, pred):
+        a = pred[:, :, 5]
+
+    def forward(self, img):
+        img = img.float().cuda(self.device).permute(2, 0, 1).unsqueeze(dim=0) / 255.0
+        # img shape : (1, 3, 416, 416)
+        # original_size : (480, 640) - tuple
+
+        # Inference
+        pred = self.net(img, augment=self.augment)[0]
+        # pred shape: (1, 16128, 85)
+        # pred shape : (#batch, #boxes, 5(xywh+conf) + #classes)
+
+        # Apply NMS
+        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[float(x) for x in range(10)])
+
+        boxes, confs, labels = list(), list(), list()
+        for i, det in enumerate(pred):  # detections per image
+            # det shape : (#obj, 6)
+            if len(det):
+                # det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img.shape[2:]).round()
+                boxes.append(det[:, :4])
+                confs.append(det[:, 4:5])
+                labels.append(det[:, 5:] + 1.0)
+            else:
+                boxes.append(torch.zeros(1, 4).cuda())
+                confs.append(torch.ones(1, 1).cuda())
+                labels.append(torch.zeros(1, 1).cuda())
+
+        boxes = torch.cat(boxes, dim=0).detach().cpu().numpy()
+        confs = torch.cat(confs, dim=0).detach().cpu().numpy()
+        labels = torch.cat(labels, dim=0).detach().cpu().numpy()
+        for i in range(len(labels)):
+            print (self.name[int(labels[i].item())])
+        return boxes, confs, labels
 
 
 class YOLOv4(DetectorBase):
@@ -89,7 +127,6 @@ class YOLOv4(DetectorBase):
         self.meta = None
 
         self.name2number_map = {
-            # 'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorcycle': 4,
             'background': 0, 'person': 1, 'bicycle': 2, 'car': 3, 'motorbike': 4,
             'airplane': 5, 'bus': 6, 'train': 7, 'truck': 8, 'boat': 9, 'traffic light': 10,
             'fire hydrant': 11, 'stop sign': 12, 'parking meter': 13, 'bench': 14, 'bird': 15,
@@ -108,7 +145,7 @@ class YOLOv4(DetectorBase):
             'teddy bear': 78, 'hair drier': 79, 'toothbrush': 80
         }
         self.name2number_map_reduced = {
-            'background':0, 'person':1, 'car':2, 'bike':3
+            'background': 0, 'person': 1, 'car': 2, 'bike': 3
         }
         
     def build(self):
@@ -155,7 +192,6 @@ class YOLOv4(DetectorBase):
 
         # print(boxes.shape, confs.shape, labels.shape)
         # boxes : (#obj, 4), confs : (#obj, 1), labels : (#obj, 1)
-
         return boxes, confs, labels
 
     def load(self, load_dir):

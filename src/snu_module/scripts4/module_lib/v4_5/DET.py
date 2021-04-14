@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import scipy.misc
 import torch
-from detection_lib.detector import RefineDet, YOLOv4 #, YOLOv5
+from detection_lib.detector import RefineDet, YOLOv4, YOLOv5
 from detection_lib import util
 
 from torch.nn import functional as F
@@ -18,7 +18,7 @@ thermal_camera_params = util.ThermalHeuristicCameraParams()
 detector_dict = {
     "refinedet": RefineDet,
     "yolov4": YOLOv4,
-    # "yolov5": YOLOv5,
+    "yolov5": YOLOv5,
 }
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align
 cnt = 0
@@ -30,6 +30,7 @@ def load_model(opts, is_default_device=True):
     detector.build()
     detector.cuda(device)
     detector.load(opts.detector.model_dir)
+
     return detector
 
 
@@ -78,17 +79,27 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
         # img = torch.from_numpy(scipy.misc.imresize(thermal_frame, size=input_size)).unsqueeze(dim=2)
         img = torch.from_numpy(cv2.resize(thermal_frame, dsize=input_size)).unsqueeze(dim=2)
         img = torch.cat([img, img, img], dim=2)
+        print("THERMAL")
     elif (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
         # img_size = color_size
         # # img = torch.from_numpy(scipy.misc.imresize(color_frame, size=input_size))
-        # img = torch.from_numpy(cv2.resize(color_frame, dsize=input_size))
-        img = color_frame
+
+        # # YOLOv5 ##
+        img = torch.from_numpy(cv2.resize(color_frame, dsize=input_size))
+
+        ## YOLOv4 ##
+        # img = color_frame
     else:
         raise NotImplementedError
-
     # Feed-forward / Get BBOX, Confidence, Labels
     # result_dict = darknet.inference_(framework, img)
+
+    # ## YOLOv5 ##
     boxes, confs, labels = detector.forward(img)
+
+    # ## YOLOv4 ##
+    # boxes, confs, labels = detector.forward(img)
+
     boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
     boxes[:, [1, 3]] *= (float(img_size[0]) / float(input_size[0]))
 

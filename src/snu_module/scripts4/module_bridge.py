@@ -45,12 +45,10 @@ class snu_algorithms(algorithms):
         )
 
         # Segmentation
-        self.seg_framework = self.snu_seg.load_model(opts=opts) \
-            if opts.segnet.run else None
+        self.seg_framework = self.snu_seg.load_model(opts=opts) if opts.segnet.run else None
 
         # Load Detection Model
-        self.att_net = self.snu_ATT.load_model(opts=opts)\
-            if opts.attnet.run else None
+        self.att_net = self.snu_ATT.load_model(opts=opts) if opts.attnet.run else None
 
         self.det_framework = self.snu_det.load_model(opts=opts)
 
@@ -119,6 +117,7 @@ class snu_algorithms(algorithms):
         for modal, modal_switch in self.opts.detector.sensor_dict.items():
             if modal_switch is True:
                 detection_sensor_data[modal] = sync_data_dict[modal]
+
         if self.att_net is not None:
             output = self.snu_ATT.run(attnet=self.att_net, sync_data_dict=detection_sensor_data, opts=self.opts)
             detection_sensor_data['att_tensor'] = output

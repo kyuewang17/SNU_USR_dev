@@ -53,7 +53,6 @@ def load_model(opts, is_default_device=True):
 def run(attnet, sync_data_dict, opts):
     color_frame = (sync_data_dict["color"].get_data() if "color" in sync_data_dict.keys() else None)
     nv_frame = (sync_data_dict["nightvision"].get_data() if "nightvision" in sync_data_dict.keys() else None)
-
     nv_frame = cv2.resize(nv_frame[87:-98, 155:-165, :], dsize=(color_frame.shape[1], color_frame.shape[0]))
     nv_frame = (preprocess_to_tensor(nv_frame)/255.0).unsqueeze(0).cuda(opts.attnet.device)
     img = preprocess(color_frame).unsqueeze(0).cuda(opts.attnet.device)

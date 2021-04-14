@@ -24,6 +24,7 @@ class NetworkBase(nn.Module):
 
     def cuda(self, device=0):
         if self.net is not None:
+            print(self.net)
             self.net.cuda(device)
             self.device = device
 

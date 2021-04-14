@@ -25,6 +25,7 @@ from utils.general_functions import colormap, get_screen_geometry
 
 # Current File Path
 curr_file_path = os.path.dirname(__file__)
+# SNU_USR_dev>src>snu_module>scripts4
 
 
 # Kalman Filter Parameters
@@ -242,13 +243,11 @@ class attnet_options(object):
         self.model_dir =\
             os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
 
-
 # Detector Option Class
 class detector_options(object):
     def __init__(self, cfg):
         # Get Model Path for Detector
-        self.model_dir = \
-            os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
+        self.model_dir = os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
 
         # Set Actually Using Sensor Modalities
         self.sensor_dict = {
@@ -273,7 +272,9 @@ class detector_options(object):
         self.detection_args = {
             "n_classes": 81,
             # "input_h": 320, "input_w": 448,
-            "input_h": 512, "input_w": 512,
+            # "input_h": 512, "input_w": 512,
+            "input_h": 416, "input_w": 416,
+            # "input_h": 320, "input_w": 416,
         }
 
         # Backbone Arguments
@@ -284,25 +285,23 @@ class detector_options(object):
 
         # Detector Arguments
         # ( what is the difference between 'detection_args' ?!?! )
-        # Detector Arguments
-        # ( what is the difference between 'detection_args' ?!?! )
         self.detector_args = {
-            # "name": "yolov5",
-            # "augment": False,
-            # "conf_thres": 0.25,
-            # "iou_thres": 0.45,
-            # "agnostic_nms": False
+            "name": "yolov5",
+            "augment": cfg.detector.run.augment,
+            "conf_thres": cfg.detector.run.conf_thres,
+            "iou_thres": cfg.detector.run.iou_thres,
+            "weight_path": cfg.detector.run.weight_path,
 
-            "name": "yolov4",
-            # "net_width": 448, "net_height": 320,
-            "net_width": 512, "net_height": 512,
-            "thresh": 0.25, "hier_thresh": 0.5,
-            # "thresh": 0.65, "hier_thresh": 0.5,
-            "nms_thresh": 0.45,
-            "meta_path": os.path.join(
-                os.path.dirname(os.path.dirname(curr_file_path)),
-                "detection_lib", "darknet", "cfg", "coco.data"
-            ),
+            # "name": "yolov4",
+            # # "net_width": 448, "net_height": 320,
+            # "net_width": 512, "net_height": 512,
+            # "thresh": 0.25, "hier_thresh": 0.5,
+            # # "thresh": 0.65, "hier_thresh": 0.5,
+            # "nms_thresh": 0.45,
+            # "meta_path": os.path.join(
+            #     os.path.dirname(os.path.dirname(curr_file_path)),
+            #     "detection_lib", "darknet", "cfg", "coco.data"
+            # ),
 
             # "meta_path": "{}/detection_lib/darknet/cfg/coco.data".format(curr_file_path),
             # "name": "refinedet",

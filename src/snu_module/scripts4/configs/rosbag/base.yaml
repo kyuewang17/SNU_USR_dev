@@ -1,6 +1,6 @@
 env:
     type: "bag"
-    time: "day"
+#    time: "day"
 
 screen_compensate: true
 
@@ -39,10 +39,10 @@ sensors:
 segmentation:
     name: "DeepLabv3"
     device: 0
-    run: True
+    run: False
     visualization:
-        is_draw: true
-        is_show: true
+        is_draw: False
+        is_show: False
         auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_seg_result_image"
@@ -53,8 +53,20 @@ attnet:
     run: false
 
 detector:
-    name: "YOLOv4"
+    name: "YOLOv5"
     device: 0
+    run:
+        augment: False
+        conf_thres: 0.25
+        iou_thres: 0.45
+        weight_path: '/home/mipal/Project/SNU_USR_dev/src/snu_module/models/detector/YOLOv5/day/'
+    sensors:
+        color: true
+        disparity: false
+        thermal: false
+        infrared: false
+        nightvision: false
+        lidar: false
     visualization:
         is_draw: true
         is_show: true

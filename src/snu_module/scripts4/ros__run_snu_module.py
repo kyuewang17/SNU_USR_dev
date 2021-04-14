@@ -59,7 +59,7 @@ class snu_module(backbone):
             "disparity": False, "aligned_disparity": opts.sensors.disparity["is_valid"],
             "thermal": opts.sensors.thermal["is_valid"],
             "infrared": opts.sensors.infrared["is_valid"],
-            "nightvision": opts.sensors.lidar["is_valid"],
+            "nightvision": opts.sensors.nightvision["is_valid"],
         }
 
     def gather_all_sensor_params_via_files(self):

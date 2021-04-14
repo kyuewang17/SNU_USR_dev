@@ -600,7 +600,6 @@ def inference_(net, custom_image_bgr, thresh= 0.25, metaPath= cur_path+"/cfg/coc
                 scores.append(torch.tensor([score]).cuda().unsqueeze(0))
                 classes.append(torch.tensor([label]).cuda().unsqueeze(0))
 
-        
         free_batch_detections(batch_dets, batch_size)
 
         result_dict = dict()
