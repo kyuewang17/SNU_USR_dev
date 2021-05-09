@@ -1,0 +1,9 @@
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/libdark.so
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/include/darknet/darknet.h
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/include/darknet/yolo_v2_class.hpp
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/uselib
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/darknet
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetTargets.cmake
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetTargets-release.cmake
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetConfig.cmake
+/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/scripts4/detection_lib/darknet/share/darknet/DarknetConfigVersion.cmake
