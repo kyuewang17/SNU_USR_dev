@@ -8,10 +8,11 @@ import glob
 
 
 # Base Path
-base_path = "/home/kyle/bag_files_temp/candidate_bags/"
+# base_path = "/home/kyle/bag_files_temp/candidate_bags/"
+base_path = "/home/kyle/Dropbox/SNU/Published_Papers/KROC_2021/experiments/KROC_2021_EXP_RESULTS"
 
 
-def imseq_to_video(imseq_master_path, image_fmt, result_video_name, result_video_fmt, fourcc="DIVX", frame_rate=15):
+def imseq_to_video(imseq_master_path, image_fmt, result_video_name, result_video_fmt, fourcc="DIVX", frame_rate=10):
     img_array = []
     width, height = -1, -1
     for file_idx, img_file_name in enumerate(sorted(os.listdir(imseq_master_path))):
@@ -62,13 +63,21 @@ def main():
     # folder_name = "__image_sequence__[BAG_FILE]_[2019-09-27-(2)]"
 
     # folder_name = "__image_sequence__[BAG_FILE]_[snu_result_image_0926]"
-    folder_name = "__image_sequence__[BAG_FILE]_[snu_result_image_0927]"
+    # folder_name = "__image_sequence__[BAG_FILE]_[snu_result_image_0927]"
+
+    # folder_name = "IOC-001-(TRK+ACL)"
+    # folder_name = "IOC-002-(TRK+ACL)"
+    # folder_name = "IOC-003-(TRK+ACL)"
+    # folder_name = "IOC-004-(TRK+ACL)"
+    folder_name = "IOC-005-(TRK+ACL)"
 
     # Parse to Get Video Name
-    video_name = folder_name.split("]_[")[1].split("]")[0]
+    # video_name = folder_name.split("]_[")[1].split("]")[0]
+    video_name = folder_name.split("-(")[0]
 
     # RGB Folder
-    rgb_folder = os.path.join(os.path.join(base_path, folder_name), "rgb_image")
+    # rgb_folder = os.path.join(os.path.join(base_path, folder_name), "rgb_image")
+    rgb_folder = os.path.join(base_path, folder_name)
 
     # Image Sequence to Video
     imseq_to_video(rgb_folder, "png", video_name, "avi")

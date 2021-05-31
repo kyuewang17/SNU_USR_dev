@@ -59,7 +59,7 @@ detector:
         augment: False
         conf_thres: 0.25
         iou_thres: 0.45
-        weight_path: '/home/mipal/Project/SNU_USR_dev/src/snu_module/models/detector/YOLOv5/day/'
+        weight_path: '/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/models/detector/YOLOv5/day/'
     sensors:
         color: true
         disparity: false

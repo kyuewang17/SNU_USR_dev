@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 import torch
 import torch.nn as nn
-from detection_lib.darknet import darknet
+# from detection_lib.darknet import darknet
 from detection_lib.yolov5.models.common import Conv
 from detection_lib.yolov5.models.yolo import Model
 from detection_lib.yolov5.utils.general import non_max_suppression, scale_coords

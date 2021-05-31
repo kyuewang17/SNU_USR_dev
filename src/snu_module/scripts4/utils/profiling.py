@@ -44,7 +44,10 @@ class Timer(object):
             hour = elap // 3600
             return "{:.0f}h{:.0f}m{:.2f}s".format(hour, minute, sec)
         elif self.convert == "FPS" or self.convert == "fps":
-            return 1 / elap
+            if elap == 0:
+                return 0
+            else:
+                return 1 / elap
         else:
             return elap
 

@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import scipy.misc
 import torch
-from detection_lib.detector import RefineDet, YOLOv4, YOLOv5
+from detection_lib.detector import RefineDet, YOLOv5
 from detection_lib import util
 
 from torch.nn import functional as F
@@ -17,7 +17,7 @@ thermal_camera_params = util.ThermalHeuristicCameraParams()
 
 detector_dict = {
     "refinedet": RefineDet,
-    "yolov4": YOLOv4,
+    # "yolov4": YOLOv4,
     "yolov5": YOLOv5,
 }
 # import rescue.force_thermal_align_iitp_final_night as rgb_t_align
