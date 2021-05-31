@@ -152,8 +152,8 @@ class vis_trk_acl_obj(vis_obj):
                 text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
 
                 # Put Depth Text (Tentative)
-                cv2.putText(frame, trk_depth_str, (text_x, text_y), font, 1.2,
-                            (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
+                # cv2.putText(frame, trk_depth_str, (text_x, text_y), font, 1.2,
+                #             (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
             # Visualize Action Classification Result
             if trk.pose is not None and self.vopts.aclassifier["is_draw"] is True:
@@ -246,7 +246,10 @@ class visualizer(object):
             frame_filepath = os.path.join(modal_save_dir, frame_filename + ".png")
 
         # OpenCV Save Image
-        cv2.imwrite(frame_filepath, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        if frame.shape[-1] == 3:
+            cv2.imwrite(frame_filepath, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        else:
+            cv2.imwrite(frame_filepath, frame)
 
     # Visualize Image Sequences Only
     def visualize_modal_frames(self, sensor_data):
@@ -336,10 +339,17 @@ class visualizer(object):
                     os.path.join(os.path.dirname(os.path.dirname(__file__)), "sample_results", "segmentation")
                 if os.path.isdir(auto_save_segmentation_base_dir) is False:
                     os.mkdir(auto_save_segmentation_base_dir)
+                try:
+                    self.save_frame(
+                        save_base_dir=auto_save_segmentation_base_dir, frame=seg_vis_frame,
+                        fidx=fidx, modal=sensor_data.get_modal_type()
+                    )
+                except:
+                    print(2)
         else:
             seg_vis_frame, seg_winname = None, None
 
-        if self.vopts.segmentation["is_show"] is True :
+        if self.vopts.segmentation["is_show"] is True:
             # Make NamedWindow
             cv2.namedWindow(seg_winname)
             # IMSHOW
@@ -363,7 +373,7 @@ class visualizer(object):
                 if len(detections["dets"].tolist()) != 0:
                     self.save_frame(
                         save_base_dir=auto_save_detection_base_dir, frame=det_vis_frame,
-                        fidx=fidx, modal=sensor_data.modal_type
+                        fidx=fidx, modal=sensor_data.get_modal_type()
                     )
         else:
             det_vis_frame, det_winname = None, None
@@ -386,7 +396,7 @@ class visualizer(object):
                 if len(trajectories) != 0:
                     self.save_frame(
                         save_base_dir=auto_save_tracklet_base_dir, frame=trk_acl_frame,
-                        fidx=fidx, modal=sensor_data.modal_type
+                        fidx=fidx, modal=sensor_data.get_modal_type()
                     )
         else:
             trk_acl_frame, trk_acl_winname = None, None
@@ -418,7 +428,10 @@ class visualizer(object):
 
             # IMSHOW
             # If Visualization Frame is Color Modality, convert RGB to BGR
-            cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
+            try:
+                cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
+            except:
+                print(11)
 
         # Visualize Top-view Tracklets
         if self.vopts.top_view["is_show"] is True:

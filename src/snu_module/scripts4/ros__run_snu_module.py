@@ -179,6 +179,7 @@ class snu_module(backbone):
                 # Get Synchronized Data, Loop Until Synchronized
                 sync_data = sync_ss.get_sync_data()
                 if sync_data is None:
+                    # print("LOOPING...!")
                     continue
                 else:
                     self.update_all_modal_data(sync_data=sync_data)
@@ -213,8 +214,8 @@ class snu_module(backbone):
                 #         self.fidx, len(snu_usr), total_fps
                 #     )
                 # )
-                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
-                    self.fidx, len(snu_usr), sensor_fps, fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
+                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | | SEG: {:.1f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                    self.fidx, len(snu_usr), sensor_fps, fps_dict["seg"], fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
                     )
                 )
 

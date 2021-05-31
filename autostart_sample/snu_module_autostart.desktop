@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Exec=/home/snu/run_snu_module.bash
+X-GNOME-Autostart-Delay=30
+X-KDE-autostart-after=panel

@@ -11,8 +11,8 @@ from math import cos, sin, pi, atan2
 
 
 class FIXED_CAMERA(object):
-    def __init__(self, camera_id, ):
-
+    def __init__(self, camera_id):
+        pass
 
 
 

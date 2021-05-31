@@ -452,7 +452,8 @@ class aclassifier_options(object):
         # Get Model Path for Action Classifier
         self.model_dir = \
             os.path.join(cfg.aclassifier.model_base_path, cfg.aclassifier.name, cfg.env.time)
-
+        self.time = cfg.env.time
+        self.test_which_year = '4'
         # Set Actually Using Sensor Modalities
         self.sensor_dict = {
             "color": cfg.aclassifier.sensors.color,

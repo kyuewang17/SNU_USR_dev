@@ -95,9 +95,11 @@ __C.sensors.lidar.camerainfo_rostopic_name = "NULL"
 # ---------------- #
 # TODO: Add options/parameters that can be easily modified while impacting the overall performance
 __C.segmentation = CN(new_allowed=True)
-__C.segmentation.name = "DeepLabv3"  # "RefineDet"
+__C.segmentation.name = "DeepLabv3"
 __C.segmentation.device = 0
+__C.segmentation.run = True
 # __C.segmentation.model_base_path = os.path.join(model_base_path, "segmentation")
+
 __C.segmentation.sensors = CN(new_allowed=False)
 __C.segmentation.sensors.color = True
 __C.segmentation.sensors.disparity = False
@@ -120,6 +122,7 @@ __C.segmentation.visualization.result_rostopic_name = "/osr/snu_seg_result_image
 # TODO: Add options/parameters that can be easily modified while impacting the overall performance
 __C.attnet = CN(new_allowed=True)
 __C.attnet.device = 0
+__C.attnet.run = True
 
 # ---------------- #
 # Detector Options #
@@ -271,13 +274,14 @@ __C.tracker.visualization.top_view.result_rostopic_name = "/osr/trk_top_view_ima
 # TODO: Add options/parameters that can be easily modified while impacting the overall performance
 __C.aclassifier = CN(new_allowed=True)
 __C.aclassifier.name = "Custom"
+__C.aclassifier.test_mode = "3"
 __C.aclassifier.device = 0
 __C.aclassifier.model_base_path = os.path.join(model_base_path, "aclassifier")
 
 __C.aclassifier.sensors = CN(new_allowed=False)
 __C.aclassifier.sensors.color = True
 __C.aclassifier.sensors.disparity = False
-__C.aclassifier.sensors.thermal = False
+__C.aclassifier.sensors.thermal = True
 __C.aclassifier.sensors.infrared = False
 __C.aclassifier.sensors.nightvision = False
 __C.aclassifier.sensors.lidar = False
