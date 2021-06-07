@@ -12,7 +12,7 @@ sensors:
         rostopic_name: "/osr/image_color"
         camerainfo_rostopic_name: "/osr/image_color_camerainfo"
     disparity:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/image_aligned_depth"
         camerainfo_rostopic_name: "/osr/image_depth_camerainfo"
         clip:
@@ -20,7 +20,7 @@ sensors:
             min_distance: 1000
             max_distance: 15000
     thermal:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
@@ -32,7 +32,7 @@ sensors:
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
@@ -87,8 +87,8 @@ tracker:
             destroy_age: 2
             similarity_thresh: 0.4
     visualization:
-        is_draw: false
-        is_show: false
+        is_draw: true
+        is_show: true
         auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_trk_acl_result_image"

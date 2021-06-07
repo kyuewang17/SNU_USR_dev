@@ -252,11 +252,16 @@ class visualizer(object):
             cv2.imwrite(frame_filepath, frame)
 
     # Visualize Image Sequences Only
-    def visualize_modal_frames(self, sensor_data):
+    def visualize_modal_frames(self, sensor_data, **kwargs):
         # Get Modal Frame
         vis_frame = sensor_data.get_data()
 
         if vis_frame is not None:
+            # Precision Conversion
+            precision = kwargs.get("precision")
+            if precision is not None:
+                vis_frame = vis_frame.astype(precision)
+
             # Get Modal Type Name
             modal_type = "{}".format(sensor_data)
 

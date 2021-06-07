@@ -269,15 +269,15 @@ class SNU_MOT(object):
                     trk_cand_bbox, trk_cand_vel = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
                     # [1] Get IOU Similarity w.r.t. SOT-predicted BBOX
-                    # predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
-                    # iou_similarity = snu_bbox.iou(det, predicted_bbox)
-                    iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
+                    predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
+                    iou_similarity = snu_bbox.iou(det, predicted_bbox)
+                    # iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
 
-                    # # IOC
-                    # aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
-                    # aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
-                    # aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
-                    # # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+                    # IOC
+                    #aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
+                    #aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
+                    #aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                    # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
                     # iou_similarity = snu_bbox.ioc(det, aug_trk_cand_bbox, denom_comp=1)
 
                     # [2] Get Distance Similarity

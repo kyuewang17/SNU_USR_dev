@@ -225,6 +225,9 @@ class snu_module(backbone):
                     segmentation=heatmap
                 )
 
+                # Visualize Thermal Image
+                self.visualizer.visualize_modal_frames(sensor_data=self.thermal, precision=np.uint8)
+
                 # Publish Tracks
                 self.publish_tracks(trajectories=trajectories, odometry_msg=self.odometry_msg)
 
