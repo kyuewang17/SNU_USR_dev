@@ -10,7 +10,6 @@ import torch
 from torchvision import transforms, models
 import torch.nn as nn
 from model_thermal_4th_year_tobedeleted import resnet18_th_4th
-from model_thermal_3rd_year_tobedeleted import resnet18_th_3rd
 from model_rgb_4th_year_tobedeleted import resnet18_rb_4th
 
 
@@ -33,9 +32,11 @@ def load_model(opts):
     # Get Model
     if opts.aclassifier.time == "day":
         model = resnet18_rb_4th(num_classes=3)
-        model.load_state_dict(torch.load(model_path))
+    elif opts.aclassifier.time == "night":
+        model = resnet18_th_4th(num_classes=3)
     else:
-        raise NotImplementedError()
+        raise AssertionError()
+    model.load_state_dict(torch.load(model_path))
 
     # Load Model to GPU device
     model = model.to(device)
@@ -61,10 +62,8 @@ def aclassify(model, sync_data_dict, trajectories, opts):
     # Get Frame
     if acl_time == "day":
         frame = sync_data_dict["color"].get_data()
-    elif acl_time == "night":
-        frame = sync_data_dict["thermal"].get_data() / 65535.0
     else:
-        raise AssertionError()
+        frame = sync_data_dict["thermal"].get_data() / 65535.0
     H, W = frame.shape[0], frame.shape[1]
 
     # Set CUDA Device
