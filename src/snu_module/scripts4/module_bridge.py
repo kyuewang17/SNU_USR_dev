@@ -177,7 +177,7 @@ class snu_algorithms(algorithms):
         trks = self.snu_acl.aclassify(
             model=self.acl_framework,
             sync_data_dict=aclassify_sensor_data,
-            trackers=self.get_trajectories(), opts=self.opts
+            trajectories=self.get_trajectories(), opts=self.opts
         )
         self.snu_mot.trks = trks
 
