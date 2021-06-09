@@ -137,7 +137,12 @@ class snu_algorithms(algorithms):
         confs = confs[keep_indices, :]
         labels = labels[keep_indices, :]
 
-        self.detections = {"dets": dets, "confs": confs, "labels": labels}
+        # self.detections = {"dets": dets, "confs": confs, "labels": labels}
+        # NOTE: Tentative Code for Thermal Modality
+        self.detections = {
+            "color": {"dets": dets, "confs": confs, "labels": labels},
+            "thermal": {"dets": dets, "confs": confs, "labels": labels}
+        }
         # print(self.detections)
 
         # End Time

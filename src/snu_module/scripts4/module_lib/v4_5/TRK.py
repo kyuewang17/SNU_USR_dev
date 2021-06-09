@@ -112,8 +112,20 @@ class SNU_MOT(object):
 
     # Associate Detections with Trajectories
     def associate_detections_with_trajectories(self, sync_data_dict, detections):
-        # Unpack Detections
-        dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]
+        # # Unpack Detections
+        # dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]
+
+        # Unpack Detections and Concatenate Modalities
+        dets, confs, labels, modals = [], [], [], []
+        net_modals = list(set(detections.keys()))
+        for modal, modal_detections in detections.items():
+            dets.append(modal_detections["dets"])
+            confs.append(modal_detections["confs"])
+            labels.append(modal_detections["labels"])
+            for _ in range(len(modal_detections["dets"])):
+                modals.append(modal)
+        dets, confs, labels = \
+            np.concatenate(dets, axis=0), np.concatenate(confs, axis=0), np.concatenate(labels, axis=0)
 
         # Initialize Similarity Matrix Variable
         similarity_matrix = np.zeros((len(dets), len(self.trks)), dtype=np.float32)
@@ -139,6 +151,13 @@ class SNU_MOT(object):
         # Calculate Similarity Matrix
         for det_idx, det in enumerate(dets):
             for trk_idx, trk in enumerate(self.trks):
+                # Check if Modality btw Detection and Trajectory Candidate is Equal (if not match then continue loop)
+                if modals[det_idx] != trk.modal:
+                    similarity_matrix[det_idx, trk_idx] = -1.0
+                    continue
+                else:
+                    modal = modals[det_idx]
+
                 det_zx = snu_bbox.bbox_to_zx(det)
 
                 # Get Predicted State of Trajectory
@@ -215,10 +234,16 @@ class SNU_MOT(object):
                 workers=dets, works=self.trks
             )
 
+        _color = sync_data_dict["color"]
+        if _color._timestamp.secs == 908 and _color._timestamp.nsecs == 442000000:
+            print(4444)
+        if _color._timestamp.secs == 960 and _color._timestamp.nsecs == 641000000:
+            print(1234)
+
         # Update Associated Trajectories
         for match in matches:
-            matched_det = detections['dets'][match[0]]
-            matched_conf, matched_label = detections['confs'][match[0]], detections['labels'][match[0]]
+            matched_det, matched_conf, matched_label = dets[match[0]], confs[match[0]], labels[match[0]]
+            matched_modal = modals[match[0]]
 
             matched_trk = self.trks[match[1]]
             matched_trk.get_depth(sync_data_dict, self.opts)
@@ -239,37 +264,93 @@ class SNU_MOT(object):
             self.trks[unasso_trk_idx] = unasso_trk
             del unasso_trk
 
-        # Remove Associated Detections and Collect Residual Detections
-        residual_dets = np.empty((len(unmatched_det_indices), 4))
-        residual_confs, residual_labels = np.empty((len(unmatched_det_indices), 1)), np.empty((len(unmatched_det_indices), 1))
-        for residual_det_idx, unasso_det_idx in enumerate(unmatched_det_indices):
-            residual_dets[residual_det_idx, :] = detections['dets'][unasso_det_idx]
-            residual_confs[residual_det_idx] = detections['confs'][unasso_det_idx]
-            residual_labels[residual_det_idx] = detections['labels'][unasso_det_idx]
-        detections = {'dets': residual_dets, 'confs': residual_confs, 'labels': residual_labels}
+        # Collect Unassociated Detections
+        res_dets, res_confs, res_labels = \
+            np.empty((len(unmatched_det_indices), 4)), np.empty((len(unmatched_det_indices), 1)), np.empty((len(unmatched_det_indices), 1))
+        res_modals = [None] * len(unmatched_det_indices)
+        for res_det_idx, unasso_det_idx in enumerate(unmatched_det_indices):
+            res_modals[res_det_idx] = modals[unasso_det_idx]
+            res_dets[res_det_idx, :], res_confs[res_det_idx], res_labels[res_det_idx] = \
+                dets[unasso_det_idx], confs[unasso_det_idx], labels[unasso_det_idx]
+
+        # Convert to Multi-modal Detection Format
+        detections = {}
+        for modal in net_modals:
+            detections[modal] = {"dets": [], "confs": [], "labels": []}
+        for res_idx in range(res_dets.shape[0]):
+            detections[res_modals[res_idx]]["dets"].append(res_dets[res_idx])
+            detections[res_modals[res_idx]]["confs"].append(res_confs[res_idx])
+            detections[res_modals[res_idx]]["labels"].append(res_labels[res_idx])
+
+        # DEBUG
+        if detections["color"]["dets"] != [] and detections["thermal"]["dets"] == []:
+            print(123)
+        elif detections["color"]["dets"] == [] and detections["thermal"]["dets"] != []:
+            print(234)
+        # detections = {
+        #     "color": {"dets": [], "confs": [], "labels": []},
+        #     "thermal": {"dets": [], "confs": [], "labels": []}
+        # }
+        # residual_dets = np.empty((len(unmatched_det_indices), 4))
+        # residual_confs, residual_labels = np.empty((len(unmatched_det_indices), 1)), np.empty((len(unmatched_det_indices), 1))
+        # for residual_det_idx, unasso_det_idx in enumerate(unmatched_det_indices):
+        #     residual_modal = modals[unasso_det_idx]
+        #     residual_dets[residual_det_idx, :] = dets[unasso_det_idx]
+        #     residual_confs[residual_det_idx] = confs[unasso_det_idx]
+        #     residual_labels[residual_det_idx] = labels[unasso_det_idx]
+        # detections = {'dets': residual_dets, 'confs': residual_confs, 'labels': residual_labels}
 
         return detections
 
     # Associate Detections with Detections
     def associate_resdets_trkcands(self, sync_data_dict, residual_detections):
-        # Unpack Residual Detections
-        dets, confs, labels = \
-            residual_detections["dets"], residual_detections["confs"], residual_detections["labels"]
+        # # Unpack Residual Detections
+        # dets, confs, labels = \
+        #     residual_detections["dets"], residual_detections["confs"], residual_detections["labels"]
+        #
+        # # Unpack Residual Detections, merge modalities
+        # dets = np.vstack((residual_detections["color"]["dets"], residual_detections["thermal"]["dets"]))
+        # confs = np.vstack((residual_detections["color"]["confs"], residual_detections["thermal"]["confs"]))
+        # labels = np.vstack((residual_detections["color"]["labels"], residual_detections["thermal"]["labels"]))
+        # # modals =
+
+        # Unpack Residual Detections and Concatenate Modalities
+        dets, confs, labels, modals = [], [], [], []
+        for modal, modal_detections in residual_detections.items():
+            dets.append(modal_detections["dets"])
+            confs.append(modal_detections["confs"])
+            labels.append(modal_detections["labels"])
+            for _ in range(len(modal_detections["dets"])):
+                modals.append(modal)
+        if len(dets) > 0:
+
+
+
+            dets, confs, labels = \
+                np.concatenate(dets, axis=0), np.concatenate(confs, axis=0), np.concatenate(labels, axis=0)
 
         # Initialize Similarity Matrix Variable
         similarity_matrix = np.zeros((len(dets), len(self.trk_cands)), dtype=np.float32)
 
-        # Calculate Cost Matrix
+        # Calculate Similarity Matrix
         for det_idx, det in enumerate(dets):
             for trk_cand_idx, trk_cand in enumerate(self.trk_cands):
+                # Check if Modality btw Detection and Trajectory Candidate is Equal (if not match then continue loop)
+                if modals[det_idx] != trk_cand.modal:
+                    similarity_matrix[det_idx, trk_cand_idx] = -1.0
+                    continue
+                else:
+                    modal = modals[det_idx]
+
+                # Get Similarity
                 if trk_cand.z[-1] is None:
-                    similarity = -1
+                    similarity = -1.0
                 else:
                     det_zx = snu_bbox.bbox_to_zx(det)
                     trk_cand_bbox, trk_cand_vel = snu_bbox.zx_to_bbox(trk_cand.z[-1])
 
                     # [1] Get IOU Similarity w.r.t. SOT-predicted BBOX
-                    predicted_bbox = trk_cand.predict(sync_data_dict["color"].get_data(), trk_cand_bbox)
+                    predicted_bbox = trk_cand.predict(sync_data_dict[modal].get_data(), trk_cand_bbox)
                     iou_similarity = snu_bbox.iou(det, predicted_bbox)
                     # iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
 
@@ -310,8 +391,8 @@ class SNU_MOT(object):
         # Update Associated Trajectory Candidates
         for match in matches:
             # Matched Detection
-            matched_det = residual_detections['dets'][match[0]]
-            matched_conf, matched_label = residual_detections['confs'][match[0]], residual_detections['labels'][match[0]]
+            matched_det, matched_conf, matched_label = dets[match[0]], confs[match[0]], labels[match[0]]
+            matched_modal = modals[match[0]]
 
             # Matched Trajectory Candidate
             matched_trk_cand = self.trk_cands[match[1]]
@@ -335,11 +416,10 @@ class SNU_MOT(object):
 
         # Generate New Trajectory Candidates with the Unassociated Detections
         for unasso_det_idx in unmatched_det_indices:
+            modal = modals[unasso_det_idx]
             new_trk_cand = TrajectoryCandidate(
-                frame=sync_data_dict["color"].get_data(),
-                bbox=residual_detections['dets'][unasso_det_idx],
-                conf=residual_detections['confs'][unasso_det_idx],
-                label=residual_detections['labels'][unasso_det_idx],
+                frame=sync_data_dict[modal].get_data(), modal=modals[unasso_det_idx],
+                bbox=dets[unasso_det_idx], conf=confs[unasso_det_idx], label=labels[unasso_det_idx],
                 init_fidx=self.fidx, opts=self.opts
             )
             self.trk_cands.append(new_trk_cand)
@@ -404,20 +484,28 @@ class SNU_MOT(object):
 
         # Associate Residual Detections with Trajectory Candidates
         if len(self.trk_cands) == 0:
-            # Initialize New Tracklet Candidates
-            for det_idx, det in enumerate(detections["dets"]):
-                new_trk_cand = TrajectoryCandidate(
-                    frame=sync_data_dict["color"].get_data(),
-                    bbox=det, conf=detections["confs"][det_idx], label=detections["labels"][det_idx],
-                    init_fidx=fidx, opts=self.opts
-                )
-                self.trk_cands.append(new_trk_cand)
-                del new_trk_cand
+            for modal, modal_detections in detections.items():
+                for det_idx, det in enumerate(modal_detections["dets"]):
+                    new_trk_cand = TrajectoryCandidate(
+                        frame=sync_data_dict[modal].get_data(), modal=modal, bbox=det,
+                        conf=modal_detections["confs"][det_idx], label=modal_detections["labels"][det_idx],
+                        init_fidx=fidx, opts=self.opts
+                    )
+                    self.trk_cands.append(new_trk_cand)
+                    del new_trk_cand
+            # # Initialize New Trajectory Candidates
+            # for det_idx, det in enumerate(detections["dets"]):
+            #     new_trk_cand = TrajectoryCandidate(
+            #         frame=sync_data_dict["color"].get_data(),
+            #         bbox=det, conf=detections["confs"][det_idx], label=detections["labels"][det_idx],
+            #         init_fidx=fidx, opts=self.opts
+            #     )
+            #     self.trk_cands.append(new_trk_cand)
+            #     del new_trk_cand
         else:
             self.associate_resdets_trkcands(
                 sync_data_dict=sync_data_dict, residual_detections=detections
             )
-
         # Generate New Trajectories from Trajectory Candidates
         new_trks = self.generate_new_trajectories(sync_data_dict=sync_data_dict, new_trks=new_trks)
 

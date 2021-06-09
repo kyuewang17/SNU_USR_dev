@@ -296,21 +296,22 @@ class ros_sensor_lidar(ros_sensor):
         # LiDAR PointCloud Message (ROS < PointCloud2 > Type)
         self.raw_pc_msg = lidar_pc_msg
 
-        # Initialize Rotation and Translation Matrices between Color and LiDAR Cameras
-        self.R__color, self.T__color = None, None
+        # Initialize Rotation and Translation Matrices between (Color/Thermal) and LiDAR Cameras
+        self.R = {"color": None, "thermal": None}
+        self.T = {"color": None, "thermal": None}
 
-        # Define Projected Point Cloud Variable (TENTATIVE)
-        self.projected_cloud = None
+        # Initialize Projected Point Cloud Variable
+        self.projected_cloud = {}
 
         # Define Camera Model Function Variable
         self.CAMERA_MODEL = image_geometry.PinholeCameraModel()
 
         # LiDAR Point Cloud XYZ, Distance, and Colors
-        self.cloud = None
-        self.pc_distance, self.pc_colors = None, None
+        self.cloud = {}
+        self.pc_distance, self.pc_colors = {}, {}
 
         # Tentative, uv-cloud
-        self.uv_cloud = None
+        self.uv_cloud = {}
 
     def __add__(self, other):
         assert isinstance(other, ros_sensor_image) or isinstance(other, ros_sensor_disparity)
@@ -342,12 +343,8 @@ class ros_sensor_lidar(ros_sensor):
         raise NotImplementedError()
 
     def load_pc_xyz_data(self):
-        if self.projected_cloud is not None:
-            # # Convert ROS PointCloud2 to Cloud Data (XYZRGB)
-            # cloud = ros_numpy.point_cloud2.pointcloud2_to_array(self.tf_pc_msg)
-            # cloud = np.asarray(cloud.tolist())
-            cloud = self.projected_cloud
-
+        assert self.projected_cloud != {}
+        for modal, cloud in self.projected_cloud.items():
             # Filer-out Points in Front of Camera
             inrange = np.where((cloud[:, 0] > -8) &
                                (cloud[:, 0] < 8) &
@@ -357,14 +354,15 @@ class ros_sensor_lidar(ros_sensor):
                                (cloud[:, 2] < 30))
             max_intensity = np.max(cloud[:, -1])
             cloud = cloud[inrange[0]]
-            self.cloud = cloud
+            self.cloud[modal] = cloud
 
             # Straight Distance From Camera
-            self.pc_distance = np.sqrt(cloud[:, 0] * cloud[:, 0] + cloud[:, 1] * cloud[:, 1] + cloud[:, 2] * cloud[:, 2])
+            self.pc_distance[modal] = \
+                np.sqrt(cloud[:, 0] * cloud[:, 0] + cloud[:, 1] * cloud[:, 1] + cloud[:, 2] * cloud[:, 2])
 
-            # Color map for the points
+            # Color map for the points (# intensity color view)
             cmap = matplotlib.cm.get_cmap('jet')
-            self.pc_colors = cmap(cloud[:, -1] / max_intensity) * 255  # intensity color view
+            self.pc_colors[modal] = cmap(cloud[:, -1] / max_intensity) * 255
 
     def update_data(self, lidar_pc_msg, tf_transform):
         # Update LiDAR Message
@@ -374,66 +372,71 @@ class ros_sensor_lidar(ros_sensor):
         if lidar_pc_msg is not None:
             self.update_stamp(stamp=lidar_pc_msg.header.stamp)
 
-        # Update Rotation and Translation Matrices
-        if self.R__color is None and tf_transform is not None:
-            self.R__color = pyquaternion.Quaternion(
-                tf_transform.transform.rotation.w,
-                tf_transform.transform.rotation.x,
-                tf_transform.transform.rotation.y,
-                tf_transform.transform.rotation.z,
-            ).rotation_matrix
-        if self.T__color is None and tf_transform is not None:
-            self.T__color = np.array([
-                tf_transform.transform.translation.x,
-                tf_transform.transform.translation.y,
-                tf_transform.transform.translation.z
-            ]).reshape(3, 1)
+        # # Update Rotation and Translation Matrices
+        # if self.R__color is None and tf_transform is not None:
+        #     self.R__color = pyquaternion.Quaternion(
+        #         tf_transform.transform.rotation.w,
+        #         tf_transform.transform.rotation.x,
+        #         tf_transform.transform.rotation.y,
+        #         tf_transform.transform.rotation.z,
+        #     ).rotation_matrix
+        # if self.T__color is None and tf_transform is not None:
+        #     self.T__color = np.array([
+        #         tf_transform.transform.translation.x,
+        #         tf_transform.transform.translation.y,
+        #         tf_transform.transform.translation.z
+        #     ]).reshape(3, 1)
+
+        # Update Rotation and Translation
+        self.R["color"], self.T["color"] = \
+            tf_transform.get_transform(src_sensor="lidar", dest_sensor="color")
+        self.R["thermal"], self.T["thermal"] = \
+            tf_transform.get_transform(src_sensor="lidar", dest_sensor="thermal")
 
         # Project Point Cloud
-        if self.R__color is not None and self.T__color is not None:
-            pc = np.array(ros_numpy.numpify(self.raw_pc_msg).tolist())
-            self.projected_cloud = np.dot(pc[:, 0:3], self.R__color.T) + self.T__color.T
-        else:
-            self.projected_cloud = None
+        pc = np.array(ros_numpy.numpify(self.raw_pc_msg).tolist())
+        for modal in ["color", "thermal"]:
+            R, T = self.R[modal], self.T[modal]
+            self.projected_cloud[modal] = np.dot(pc[:, 0:3], R.T) + T.T
 
-    # Rescue for LiDAR
-    def update_RT_color(self, tf_transform=None, RT_color_params_base_path=None):
-        if tf_transform is not None and RT_color_params_base_path is not None:
-            raise AssertionError()
-        elif tf_transform is None and RT_color_params_base_path is None:
-            raise AssertionError()
-        else:
-            if tf_transform is not None:
-                # Update Rotation and Translation Matrices
-                if self.R__color is None:
-                    self.R__color = pyquaternion.Quaternion(
-                        tf_transform.transform.rotation.w,
-                        tf_transform.transform.rotation.x,
-                        tf_transform.transform.rotation.y,
-                        tf_transform.transform.rotation.z,
-                    ).rotation_matrix
-                if self.T__color is None:
-                    self.T__color = np.array([
-                        tf_transform.transform.translation.x,
-                        tf_transform.transform.translation.y,
-                        tf_transform.transform.translation.z
-                    ]).reshape(3, 1)
-            else:
-                import os
-                R__color_file = os.path.join(RT_color_params_base_path, "R__color.npy")
-                T__color_file = os.path.join(RT_color_params_base_path, "T__color.npy")
-                if os.path.isfile(R__color_file) is False:
-                    raise AssertionError()
-                if os.path.isfile(T__color_file) is False:
-                    raise AssertionError()
-                self.R__color = np.load(R__color_file)
-                self.T__color = np.load(T__color_file)
+    # # Rescue for LiDAR
+    # def update_RT_color(self, tf_transform=None, RT_color_params_base_path=None):
+    #     if tf_transform is not None and RT_color_params_base_path is not None:
+    #         raise AssertionError()
+    #     elif tf_transform is None and RT_color_params_base_path is None:
+    #         raise AssertionError()
+    #     else:
+    #         if tf_transform is not None:
+    #             # Update Rotation and Translation Matrices
+    #             if self.R__color is None:
+    #                 self.R__color = pyquaternion.Quaternion(
+    #                     tf_transform.transform.rotation.w,
+    #                     tf_transform.transform.rotation.x,
+    #                     tf_transform.transform.rotation.y,
+    #                     tf_transform.transform.rotation.z,
+    #                 ).rotation_matrix
+    #             if self.T__color is None:
+    #                 self.T__color = np.array([
+    #                     tf_transform.transform.translation.x,
+    #                     tf_transform.transform.translation.y,
+    #                     tf_transform.transform.translation.z
+    #                 ]).reshape(3, 1)
+    #         else:
+    #             import os
+    #             R__color_file = os.path.join(RT_color_params_base_path, "R__color.npy")
+    #             T__color_file = os.path.join(RT_color_params_base_path, "T__color.npy")
+    #             if os.path.isfile(R__color_file) is False:
+    #                 raise AssertionError()
+    #             if os.path.isfile(T__color_file) is False:
+    #                 raise AssertionError()
+    #             self.R__color = np.load(R__color_file)
+    #             self.T__color = np.load(T__color_file)
 
-    def force_update_data(self, pc_data_dict, stamp):
-        self.uv_cloud = pc_data_dict["uv_cloud"]
-        self.pc_colors = pc_data_dict["cloud_colors"]
-        self.pc_distance = pc_data_dict["cloud_distance"]
-        self.update_stamp(stamp=stamp)
+    # def force_update_data(self, pc_data_dict, stamp):
+    #     self.uv_cloud = pc_data_dict["uv_cloud"]
+    #     self.pc_colors = pc_data_dict["cloud_colors"]
+    #     self.pc_distance = pc_data_dict["cloud_distance"]
+    #     self.update_stamp(stamp=stamp)
 
     def project_xyz_to_uv_by_sensor_data(self, sensor_data, random_sample_number=0):
         """
@@ -442,12 +445,12 @@ class ros_sensor_lidar(ros_sensor):
         assert isinstance(sensor_data, ros_sensor_image)
 
         return self.project_xyz_to_uv(
-            camerainfo_msg=sensor_data.get_camerainfo_msg(),
+            camerainfo_msg=sensor_data.get_camerainfo_msg(), modal=sensor_data._modal_type,
             frame_width=sensor_data.WIDTH, frame_height=sensor_data.HEIGHT,
             random_sample_number=random_sample_number
         )
 
-    def project_xyz_to_uv(self, camerainfo_msg, frame_width, frame_height, random_sample_number=0):
+    def project_xyz_to_uv(self, camerainfo_msg, modal, frame_width, frame_height, random_sample_number=0):
         if self.cloud is not None:
             # Update Camera Parameter to Pinhole Camera Model
             self.CAMERA_MODEL.fromCameraInfo(msg=camerainfo_msg)
@@ -457,16 +460,16 @@ class ros_sensor_lidar(ros_sensor):
             cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
             Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
 
-            px = (fx * self.cloud[:, 0] + Tx) / self.cloud[:, 2] + cx
-            py = (fy * self.cloud[:, 1] + Ty) / self.cloud[:, 2] + cy
+            px = (fx * self.cloud[modal][:, 0] + Tx) / self.cloud[modal][:, 2] + cx
+            py = (fy * self.cloud[modal][:, 1] + Ty) / self.cloud[modal][:, 2] + cy
 
             # Stack UV Image Coordinate Points
             uv = np.column_stack((px, py))
             inrange = np.where((uv[:, 0] >= 0) & (uv[:, 1] >= 0) &
                                (uv[:, 0] < frame_width) & (uv[:, 1] < frame_height))
             uv_array = uv[inrange[0]].round().astype('int')
-            pc_distances = self.pc_distance[inrange[0]]
-            pc_colors = self.pc_colors[inrange[0]]
+            pc_distances = self.pc_distance[modal][inrange[0]]
+            pc_colors = self.pc_colors[modal][inrange[0]]
 
             if random_sample_number > 0:
                 rand_indices = sorted(random.sample(range(len(uv_array)), random_sample_number))
@@ -479,7 +482,7 @@ class ros_sensor_lidar(ros_sensor):
         else:
             return None
 
-    def project_xyz_to_uv_inside_bbox(self, camerainfo_msg, bbox, random_sample_number=0):
+    def project_xyz_to_uv_inside_bbox(self, camerainfo_msg, modal, bbox, random_sample_number=0):
         if self.cloud is not None:
             # Update Camera Parameter to Pinhole Camera Model
             self.CAMERA_MODEL.fromCameraInfo(msg=camerainfo_msg)
@@ -489,16 +492,16 @@ class ros_sensor_lidar(ros_sensor):
             cx, cy = self.CAMERA_MODEL.cx(), self.CAMERA_MODEL.cy()
             Tx, Ty = self.CAMERA_MODEL.Tx(), self.CAMERA_MODEL.Ty()
 
-            px = (fx * self.cloud[:, 0] + Tx) / self.cloud[:, 2] + cx
-            py = (fy * self.cloud[:, 1] + Ty) / self.cloud[:, 2] + cy
+            px = (fx * self.cloud[modal][:, 0] + Tx) / self.cloud[modal][:, 2] + cx
+            py = (fy * self.cloud[modal][:, 1] + Ty) / self.cloud[modal][:, 2] + cy
 
             # Stack UV Image Coordinate Points
             uv = np.column_stack((px, py))
             inrange = np.where((uv[:, 0] >= bbox[0]) & (uv[:, 1] >= bbox[1]) &
                                (uv[:, 0] < bbox[2]) & (uv[:, 1] < bbox[3]))
             uv_array = uv[inrange[0]].round().astype('int')
-            pc_distances = self.pc_distance[inrange[0]]
-            pc_colors = self.pc_colors[inrange[0]]
+            pc_distances = self.pc_distance[modal][inrange[0]]
+            pc_colors = self.pc_colors[modal][inrange[0]]
 
             if random_sample_number > 0:
                 random_sample_number = min(random_sample_number, len(uv_array))

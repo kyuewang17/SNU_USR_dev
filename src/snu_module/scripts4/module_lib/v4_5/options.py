@@ -19,6 +19,8 @@ import cv2
 import os
 import copy
 import numpy as np
+from datetime import datetime
+from astral import Astral
 
 # Import Colormap, Screen Geometry
 from utils.general_functions import colormap, get_screen_geometry
@@ -70,6 +72,20 @@ class snu_option_class(object):
             self.agent_type, self.agent_id = env_type, cfg.env.id if hasattr(cfg.env, "id") else None
         else:
             self.agent_type, self.agent_id = None, None
+
+        # Get (Sunrise/Sunset) Time, in order to set time
+        a = Astral()
+        a.solar_depression = "civil"
+        city = a["Seoul"]
+        sun = city.sun(date=datetime.today(), local=True)
+        self.sunrise, self.sunset = sun["sunrise"].replace(tzinfo=None), sun["sunset"].replace(tzinfo=None)
+
+        # Initial Time Setting (will be checked as a for loop, every 600 frames)
+        # --> 0.1 sec X 600 = 60 sec = 1 minute
+        if self.sunrise <= datetime.now() <= self.sunset:
+            self.time = "day"
+        else:
+            self.time = "night"
 
         # Development Version
         self.dev_version = dev_version

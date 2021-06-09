@@ -1,0 +1,50 @@
+lidar:
+    color:
+        # Euler Angles (Roll-Pitch-Yaw)
+        euler_angles:
+            roll: -1.5466500159289798
+            pitch: -1.4051459499084422
+            yaw: 3.0866832658995733
+
+        # Rotation Matrix (in vector)
+        rotation_matrix:
+            r11: -0.16464532
+            r12: -0.98586279
+            r13: -0.03108823
+            r21: 0.00904967
+            r22: 0.03000718
+            r23: -0.99950872
+            r31: 0.98631132
+            r32: -0.16484577
+            r33: 0.00398119
+
+        # Translation
+        translation:
+            t1: 0.125649
+            t2: 0.21456649
+            t3: 0.04075267
+
+    thermal:
+        # Euler Angles (Roll-Pitch-Yaw)
+        euler_angles:
+            roll: -0.8688925995338551
+            pitch: -1.359962036152075
+            yaw: 2.3692714490597795
+
+        # Rotation Matrix (in vector)
+        rotation_matrix:
+            r11: -0.14990275
+            r12: -0.98540994
+            r13: -0.08060038
+            r21: 0.1460326
+            r22: 0.05856022
+            r23: -0.98754503
+            r31: 0.97785666
+            r32: -0.159806
+            r33: 0.13512364
+
+        # Translation
+        translation:
+            t1: 0.06117212
+            t2: 0.00437446
+            t3: 0.10132297

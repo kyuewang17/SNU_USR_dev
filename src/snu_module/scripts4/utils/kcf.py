@@ -258,7 +258,13 @@ def get_subwindow(frame, roi):
     if roi[1] + roi[3] > frame.shape[0]:
         roi[1] = frame.shape[0] - roi[3]
 
-    return frame[roi[1]:roi[1] + roi[3], roi[0]:roi[0] + roi[2], :]
+    # Check for Frame Dimension
+    if len(frame.shape) == 2:
+        return frame[roi[1]:roi[1] + roi[3], roi[0]:roi[0] + roi[2]]
+    elif len(frame.shape) == 3:
+        return frame[roi[1]:roi[1] + roi[3], roi[0]:roi[0] + roi[2], :]
+    else:
+        raise NotImplementedError()
 
 
 def gen_label(sigma, sz):
@@ -289,7 +295,10 @@ def gaussian_correlation(x_f, y_f, sigma):
     yy = np.real(y_f.flatten().conj().dot(y_f.flatten()) / N)
 
     xy_f = np.multiply(x_f, y_f.conj())
-    xy = np.sum(np.real(np.fft.ifft2(xy_f, axes=(0,1))), 2)
+    if len(xy_f.shape) == 2:
+        xy = np.real(np.fft.ifft2(xy_f, axes=(0, 1)))
+    else:
+        xy = np.sum(np.real(np.fft.ifft2(xy_f, axes=(0, 1))), 2)
 
     k_f = np.fft.fft2(np.exp(-1 / (sigma ** 2) * ((xx + yy - 2 * xy) / x_f.size).clip(min=0)))
 
