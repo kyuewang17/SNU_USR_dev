@@ -129,6 +129,16 @@ class TrajectoryCandidate(object_instance):
 
         return depth_value
 
+    def get_depth_new(self, sync_data_dict, **kwargs):
+        # Parse and Check KWARGS Variable
+        opts = kwargs.get("opts")
+        assert opts.__class__.__name__ == "snu_option_class"
+        modal = kwargs.get("modal")
+        assert modal in sync_data_dict.keys()
+
+        # TODO: TO-Coding
+        raise NotImplementedError()
+
     def get_depth(self, sync_data_dict, opts):
         # Get Observation Patch bbox
         patch_bbox = self.asso_dets[-1]
@@ -324,6 +334,26 @@ class Trajectory(object_instance):
 
     def get_2d_img_coord_state(self):
         return snu_bbox.zx3_to_zx2(self.x3)
+
+    def get_depth_new(self, sync_data_dict, **kwargs):
+        # Parse and Check KWARGS Variable
+        opts = kwargs.get("opts")
+        assert opts.__class__.__name__ == "snu_option_class"
+        is_mix_disparity = kwargs.get("is_mix_disparity", False)
+        assert isinstance(is_mix_disparity, bool)
+        modal = kwargs.get("modal")
+        assert modal in sync_data_dict.keys()
+
+        # Get Observation Patch Bounding Box
+        if self.asso_dets[-1] is not None:
+            patch_bbox = self.asso_dets[-1]
+        else:
+            patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
+
+
+
+        # TODO: TO-Coding
+        raise NotImplementedError()
 
     # Get Trajectory Depth (as an observation, using associated detection bbox)
     def get_depth(self, sync_data_dict, opts):

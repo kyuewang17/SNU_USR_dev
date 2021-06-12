@@ -112,25 +112,31 @@ class SNU_MOT(object):
 
     # Associate Detections with Trajectories
     def associate_detections_with_trajectories(self, sync_data_dict, detections):
-        # # Unpack Detections
-        # dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]
-
         # Unpack Detections and Concatenate Modalities
         dets, confs, labels, modals = [], [], [], []
         net_modals = list(set(detections.keys()))
         for modal, modal_detections in detections.items():
-            dets.append(modal_detections["dets"])
-            confs.append(modal_detections["confs"])
-            labels.append(modal_detections["labels"])
-            for _ in range(len(modal_detections["dets"])):
-                modals.append(modal)
-        dets, confs, labels = \
-            np.concatenate(dets, axis=0), np.concatenate(confs, axis=0), np.concatenate(labels, axis=0)
+            if modal_detections["dets"].size != 0:
+                dets.append(modal_detections["dets"])
+                confs.append(modal_detections["confs"])
+                labels.append(modal_detections["labels"])
+                for _ in range(len(modal_detections["dets"])):
+                    modals.append(modal)
+        if len(dets) > 0:
+            dets, confs, labels = \
+                np.concatenate(dets, axis=0), np.concatenate(confs, axis=0), np.concatenate(labels, axis=0)
 
         # Initialize Similarity Matrix Variable
         similarity_matrix = np.zeros((len(dets), len(self.trks)), dtype=np.float32)
 
-        # Get (Color / Disparity) Frames
+        # Get Key Modal Frames
+        frame_objs = {}
+        for modal in net_modals:
+            sensor_data = sync_data_dict[modal]
+            if sensor_data is not None:
+                frame_objs[modal] = sync_data_dict[modal]
+        frame_objs["disparity"] = sync_data_dict["disparity"]
+
         color_frame = sync_data_dict["color"].get_data()
         # disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
 
@@ -153,7 +159,7 @@ class SNU_MOT(object):
             for trk_idx, trk in enumerate(self.trks):
                 # Check if Modality btw Detection and Trajectory Candidate is Equal (if not match then continue loop)
                 if modals[det_idx] != trk.modal:
-                    similarity_matrix[det_idx, trk_idx] = -1.0
+                    similarity_matrix[det_idx, trk_idx] = -1000.0
                     continue
                 else:
                     modal = modals[det_idx]
@@ -163,28 +169,35 @@ class SNU_MOT(object):
                 # Get Predicted State of Trajectory
                 trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
 
-                # Get RGBD Patches
-                det_patch = snu_patch.get_patch(frame, det)
-                trk_patch = snu_patch.get_patch(frame, trk_bbox)
+                # Get Appropriate Patches
+                det_patch = frame_objs[modal].get_patch(bbox=det)
+                trk_patch = frame_objs[modal].get_patch(bbox=trk_bbox)
+                patch_minmax = frame_objs[modal].get_type_minmax()
+
+                # # Get RGBD Patches
+                # det_patch = snu_patch.get_patch(frame, det)
+                # trk_patch = snu_patch.get_patch(frame, trk_bbox)
 
                 # Skip Association Conditions
                 if trk_patch.shape[0] <= 0 or trk_patch.shape[1] <= 0:
+                    similarity_matrix[det_idx, trk_idx] = -1000.0
                     continue
                 if trk.label != labels[det_idx]:
+                    similarity_matrix[det_idx, trk_idx] = -1000.0
                     continue
 
-                # Resize RGBD Patches
+                # Resize Patches
                 resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
                 resized_trk_patch = cv2.resize(trk_patch, dsize=(64, 64))
 
-                # Get RGBD Histograms of Detection and Trajectory Patch
+                # Get Histograms of Detection and Trajectory Patch
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=resized_det_patch,
-                    dhist_bin=128, min_value=0, max_value=255, count_window=None
+                    sensor_patch=resized_det_patch, dhist_bin=128,
+                    min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
                 )
                 trk_hist, trk_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=resized_trk_patch,
-                    dhist_bin=128, min_value=0, max_value=255, count_window=None
+                    sensor_patch=resized_trk_patch, dhist_bin=128,
+                    min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
                 )
 
                 # [1] Get Histogram Similarity
@@ -194,6 +207,7 @@ class SNU_MOT(object):
                     hist_product = np.matmul(det_hist.reshape(-1, 1).transpose(), trk_hist.reshape(-1, 1))
                     hist_similarity = np.sqrt(hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist)))
                     hist_similarity = hist_similarity[0, 0]
+                print(hist_similarity)
 
                 # [2] Get IOU Similarity
                 aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
@@ -219,7 +233,7 @@ class SNU_MOT(object):
                     s_w_dict["histogram"] * hist_similarity + \
                     s_w_dict["iou"] * iou_similarity + \
                     s_w_dict["distance"] * dist_similarity
-                print("T2D Similarity Value: {:.3f}".format(similarity))
+                # print("T2D Similarity Value: {:.3f}".format(similarity))
 
                 # to Similarity Matrix
                 similarity_matrix[det_idx, trk_idx] = similarity
@@ -233,12 +247,6 @@ class SNU_MOT(object):
                 similarity_matrix=similarity_matrix, similarity_thresh=similarity_thresh,
                 workers=dets, works=self.trks
             )
-
-        _color = sync_data_dict["color"]
-        if _color._timestamp.secs == 908 and _color._timestamp.nsecs == 442000000:
-            print(4444)
-        if _color._timestamp.secs == 960 and _color._timestamp.nsecs == 641000000:
-            print(1234)
 
         # Update Associated Trajectories
         for match in matches:
@@ -276,56 +284,41 @@ class SNU_MOT(object):
         # Convert to Multi-modal Detection Format
         detections = {}
         for modal in net_modals:
-            detections[modal] = {"dets": [], "confs": [], "labels": []}
+            detections[modal] = {
+                "dets": np.array([], dtype=np.float32),
+                "confs": np.array([], dtype=np.float32),
+                "labels": np.array([], dtype=np.float32),
+            }
+        color_fr, thermal_fr = True, True
         for res_idx in range(res_dets.shape[0]):
-            detections[res_modals[res_idx]]["dets"].append(res_dets[res_idx])
-            detections[res_modals[res_idx]]["confs"].append(res_confs[res_idx])
-            detections[res_modals[res_idx]]["labels"].append(res_labels[res_idx])
+            res_modal = res_modals[res_idx]
+            res_det = res_dets[res_idx].reshape(1, 4)
+            res_conf = res_confs[res_idx].reshape(1, 1)
+            res_label = res_labels[res_idx].reshape(1, 1)
 
-        # DEBUG
-        if detections["color"]["dets"] != [] and detections["thermal"]["dets"] == []:
-            print(123)
-        elif detections["color"]["dets"] == [] and detections["thermal"]["dets"] != []:
-            print(234)
-        # detections = {
-        #     "color": {"dets": [], "confs": [], "labels": []},
-        #     "thermal": {"dets": [], "confs": [], "labels": []}
-        # }
-        # residual_dets = np.empty((len(unmatched_det_indices), 4))
-        # residual_confs, residual_labels = np.empty((len(unmatched_det_indices), 1)), np.empty((len(unmatched_det_indices), 1))
-        # for residual_det_idx, unasso_det_idx in enumerate(unmatched_det_indices):
-        #     residual_modal = modals[unasso_det_idx]
-        #     residual_dets[residual_det_idx, :] = dets[unasso_det_idx]
-        #     residual_confs[residual_det_idx] = confs[unasso_det_idx]
-        #     residual_labels[residual_det_idx] = labels[unasso_det_idx]
-        # detections = {'dets': residual_dets, 'confs': residual_confs, 'labels': residual_labels}
+            if detections[res_modal]["dets"].size == 0:
+                detections[res_modal]["dets"] = res_det
+                detections[res_modal]["confs"] = res_conf
+                detections[res_modal]["labels"] = res_label
+            else:
+                detections[res_modal]["dets"] = np.vstack((detections[res_modal]["dets"], res_det))
+                detections[res_modal]["confs"] = np.vstack((detections[res_modal]["confs"], res_conf))
+                detections[res_modal]["labels"] = np.vstack((detections[res_modal]["labels"], res_label))
 
         return detections
 
     # Associate Detections with Detections
     def associate_resdets_trkcands(self, sync_data_dict, residual_detections):
-        # # Unpack Residual Detections
-        # dets, confs, labels = \
-        #     residual_detections["dets"], residual_detections["confs"], residual_detections["labels"]
-        #
-        # # Unpack Residual Detections, merge modalities
-        # dets = np.vstack((residual_detections["color"]["dets"], residual_detections["thermal"]["dets"]))
-        # confs = np.vstack((residual_detections["color"]["confs"], residual_detections["thermal"]["confs"]))
-        # labels = np.vstack((residual_detections["color"]["labels"], residual_detections["thermal"]["labels"]))
-        # # modals =
-
         # Unpack Residual Detections and Concatenate Modalities
         dets, confs, labels, modals = [], [], [], []
         for modal, modal_detections in residual_detections.items():
-            dets.append(modal_detections["dets"])
-            confs.append(modal_detections["confs"])
-            labels.append(modal_detections["labels"])
-            for _ in range(len(modal_detections["dets"])):
-                modals.append(modal)
+            if modal_detections["dets"].size != 0:
+                dets.append(modal_detections["dets"])
+                confs.append(modal_detections["confs"])
+                labels.append(modal_detections["labels"])
+                for _ in range(len(modal_detections["dets"])):
+                    modals.append(modal)
         if len(dets) > 0:
-
-
-
             dets, confs, labels = \
                 np.concatenate(dets, axis=0), np.concatenate(confs, axis=0), np.concatenate(labels, axis=0)
 
@@ -337,7 +330,7 @@ class SNU_MOT(object):
             for trk_cand_idx, trk_cand in enumerate(self.trk_cands):
                 # Check if Modality btw Detection and Trajectory Candidate is Equal (if not match then continue loop)
                 if modals[det_idx] != trk_cand.modal:
-                    similarity_matrix[det_idx, trk_cand_idx] = -1.0
+                    similarity_matrix[det_idx, trk_cand_idx] = -1000.0
                     continue
                 else:
                     modal = modals[det_idx]
@@ -373,7 +366,7 @@ class SNU_MOT(object):
                     similarity = \
                         s_w_dict["iou"] * iou_similarity + \
                         s_w_dict["distance"] * dist_similarity
-                    print("D2D Similarity Value: {:.3f}".format(similarity))
+                    # print("D2D Similarity Value: {:.3f}".format(similarity))
 
                 # to Similarity Matrix
                 similarity_matrix[det_idx, trk_cand_idx] = similarity
@@ -493,15 +486,6 @@ class SNU_MOT(object):
                     )
                     self.trk_cands.append(new_trk_cand)
                     del new_trk_cand
-            # # Initialize New Trajectory Candidates
-            # for det_idx, det in enumerate(detections["dets"]):
-            #     new_trk_cand = TrajectoryCandidate(
-            #         frame=sync_data_dict["color"].get_data(),
-            #         bbox=det, conf=detections["confs"][det_idx], label=detections["labels"][det_idx],
-            #         init_fidx=fidx, opts=self.opts
-            #     )
-            #     self.trk_cands.append(new_trk_cand)
-            #     del new_trk_cand
         else:
             self.associate_resdets_trkcands(
                 sync_data_dict=sync_data_dict, residual_detections=detections

@@ -82,13 +82,13 @@ tracker:
         trk:
             init_age: 2
             destroy_age: 3
-            similarity_thresh: 0.1
+            similarity_thresh: 0.325
         trk_cand:
             destroy_age: 2
-            similarity_thresh: 0.4
+            similarity_thresh: 0.6
     visualization:
-        is_draw: false
-        is_show: false
+        is_draw: true
+        is_show: true
         auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_trk_acl_result_image"

@@ -15,6 +15,7 @@ import cv2
 import matplotlib
 import pyquaternion
 import ros_numpy
+import utils.patch
 import numpy as np
 import image_geometry
 from rospy.rostime import Time
@@ -199,6 +200,18 @@ class ros_sensor_image(ros_sensor):
     def get_data_aux(self):
         return self._frame
 
+    def astype(self, type):
+        assert isinstance(self._frame, np.ndarray)
+        self._frame.astype(type)
+
+    def dtype(self):
+        assert isinstance(self._frame, np.ndarray)
+        return self._frame.dtype
+
+    def get_type_minmax(self):
+        type_iinfo = np.iinfo(self.dtype())
+        return {"min": type_iinfo.min, "max": type_iinfo.max}
+
     def get_normalized_data(self, min_value=0.0, max_value=1.0):
         frame = self.get_data()
         if frame is not None:
@@ -233,6 +246,11 @@ class ros_sensor_image(ros_sensor):
             raise NotImplementedError()
 
         return z_frame
+
+    def get_patch(self, bbox, enlarge_factor=1.0):
+        return utils.patch.get_patch(
+            img=self.get_data(), bbox=bbox, enlarge_factor=enlarge_factor
+        )
 
     def visualize(self):
         # Get Frame

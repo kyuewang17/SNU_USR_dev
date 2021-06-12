@@ -7,7 +7,7 @@ import numpy as np
 
 
 # Get Patch
-def get_patch(img, bbox, enlarge_factor=1):
+def get_patch(img, bbox, enlarge_factor=1.0):
     # Overflow
     if bbox[0] < 0:
         bbox[0] = 0
