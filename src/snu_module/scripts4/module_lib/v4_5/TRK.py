@@ -207,7 +207,7 @@ class SNU_MOT(object):
                     hist_product = np.matmul(det_hist.reshape(-1, 1).transpose(), trk_hist.reshape(-1, 1))
                     hist_similarity = np.sqrt(hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist)))
                     hist_similarity = hist_similarity[0, 0]
-                print(hist_similarity)
+                # print(hist_similarity)
 
                 # [2] Get IOU Similarity
                 aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
@@ -247,6 +247,8 @@ class SNU_MOT(object):
                 similarity_matrix=similarity_matrix, similarity_thresh=similarity_thresh,
                 workers=dets, works=self.trks
             )
+
+        test_color_ts = sync_data_dict["color"]._timestamp
 
         # Update Associated Trajectories
         for match in matches:

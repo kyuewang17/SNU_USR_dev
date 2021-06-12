@@ -335,14 +335,9 @@ class Trajectory(object_instance):
     def get_2d_img_coord_state(self):
         return snu_bbox.zx3_to_zx2(self.x3)
 
-    def get_depth_new(self, sync_data_dict, **kwargs):
+    def get_depth(self, sync_data_dict, opts):
         # Parse and Check KWARGS Variable
-        opts = kwargs.get("opts")
         assert opts.__class__.__name__ == "snu_option_class"
-        is_mix_disparity = kwargs.get("is_mix_disparity", False)
-        assert isinstance(is_mix_disparity, bool)
-        modal = kwargs.get("modal")
-        assert modal in sync_data_dict.keys()
 
         # Get Observation Patch Bounding Box
         if self.asso_dets[-1] is not None:
@@ -350,13 +345,47 @@ class Trajectory(object_instance):
         else:
             patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
 
+        # If Label is Human, re-assign bbox area
+        if self.label == 1:
+            patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
 
+        # If LiDAR is unavailable, set depth value as 1.0
+        if sync_data_dict["lidar"] is None:
+            self.depth.append(1.0)
+        else:
+            # Project XYZ to uv-coordinate
+            uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
+                camerainfo_msg=sync_data_dict[self.modal].get_camerainfo_msg(), modal=self.modal,
+                bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
+            )
 
-        # TODO: TO-Coding
-        raise NotImplementedError()
+            # Get Number of LiDAR uv points inside BBOX, if none replace depth value with previous value
+            if len(uv_array) == 0:
+                depth_value = self.depth[-1]
+            else:
+                # Define Steepness Parameter w.r.t. Standard Deviation of Point-cloud Distance Distribution
+                # PC_stdev is High -> Gradual Counting Weight (to consider less samples near average point)
+                #             Low  -> Steep Counting Weight (to consider more samples)
+                stnp = (1.0 / (np.std(pc_distances) + 1e-6))
+
+                # Compute Counting Weight for LiDAR UV-points, w.r.t. center L2-distance
+                _denom = (patch_bbox[2] - patch_bbox[0]) ** 2 + (patch_bbox[3] - patch_bbox[1]) ** 2
+                cx, cy = (patch_bbox[0]+patch_bbox[2])/2.0, (patch_bbox[1]+patch_bbox[3])/2.0
+                _num = np.sum((uv_array - np.array([cx, cy])) ** 2, axis=1)
+                _w = np.exp(-stnp*4.0*(_num / (_denom + 1e-6)))
+                counting_weight = _w / _w.sum()
+
+                # Weighted Distance Sum
+                depth_value = np.inner(pc_distances, counting_weight)
+                if np.isnan(depth_value):
+                    depth_value = np.median(pc_distances)
+                # print(depth_value)
+
+            # Append Depth
+            self.depth.append(depth_value)
 
     # Get Trajectory Depth (as an observation, using associated detection bbox)
-    def get_depth(self, sync_data_dict, opts):
+    def get_depth_old(self, sync_data_dict, opts):
         # Get Observation Patch bbox
         if self.asso_dets[-1] is not None:
             patch_bbox = self.asso_dets[-1]
@@ -487,8 +516,20 @@ class Trajectory(object_instance):
                             cam_coord_vel[0][0], cam_coord_vel[1][0], cam_coord_vel[2][0]]).reshape((6, 1))
 
     # Image Coordinates(2D) to Ground Plane in meters (m)
-    def img_coord_to_ground_plane(self, inverse_projection):
-        pass
+    def img_coord_to_ground_plane(self, sensor_params):
+        img_coord_pos = np.array([self.x3[0][0], (self.x3[1][0] + 0.5 * self.x3[6][0])])
+        img_coord_vel = np.array([self.x3[3][0], self.x3[4][0]])
+
+        # TEST
+        world_coord_pos = sensor_params.get_ground_plane_coord(
+            x=img_coord_pos[0], y=img_coord_pos[1], norm_mode="pos"
+        )
+        world_coord_vel = sensor_params.get_ground_plane_coord(
+            x=img_coord_vel[0], y=img_coord_vel[1], norm_mode="vel"
+        )
+
+        self.c3 = np.array([world_coord_pos[0][0], world_coord_pos[1][0], world_coord_pos[2][0],
+                            world_coord_vel[0][0], world_coord_vel[1][0], world_coord_vel[2][0]]).reshape((6, 1))
 
     # Camera Coordinates(3D) to Image Coordinates(2D)
     def cam_coord_to_img_coord(self):

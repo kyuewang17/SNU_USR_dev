@@ -109,8 +109,8 @@ class YOLOv5(DetectorBase):
         boxes = torch.cat(boxes, dim=0).detach().cpu().numpy()
         confs = torch.cat(confs, dim=0).detach().cpu().numpy()
         labels = torch.cat(labels, dim=0).detach().cpu().numpy()
-        for i in range(len(labels)):
-            print (self.name[int(labels[i].item())])
+        # for i in range(len(labels)):
+        #     print (self.name[int(labels[i].item())])
         return boxes, confs, labels
 
 

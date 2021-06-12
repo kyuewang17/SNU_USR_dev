@@ -623,6 +623,7 @@ class sensor_params_file_array(sensor_params):
 
         # Set Camera Parameter Matrices
         self.intrinsic_matrix, self.extrinsic_matrix, self.rotation_matrix = None, None, None
+        self.translation_vector = None
 
     # Update Parameter Variables
     def update_params(self, param_array):
@@ -650,6 +651,7 @@ class sensor_params_file_array(sensor_params):
             self.rotation_matrix,
             np.array([self.x, self.y, self.z], dtype=self.param_precision).reshape((3, 1))
         )
+        self.translation_vector = translation_vector
         self.extrinsic_matrix = np.block(
             [np.vstack((self.rotation_matrix, np.zeros((1, 3)))), np.append(translation_vector, 1).reshape(-1, 1)]
         )
@@ -674,6 +676,42 @@ class sensor_params_file_array(sensor_params):
                                     [r21, r22, r23],
                                     [r31, r32, r33]], dtype=self.param_precision)
         return rotation_matrix
+
+    def get_world_coord_center(self):
+        return -np.matmul(self.rotation_matrix.T, self.translation_vector)
+
+    def __get_ground_k(self, u, v):
+        r13 = self.rotation_matrix[0, 2]
+        r23 = self.rotation_matrix[1, 2]
+        r33 = self.rotation_matrix[2, 2]
+        t1 = self.translation_vector[0, 0]
+        t2 = self.translation_vector[1, 0]
+        t3 = self.translation_vector[2, 0]
+
+        _numerator = t1*r13 + t2*r23 + t3*r33
+        _denom = u*r13 + v*r23 + r33
+
+        return _numerator / _denom
+
+    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
+        assert norm_mode in ["pos", "vel"]
+        if norm_mode == "pos":
+            # Normalize Coordinates
+            u, v = (x - self.cx) / self.fx, (y - self.cy) / self.fy
+
+            # Get Ground k value
+            k_G = self.__get_ground_k(u=u, v=v)
+
+            # Compute Ground Plane Coordinate
+            ground_plane_coord = np.matmul(
+                self.rotation_matrix.T,
+                k_G * np.array([u, v, 1]).reshape(3, 1) - self.translation_vector
+            )
+            return ground_plane_coord
+        else:
+            g1 = self.get_ground_plane_coord(x=x, y=y, norm_mode="pos")
+            g2 = self.get_ground_plane_coord(x=0, y=0, norm_mode="pos")
+            return g1 - g2
 
 
 class snu_SyncSubscriber(SyncSubscriber):
