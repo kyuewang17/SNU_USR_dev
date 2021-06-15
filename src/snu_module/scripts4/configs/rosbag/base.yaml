@@ -63,7 +63,7 @@ detector:
     sensors:
         color: true
         disparity: false
-        thermal: false
+        thermal: true
         infrared: false
         nightvision: false
         lidar: false
