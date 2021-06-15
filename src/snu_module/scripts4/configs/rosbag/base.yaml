@@ -87,8 +87,8 @@ tracker:
             destroy_age: 2
             similarity_thresh: 0.6
     visualization:
-        is_draw: true
-        is_show: true
+        is_draw: false
+        is_show: false
         auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_trk_acl_result_image"

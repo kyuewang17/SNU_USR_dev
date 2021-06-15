@@ -140,6 +140,47 @@ class TrajectoryCandidate(object_instance):
         raise NotImplementedError()
 
     def get_depth(self, sync_data_dict, opts):
+        # Parse and Check KWARGS Variable
+        assert opts.__class__.__name__ == "snu_option_class"
+
+        # Get Observation Patch bbox
+        patch_bbox = self.asso_dets[-1]
+
+        # If LiDAR is unavailable, set depth value as 1.0
+        if sync_data_dict["lidar"] is None:
+            depth_value = 0.0
+        else:
+            # Project XYZ to uv-coordinate
+            uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
+                camerainfo_msg=sync_data_dict[self.modal].get_camerainfo_msg(), modal=self.modal,
+                bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
+            )
+
+            # Get Number of LiDAR uv points inside BBOX, if none replace depth value with previous value
+            if len(uv_array) == 0:
+                depth_value = 0.0
+            else:
+                # Define Steepness Parameter w.r.t. Standard Deviation of Point-cloud Distance Distribution
+                # PC_stdev is High -> Gradual Counting Weight (to consider less samples near average point)
+                #             Low  -> Steep Counting Weight (to consider more samples)
+                stnp = (1.0 / (np.std(pc_distances) + 1e-6))
+
+                # Compute Counting Weight for LiDAR UV-points, w.r.t. center L2-distance
+                _denom = (patch_bbox[2] - patch_bbox[0]) ** 2 + (patch_bbox[3] - patch_bbox[1]) ** 2
+                cx, cy = (patch_bbox[0]+patch_bbox[2])/2.0, (patch_bbox[1]+patch_bbox[3])/2.0
+                _num = np.sum((uv_array - np.array([cx, cy])) ** 2, axis=1)
+                _w = np.exp(-stnp*4.0*(_num / (_denom + 1e-6)))
+                counting_weight = _w / _w.sum()
+
+                # Weighted Distance Sum
+                depth_value = np.inner(pc_distances, counting_weight)
+                if np.isnan(depth_value):
+                    depth_value = np.median(pc_distances)
+                # print(depth_value)
+
+        return depth_value
+
+    def get_depth_old(self, sync_data_dict, opts):
         # Get Observation Patch bbox
         patch_bbox = self.asso_dets[-1]
 
@@ -345,9 +386,9 @@ class Trajectory(object_instance):
         else:
             patch_bbox, _ = snu_bbox.zx_to_bbox(self.x3p)
 
-        # If Label is Human, re-assign bbox area
-        if self.label == 1:
-            patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
+        # # If Label is Human, re-assign bbox area
+        # if self.label == 1:
+        #     patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
 
         # If LiDAR is unavailable, set depth value as 1.0
         if sync_data_dict["lidar"] is None:

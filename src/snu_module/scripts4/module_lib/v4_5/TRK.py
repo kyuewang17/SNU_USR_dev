@@ -503,18 +503,17 @@ class SNU_MOT(object):
             del new_trk
         del new_trks
 
-        # Get Pseudo-inverse of Projection Matrix
-        color_P_inverse = sync_data_dict["color"].get_sensor_params().pinv_projection_matrix
-
         # Trajectory Prediction, Projection, and Message
+        # TODO: Retrieve Code for Static Agent (github branch), consider modality!!
         for trk_idx, trk in enumerate(self.trks):
-            # Predict Tracklet States (time-ahead Kalman Prediction)
+            # Get Pseudo-inverse of Projection Matrix
+            Pinv = sync_data_dict[trk.modal].get_sensor_params().pinv_projection_matrix
+
+            # Predict Trajectory States
             trk.predict()
 
             # Project Image Coordinate State (x3) to Camera Coordinate State (c3)
-            trk.img_coord_to_cam_coord(
-                inverse_projection_matrix=color_P_inverse, opts=self.opts
-            )
+            trk.img_coord_to_cam_coord(inverse_projection_matrix=Pinv, opts=self.opts)
 
             # Compute RPY
             trk.compute_rpy(roll=0.0)

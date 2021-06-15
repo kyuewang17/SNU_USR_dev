@@ -112,7 +112,7 @@ class ros_sensor(object):
     def update_data(self, data, stamp):
         raise NotImplementedError()
 
-    def get_data(self):
+    def get_data(self, *args, **kwargs):
         raise NotImplementedError()
 
     def update_stamp(self, stamp):
@@ -194,8 +194,13 @@ class ros_sensor_image(ros_sensor):
         if self.HEIGHT is None and frame is not None:
             self.HEIGHT = frame.shape[0]
 
-    def get_data(self):
-        return self._frame
+    def get_data(self, **kwargs):
+        # Type Conversion
+        type_conversion = kwargs.get("astype")
+        if self.dtype() != type_conversion:
+            return self._frame.astype(type_conversion)
+        else:
+            return self._frame
 
     def get_data_aux(self):
         return self._frame

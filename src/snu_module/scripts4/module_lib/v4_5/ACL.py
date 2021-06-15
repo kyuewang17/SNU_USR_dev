@@ -18,21 +18,24 @@ def load_model(opts):
     cuda_device_str = "cuda:" + str(opts.aclassifier.device)
     device = torch.device(cuda_device_str if torch.cuda.is_available() else "cpu")
 
+    # Model Directory
+    model_dir = os.path.join(opts.aclassifier.model_dir, opts.time)
+
     # Find Model
     pth_file_list = []
-    for f in os.listdir(opts.aclassifier.model_dir):
+    for f in os.listdir(model_dir):
         if f.endswith(".pth"):
             pth_file_list.append(f)
     if len(pth_file_list) > 1:
         raise AssertionError("Too many pth files...!")
     elif len(pth_file_list) == 0:
         raise AssertionError("No pth files...!")
-    model_path = os.path.join(opts.aclassifier.model_dir, pth_file_list[0])
+    model_path = os.path.join(model_dir, pth_file_list[0])
 
     # Get Model
-    if opts.aclassifier.time == "day":
+    if opts.time == "day":
         model = resnet18_rb_4th(num_classes=3)
-    elif opts.aclassifier.time == "night":
+    elif opts.time == "night":
         model = resnet18_th_4th(num_classes=3)
     else:
         raise AssertionError()
@@ -57,7 +60,7 @@ def voting(pose_list):
 
 def aclassify(model, sync_data_dict, trajectories, opts):
     # Get Time
-    acl_time = opts.aclassifier.time
+    acl_time = opts.time
 
     # Get Frame
     if acl_time == "day":

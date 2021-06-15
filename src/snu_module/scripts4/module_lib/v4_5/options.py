@@ -86,6 +86,8 @@ class snu_option_class(object):
             self.time = "day"
         else:
             self.time = "night"
+        # NOTE: Tentative (to check thermal acl module)
+        self.time = "night"
 
         # Development Version
         self.dev_version = dev_version
@@ -252,6 +254,7 @@ class segnet_options(object):
             # background, bicycle, bus, car, motorbike, person
         }
 
+# TODO: Change cfg.env.time into cfg.time later
 class attnet_options(object):
     def __init__(self, cfg):
         self.run = cfg.attnet.run
@@ -259,7 +262,8 @@ class attnet_options(object):
         self.model_dir =\
             os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
 
-# Detector Option Class
+
+# Detector Option Class # TODO: Change cfg.env.time into cfg.time later
 class detector_options(object):
     def __init__(self, cfg):
         # Get Model Path for Detector
@@ -467,8 +471,7 @@ class aclassifier_options(object):
     def __init__(self, cfg):
         # Get Model Path for Action Classifier
         self.model_dir = \
-            os.path.join(cfg.aclassifier.model_base_path, cfg.aclassifier.name, cfg.env.time)
-        self.time = cfg.env.time
+            os.path.join(cfg.aclassifier.model_base_path, cfg.aclassifier.name)
         self.test_which_year = '4'
         # Set Actually Using Sensor Modalities
         self.sensor_dict = {

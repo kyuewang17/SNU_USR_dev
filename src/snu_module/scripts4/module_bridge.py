@@ -4,6 +4,7 @@ SNU Integrated Module
     - Module Bridge for SNU Integrated Algorithms
 
 """
+import numpy as np
 import importlib
 from utils.profiling import Timer
 
@@ -107,8 +108,62 @@ class snu_algorithms(algorithms):
             # End Time
             self.fps_dict["seg"] = self.seg_fpn_obj.elapsed
 
-    # Detection Module
     def osr_object_detection(self, sync_data_dict):
+        # Start Time
+        self.det_fps_obj.reset()
+
+        # Parse-out Required Sensor Modalities
+        # TODO: Integrate this for all 3 modules
+        detection_sensor_data = {}
+        for modal, modal_switch in self.opts.detector.sensor_dict.items():
+            if modal_switch is True:
+                detection_sensor_data[modal] = sync_data_dict[modal]
+
+        if self.att_net is not None:
+            output = self.snu_ATT.run(attnet=self.att_net, sync_data_dict=detection_sensor_data, opts=self.opts)
+            detection_sensor_data['att_tensor'] = output
+
+        # Activate Module
+        rgb_dets, thermal_dets = self.snu_det.detect(detector=self.det_framework, sync_data_dict=detection_sensor_data, opts=self.opts)
+
+        # Color Detection Parsing
+        rgb_confs, rgb_labels = rgb_dets[:, 4:5], rgb_dets[:, 5:6]
+        rgb_dets = rgb_dets[:, 0:4]
+
+        # Remove Too Small Detections
+        keep_indices = []
+        for det_idx, det in enumerate(rgb_dets):
+            if det[2] * det[3] >= self.opts.detector.tiny_area_threshold:
+                keep_indices.append(det_idx)
+        rgb_dets = rgb_dets[keep_indices, :]
+        rgb_confs = rgb_confs[keep_indices, :]
+        rgb_labels = rgb_labels[keep_indices, :]
+
+        if thermal_dets is not None:
+            thermal_confs, thermal_labels = thermal_dets[:, 4:5], thermal_dets[:, 5:6]
+            thermal_dets = thermal_dets[:, 0:4]
+
+            # Remove Too Small Thermal Detections
+            keep_indices = []
+            for det_idx, det in enumerate(thermal_dets):
+                if det[2] * det[3] >= self.opts.detector.tiny_area_threshold:
+                    keep_indices.append(det_idx)
+            thermal_dets = thermal_dets[keep_indices, :]
+            thermal_confs = thermal_confs[keep_indices, :]
+            thermal_labels = thermal_labels[keep_indices, :]
+        else:
+            thermal_dets = np.array([], dtype=np.float32)
+            thermal_confs = np.array([], dtype=np.float32)
+            thermal_labels = np.array([], dtype=np.float32)
+
+        self.detections = { "color": {"dets": rgb_dets, "confs": rgb_confs, "labels": rgb_labels},
+                            "thermal": {"dets": thermal_dets, "confs": thermal_confs, "labels": thermal_labels}}
+
+        # End Time
+        self.fps_dict["det"] = self.det_fps_obj.elapsed
+
+    # Detection Module
+    def osr_object_detection_old(self, sync_data_dict):
         # Start Time
         self.det_fps_obj.reset()
 

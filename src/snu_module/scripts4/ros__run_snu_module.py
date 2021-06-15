@@ -27,7 +27,7 @@ from registration.tf_object import TF_TRANSFORM
 from utils.profiling import Timer
 from utils.ros.base import backbone
 from utils.ros.sensors import snu_SyncSubscriber
-import snu_visualizer
+import snu_visualizer_old as snu_visualizer
 from module_bridge import snu_algorithms
 
 
@@ -116,59 +116,59 @@ class snu_module(backbone):
         rospy.loginfo("Checking Sensor Parameter Directory...!")
         self.gather_all_sensor_params_via_files()
 
-        # Check for TF_STATIC, Sensor Parameter Files (yaml)
-        if self.opts.env_type in ["dynamic", "bag"]:
-
-            # Subscribe for TF_STATIC
-            tf_buffer = tf2_ros.Buffer()
-            tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
-
-            # Iterate Loop until "tf_static is heard"
-            tf_static_check_flag = 0
-            while self.tf2_transform is None:
-                try:
-                    self.tf_transform = tf_buffer.lookup_transform(
-                        "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
-                    )
-                except:
-                    if tf_static_check_flag == 0:
-                        rospy.loginfo("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
-                    tf_static_check_flag += 1
-
-                    if tf_static_check_flag >= 30 and self.opts.env_type == "bag":
-                        rospy.loginfo("TF_STATIC: Custom TF Static Transform Loaded...!")
-
-                        class TF_TRANSLATION(object):
-                            def __init__(self, x, y, z):
-                                self.x = x
-                                self.y = y
-                                self.z = z
-
-                        class TF_ROTATION(object):
-                            def __init__(self, x, y, z, w):
-                                self.x = x
-                                self.y = y
-                                self.z = z
-                                self.w = w
-
-                        class _TF_TRANSFORM(object):
-                            def __init__(self, translation, rotation):
-                                self.translation = translation
-                                self.rotation = rotation
-
-                        class TF_TRANSFORM(object):
-                            def __init__(self):
-                                translation = TF_TRANSLATION(
-                                    x=0.44415, y=0.128996, z=0.238593
-                                )
-                                rotation = TF_ROTATION(
-                                    x=0.482089, y=-0.501646, z=0.526684, w=0.488411
-                                )
-                                self.transform = _TF_TRANSFORM(
-                                    translation=translation, rotation=rotation
-                                )
-
-                        self.tf2_transform = TF_TRANSFORM()
+        # # Check for TF_STATIC, Sensor Parameter Files (yaml)
+        # if self.opts.env_type in ["dynamic", "bag"]:
+        #
+        #     # Subscribe for TF_STATIC
+        #     tf_buffer = tf2_ros.Buffer()
+        #     tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
+        #
+        #     # Iterate Loop until "tf_static is heard"
+        #     tf_static_check_flag = 0
+        #     while self.tf2_transform is None:
+        #         try:
+        #             self.tf_transform = tf_buffer.lookup_transform(
+        #                 "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
+        #             )
+        #         except:
+        #             if tf_static_check_flag == 0:
+        #                 rospy.loginfo("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
+        #             tf_static_check_flag += 1
+        #
+        #             if tf_static_check_flag >= 30 and self.opts.env_type == "bag":
+        #                 rospy.loginfo("TF_STATIC: Custom TF Static Transform Loaded...!")
+        #
+        #                 class TF_TRANSLATION(object):
+        #                     def __init__(self, x, y, z):
+        #                         self.x = x
+        #                         self.y = y
+        #                         self.z = z
+        #
+        #                 class TF_ROTATION(object):
+        #                     def __init__(self, x, y, z, w):
+        #                         self.x = x
+        #                         self.y = y
+        #                         self.z = z
+        #                         self.w = w
+        #
+        #                 class _TF_TRANSFORM(object):
+        #                     def __init__(self, translation, rotation):
+        #                         self.translation = translation
+        #                         self.rotation = rotation
+        #
+        #                 class TF_TRANSFORM(object):
+        #                     def __init__(self):
+        #                         translation = TF_TRANSLATION(
+        #                             x=0.44415, y=0.128996, z=0.238593
+        #                         )
+        #                         rotation = TF_ROTATION(
+        #                             x=0.482089, y=-0.501646, z=0.526684, w=0.488411
+        #                         )
+        #                         self.transform = _TF_TRANSFORM(
+        #                             translation=translation, rotation=rotation
+        #                         )
+        #
+        #                 self.tf2_transform = TF_TRANSFORM()
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
@@ -230,7 +230,7 @@ class snu_module(backbone):
                 #         self.fidx, len(snu_usr), total_fps
                 #     )
                 # )
-                rospy.loginfo("FIDX: {} || # of Tracklets: <{}> || [SENSOR: {:.2f}fps | | SEG: {:.1f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
+                rospy.loginfo("FIDX: {} || # of Trajectories: <{}> || [SENSOR: {:.2f}fps | | SEG: {:.1f}fps | DET: {:.1f}fps | TRK: {:.1f}fps | ACL: {:.1f}fps]".format(
                     self.fidx, len(snu_usr), sensor_fps, fps_dict["seg"], fps_dict["det"], fps_dict["trk"], fps_dict["acl"]
                     )
                 )
@@ -255,16 +255,16 @@ class snu_module(backbone):
                 # Publish SNU Result Image Results
                 self.publish_snu_result_image(result_frame_dict=result_frame_dict)
 
-                # Draw / Show / Publish Top-view Result
-                if self.opts.visualization.top_view["is_draw"] is True:
-                    self.visualizer.visualize_top_view_trajectories(trajectories=trajectories)
-
-                    # # Publish Top-view Result
-                    # self.top_view_result_pub.publish(
-                    #     self.pub_bridge.cv2_to_imgmsg(
-                    #         self.visualizer.top_view_map, "rgb8"
-                    #     )
-                    # )
+                # # Draw / Show / Publish Top-view Result
+                # if self.opts.visualization.top_view["is_draw"] is True:
+                #     self.visualizer.visualize_top_view_trajectories(trajectories=trajectories)
+                #
+                #     # Publish Top-view Result
+                #     self.top_view_result_pub.publish(
+                #         self.pub_bridge.cv2_to_imgmsg(
+                #             self.visualizer.top_view_map, "rgb8"
+                #         )
+                #     )
 
             # Rospy Spin
             rospy.spin()
