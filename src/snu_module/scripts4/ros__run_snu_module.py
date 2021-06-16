@@ -27,7 +27,8 @@ from registration.tf_object import TF_TRANSFORM
 from utils.profiling import Timer
 from utils.ros.base import backbone
 from utils.ros.sensors import snu_SyncSubscriber
-import snu_visualizer_old as snu_visualizer
+# import snu_visualizer_old as snu_visualizer
+import snu_visualizer
 from module_bridge import snu_algorithms
 
 
@@ -236,10 +237,12 @@ class snu_module(backbone):
                 )
 
                 # Draw Results
-                result_frame_dict = self.visualizer(
-                    sensor_data=self.color, trajectories=trajectories, detections=detections, fidx=self.fidx,
-                    segmentation=heatmap
-                )
+                # result_frame_dict = self.visualizer(
+                #     sensor_data=self.color, trajectories=trajectories, detections=detections, fidx=self.fidx,
+                #     segmentation=heatmap
+                # )
+
+                result_frame_dict = self.visualizer(sync_data_dict=sync_data_dict, trajectories=trajectories, detections=detections, segmentation=heatmap, fidx=self.fidx)
 
                 # # Visualize Thermal Image
                 # self.visualizer.visualize_modal_frames(sensor_data=self.thermal, precision=np.uint8)

@@ -63,23 +63,17 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     #     img = sync_data_dict['att_tensor'][0].permute(1, 2, 0).cpu().numpy()
     #     # print(time.time()-start)
 
-    ######## by JIS (maybe...?) #########
-    # global cnt
-    # scipy.misc.imsave(os.path.join('/home/mipal/Project/MUIN/png_img/',str(cnt)+'.png'), color_frame)
-    # cnt += 1
-    #####################################
-
     # Get Color Frame Size
-    color_size = (color_frame.shape[0], color_frame.shape[1])
     input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
-    img_size = color_size
 
     # print(thermal_frame)
     # print(opts.detector.sensor_dict["thermal"])
     if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
         img_size = thermal_frame.shape[:2]
-        thermal_img = torch.from_numpy(cv2.resize(thermal_frame, dsize=input_size)).unsqueeze(dim=2)
-        thermal_img = torch.cat([thermal_img, thermal_img, thermal_img], dim=2)
+        thermal_frame = np.expand_dims(thermal_frame, axis=2)
+        thermal_frame = np.concatenate((thermal_frame, thermal_frame, thermal_frame), axis=2)
+        thermal_img = cv2.normalize(thermal_frame, None, 0, 256, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        thermal_img = torch.from_numpy(cv2.resize(thermal_img, dsize=input_size))
 
         boxes, confs, labels = detector.forward(thermal_img)
         boxes[:, [0, 2]] *= (float(img_size[1]) / float(input_size[1]))
@@ -88,15 +82,11 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     else:
         thermal_det_results = None
 
-    # Concatenate Detection Results (Thermal)
-    # thermal_det_results = np.concatenate([boxes, confs, labels], axis=1)
-
-    # thermal_det_results = np.array([1])
-
     if (opts.detector.sensor_dict["color"] is True) and (color_frame is not None):
+        img_size = color_frame.shape[:2]
+
         # YOLOv5
         img = torch.from_numpy(cv2.resize(color_frame, dsize=input_size))
-
         ## YOLOv4 ##
         # img = color_frame
 

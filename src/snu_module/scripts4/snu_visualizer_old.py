@@ -444,7 +444,7 @@ class visualizer(object):
 
         if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
                 self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True or \
-                self.vopts.segmentation["is_show"] is True :
+                self.vopts.segmentation["is_show"] is True:
             cv2.waitKey(1)
 
         return {"det": det_vis_frame, "trk_acl": trk_acl_frame}

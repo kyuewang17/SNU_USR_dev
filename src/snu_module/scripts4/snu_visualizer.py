@@ -74,9 +74,6 @@ class vis_det_obj(vis_obj):
     # Draw Detection Result on Selected Modal Frame
     def draw_objects(self, sync_data_dict, **kwargs):
         # Get Draw Modals
-
-
-
         vis_frames = {}
         opencv_winnames = {}
         for modal in self.detections.keys():
@@ -92,17 +89,18 @@ class vis_det_obj(vis_obj):
             # Get Modal Visualization Frame
             modal_vis_frame = vis_frames[modal]
 
-            # Get Detections of Current Modal
-            modal_dets = self.detections[modal]["dets"].astype(np.int32)
+            if self.detections[modal]["dets"] is not None:
+                # Get Detections of Current Modal
+                modal_dets = self.detections[modal]["dets"].astype(np.int32)
 
-            # Iterate for Detections
-            for det_bbox in modal_dets:
-                # Draw Rectangle BBOX
-                cv2.rectangle(
-                    modal_vis_frame,
-                    (det_bbox[0], det_bbox[1]), (det_bbox[2], det_bbox[3]),
-                    self.color_code, self.linewidth
-                )
+                # Iterate for Detections
+                for det_bbox in modal_dets:
+                    # Draw Rectangle BBOX
+                    cv2.rectangle(
+                        modal_vis_frame,
+                        (det_bbox[0], det_bbox[1]), (det_bbox[2], det_bbox[3]),
+                        self.color_code, self.linewidth
+                    )
 
             # Append Draw Frame
             vis_frames[modal] = modal_vis_frame
@@ -520,17 +518,14 @@ class visualizer(object):
             self.DET_VIS_OBJ.update_objects(detections)
 
             # Draw Detection Results
-            det_vis_frames, det_winnames = self.DET_VIS_OBJ.draw_objects(
-                sync_data_dict=sync_data_dict
-            )
+            det_vis_frames, det_winnames = self.DET_VIS_OBJ.draw_objects(sync_data_dict=sync_data_dict)
 
             # Auto-Save
-            if self.vopts.segmentation["auto_save"] is True:
-                _auto_save_detection_base_dir = os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "sample_results", "detections"
-                )
-                for modal, modal_det_vis_frame in det_vis_frames.items():
-                    # Set Save Path
+            for modal, det_vis_frame in det_vis_frames.items():
+                if self.vopts.detection["auto_save"] is True:
+                    _auto_save_detection_base_dir = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)), "sample_results", "detections"
+                    )
                     auto_save_detection_base_dir = os.path.join(
                         _auto_save_detection_base_dir, modal
                     )
@@ -543,12 +538,12 @@ class visualizer(object):
                         if detections[modal]["dets"].size != 0:
                             self.save_frame(
                                 save_base_dir=auto_save_detection_base_dir,
-                                frame=modal_det_vis_frame, fidx=fidx
+                                frame=det_vis_frame, fidx=fidx
                             )
                     else:
                         self.save_frame(
                             save_base_dir=auto_save_detection_base_dir,
-                            frame=modal_det_vis_frame, fidx=fidx
+                            frame=det_vis_frame, fidx=fidx
                         )
         else:
             det_vis_frames, det_winnames = None, None
@@ -591,7 +586,7 @@ class visualizer(object):
             cv2.waitKey(1)
 
         # Show Tracking & Action Classification Results
-
+        return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
 
     # Functional Visualizer Call
     def call_old(self, sensor_data, trajectories, detections, fidx, _check_run_time=False, segmentation=None):

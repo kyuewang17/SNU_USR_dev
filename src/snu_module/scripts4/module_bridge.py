@@ -140,6 +140,7 @@ class snu_algorithms(algorithms):
         rgb_labels = rgb_labels[keep_indices, :]
 
         if thermal_dets is not None:
+            # Thermal Detection Parsing
             thermal_confs, thermal_labels = thermal_dets[:, 4:5], thermal_dets[:, 5:6]
             thermal_dets = thermal_dets[:, 0:4]
 
@@ -152,9 +153,12 @@ class snu_algorithms(algorithms):
             thermal_confs = thermal_confs[keep_indices, :]
             thermal_labels = thermal_labels[keep_indices, :]
         else:
-            thermal_dets = np.array([], dtype=np.float32)
-            thermal_confs = np.array([], dtype=np.float32)
-            thermal_labels = np.array([], dtype=np.float32)
+            # thermal_dets = np.array([], dtype=np.float32)
+            # thermal_confs = np.array([], dtype=np.float32)
+            # thermal_labels = np.array([], dtype=np.float32)
+            thermal_dets = None
+            thermal_confs = None
+            thermal_labels = None
 
         self.detections = { "color": {"dets": rgb_dets, "confs": rgb_confs, "labels": rgb_labels},
                             "thermal": {"dets": thermal_dets, "confs": thermal_confs, "labels": thermal_labels}}
