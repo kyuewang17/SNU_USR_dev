@@ -147,134 +147,122 @@ class vis_trk_acl_obj(vis_obj):
 
     # Draw Tracking Result on Selected Modal Frame
     def draw_objects(self, sync_data_dict, **kwargs):
-        # Get Modals and Generate Modal-wise Trajectories
-        modals = kwargs.get("modals")
-        assert isinstance(modals, (list, str))
-        modalwise_trks = {}
-        if isinstance(modals, list):
-            assert set(modals).issubset(set(sync_data_dict.keys()))
-            for modal in modals:
-                modalwise_trks[modal] = []
-        else:
-            assert modals in sync_data_dict.keys()
-            modalwise_trks[modals] = []
+        # Get Detection Modalities
+        modals = kwargs.get("det_modals")
+        assert modals is not None
 
-        # Collect Modal-wise Trajectories
+        # Initialize Modal-wise Trajectories
+        modalwise_trks = {}
+        for modal in modals:
+            modalwise_trks[modal] = []
+
+        # Get Modal-wise Trajectories
         for trk in self.trks:
-            for modal in modalwise_trks.keys():
+            for modal in modals:
                 if trk.modal == modal:
                     modalwise_trks[modal].append(trk)
-
-        #
 
         # Set Visualization Frames and OpenCV Window Names
         vis_frames = {}
         opencv_winnames = {}
-        if len(self.trks) == 0:
-            vis_frames["color"] = copy.deepcopy(sync_data_dict["color"].get_data())
-            opencv_winnames["color"] = "tracking (color)"
-            vis_frames["thermal"] = copy.deepcopy(sync_data_dict["thermal"].get_data(astype=np.uint8))
-            opencv_winnames["thermal"] = "tracking (thermal)"
+        for modal in modals:
+            if modal not in vis_frames.keys():
+                # Get Modal Visualization Frame
+                vis_frames[modal] = copy.deepcopy(sync_data_dict[modal].get_data(astype=np.uint8))
 
-        trks_modals = []
-        for trk in self.trks:
-            if trk.modal not in trks_modals:
-                trks_modals.append(trk.modal)
+                # Set OpenCV Window Names
+                if self.vopts.aclassifier["is_draw"] is False:
+                    opencv_winnames[modal] = "tracking ({})".format(modal)
+                else:
+                    opencv_winnames[modal] = "tracking | action ({})".format(modal)
 
-        # Initialize Return Variables
-        vis_frames = {}
-        opencv_winnames = {}
-        if len(trks_modals) == 0:
-            vis_frames, opencv_winnames = None, None
-            return vis_frames, opencv_winnames
+        # Destroy Modal Key if Empty
+        destroy_modals = []
+        for modal, trk in modalwise_trks.items():
+            if len(trk) == 0:
+                destroy_modals.append(modal)
+        for destroy_modal in destroy_modals:
+            modalwise_trks.pop(destroy_modal, None)
 
-        # for modal in trks_modals:
-        #     #
+        # Draw Trajectories
+        for modal in modals:
+            # Get Visualization Frame
+            modal_vis_frame = vis_frames[modal]
 
+            # If modal is not destroyed,
+            if modal not in destroy_modals:
 
+                # Get Trajectories
+                trks = modalwise_trks[modal]
 
+                for trk in trks:
+                    # Convert State BBOX coordinate type and precision
+                    state_bbox, _ = fbbox.zx_to_bbox(trk.states[-1])
+                    state_bbox = state_bbox.astype(np.int32)
 
-        # Get Trajectories on Input Modal
-        modal_trks = []
-        for trk in self.trks:
-            if trk.modal == modal:
-                modal_trks.append(trk)
+                    # Draw Rectangle BBOX
+                    cv2.rectangle(
+                        modal_vis_frame,
+                        (state_bbox[0], state_bbox[1]), (state_bbox[2], state_bbox[3]),
+                        (trk.color[0], trk.color[1], trk.color[2]), self.linewidth
+                    )
 
-        # Draw Tracking Result
-        for trk in modal_trks:
-            # Convert State BBOX coordinate type and precision
-            state_bbox, _ = fbbox.zx_to_bbox(trk.states[-1])
-            state_bbox = state_bbox.astype(np.int32)
+                    # Unpack Visualization Options
+                    font = self.vopts.font
+                    font_size = self.vopts.font_size
+                    pad_pixels = self.vopts.pad_pixels
+                    info_interval = self.vopts.info_interval
 
-            # Draw Rectangle BBOX
-            cv2.rectangle(
-                frame,
-                (state_bbox[0], state_bbox[1]), (state_bbox[2], state_bbox[3]),
-                (trk.color[0], trk.color[1], trk.color[2]), self.linewidth
-            )
+                    # Visualize Trajectory ID
+                    trk_id_str = "id:" + str(trk.id) + ""
+                    (tw, th) = cv2.getTextSize(trk_id_str, font, fontScale=font_size, thickness=2)[0]
+                    text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
+                    text_y = int(state_bbox[1] + th)
+                    box_coords = ((int(text_x - pad_pixels / 2.0), int(text_y - th - pad_pixels / 2.0)),
+                                  (int(text_x + tw + pad_pixels / 2.0), int(text_y + pad_pixels / 2.0)))
+                    cv2.rectangle(modal_vis_frame, box_coords[0], box_coords[1], (trk.color[0], trk.color[1], trk.color[2]), cv2.FILLED)
+                    cv2.putText(
+                        modal_vis_frame, trk_id_str, (text_x, text_y), font, font_size,
+                        (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
+                    )
 
-            # Unpack Visualization Options
-            font = self.vopts.font
-            font_size = self.vopts.font_size
-            pad_pixels = self.vopts.pad_pixels
-            info_interval = self.vopts.info_interval
+                    # Visualize Trajectory Depth
+                    if trk.depth is not None:
+                        trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
+                        (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
+                        text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
+                        text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
 
-            # Visualize Trajectory ID
-            trk_id_str = "id:" + str(trk.id) + ""
-            (tw, th) = cv2.getTextSize(trk_id_str, font, fontScale=font_size, thickness=2)[0]
-            text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
-            text_y = int(state_bbox[1] + th)
-            box_coords = ((int(text_x - pad_pixels / 2.0), int(text_y - th - pad_pixels / 2.0)),
-                          (int(text_x + tw + pad_pixels / 2.0), int(text_y + pad_pixels / 2.0)))
-            cv2.rectangle(frame, box_coords[0], box_coords[1], (trk.color[0], trk.color[1], trk.color[2]), cv2.FILLED)
-            cv2.putText(
-                frame, trk_id_str, (text_x, text_y), font, font_size,
-                (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
-            )
+                        # Put Depth Text (Tentative)
+                        cv2.putText(modal_vis_frame, trk_depth_str, (text_x, text_y), font, 1.2,
+                                    (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
-            # Visualize Trajectory Depth
-            if trk.depth is not None:
-                trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
-                (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
-                text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
-                text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
+                    # Visualize Action Classification Result
+                    if trk.pose is not None and self.vopts.aclassifier["is_draw"] is True:
+                        # Draw Action Results only when Human
+                        # TODO: (later, handle this directly on action classification module)
+                        if trk.label == 1:
+                            # Get Image Height and Width
+                            H, W = modal_vis_frame.shape[0], modal_vis_frame.shape[1]
 
-                # Put Depth Text (Tentative)
-                cv2.putText(frame, trk_depth_str, (text_x, text_y), font, 1.2,
-                            (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
+                            # Convert Action Classification Result Text in Words
+                            if trk.pose == 1:
+                                pose_word = "Lie"
+                            elif trk.pose == 2:
+                                pose_word = "Sit"
+                            elif trk.pose == 3:
+                                pose_word = "Stand"
+                            else:
+                                pose_word = "NAN"
 
-            # Visualize Action Classification Result
-            if trk.pose is not None and self.vopts.aclassifier["is_draw"] is True:
-                # Draw Action Results only when Human
-                # TODO: (later, handle this directly on action classification module)
-                if trk.label == 1:
-                    # Get Image Height and Width
-                    H, W = frame.shape[0], frame.shape[1]
+                            # Put Result Text in the frame
+                            cv2.putText(modal_vis_frame, pose_word,
+                                        (min(int(trk.x3[0] + (trk.x3[5] / 2)), W - 1), min(int(trk.x3[1] + (trk.x3[6] / 2)), H - 1)),
+                                        font, 1.5, (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
-                    # Convert Action Classification Result Text in Words
-                    if trk.pose == 1:
-                        pose_word = "Lie"
-                    elif trk.pose == 2:
-                        pose_word = "Sit"
-                    elif trk.pose == 3:
-                        pose_word = "Stand"
-                    else:
-                        pose_word = "NAN"
+            vis_frames[modal] = modal_vis_frame
 
-                    # Put Result Text in the frame
-                    cv2.putText(frame, pose_word,
-                                (min(int(trk.x3[0] + (trk.x3[5] / 2)), W - 1), min(int(trk.x3[1] + (trk.x3[6] / 2)), H - 1)),
-                                font, 1.5, (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
-
-        # Set OpenCV Window Name
-        if self.vopts.tracking["is_draw"] is True and self.vopts.aclassifier["is_draw"] is True:
-            opencv_winname += " [TRK+ACL] ({})".format(modal)
-        elif self.vopts.tracking["is_draw"] is True:
-            opencv_winname += " [TRK] ({})".format(modal)
-        elif self.vopts.aclassifier["is_draw"] is True:
-            opencv_winname += " [ACL] ({})".format(modal)
-
-        return frame, opencv_winname
+        return vis_frames, opencv_winnames
 
     # Draw Tracking Result on Selected Modal Frame
     def draw_objects_old(self, frame, opencv_winname):
@@ -563,7 +551,7 @@ class visualizer(object):
         # Show Detection Results
         if self.vopts.detection["is_show"] is True:
             for modal, det_vis_frame in det_vis_frames.items():
-                # Set OpenCV Named Window
+                # Get OpenCV Named Window
                 det_winname = det_winnames[modal]
                 cv2.namedWindow(det_winname)
 
@@ -574,7 +562,10 @@ class visualizer(object):
                         self.det_window_moved = True
 
                 # Show Result (imshow)
-                cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
+                if len(det_vis_frame.shape) == 3:
+                    cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
+                else:
+                    cv2.imshow(det_winname, det_vis_frame)
 
         # Draw Tracking & Action Classification Results
         if self.vopts.tracking["is_draw"] is True:
@@ -582,14 +573,56 @@ class visualizer(object):
             self.TRK_ACL_VIS_OBJ.update_objects(trajectories)
 
             # Draw Tracking & Action Classification Results
-            trk_acl_frame, trk_acl_winname = self.TRK_ACL_VIS_OBJ.draw_objects(
-                sync_data_dict=sync_data_dict
+            trk_acl_frames, trk_acl_winnames = self.TRK_ACL_VIS_OBJ.draw_objects(
+                sync_data_dict=sync_data_dict, det_modals=detections.keys()
             )
 
             # Auto-Save
-            # TODO: Implement
+            for modal, trk_acl_frame in trk_acl_frames.items():
+                if self.vopts.tracking["auto_save"] is True:
+                    _auto_save_tracking_base_dir = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)), "sample_results", "tracking_action"
+                    )
+                    auto_save_tracking_base_dir = os.path.join(
+                        _auto_save_tracking_base_dir, modal
+                    )
+                    if os.path.isdir(auto_save_tracking_base_dir) is False:
+                        os.makedirs(auto_save_tracking_base_dir)
+
+                    # Save, give options to save frames only with detection results
+                    is_save_only_objects = False
+                    if is_save_only_objects is True:
+                        if len(trajectories) != 0:
+                            self.save_frame(
+                                save_base_dir=auto_save_tracking_base_dir,
+                                frame=trk_acl_frame, fidx=fidx
+                            )
+                    else:
+                        self.save_frame(
+                            save_base_dir=auto_save_tracking_base_dir,
+                            frame=trk_acl_frame, fidx=fidx
+                        )
         else:
-            trk_acl_frame, trk_acl_winname = None, None
+            trk_acl_frames, trk_acl_winnames = None, None
+
+        # Show Tracking and Action Classification Results
+        if self.vopts.tracking["is_show"] is True:
+            for modal, trk_acl_frame in trk_acl_frames.items():
+                # Get OpenCV Named Window
+                trk_acl_winname = trk_acl_winnames[modal]
+                cv2.namedWindow(trk_acl_winname)
+
+                # Move Window
+                if self.trk_acl_window_moved is False:
+                    if self.screen_imshow_x is not None and self.screen_imshow_y is not None:
+                        cv2.moveWindow(trk_acl_winname, self.screen_imshow_x, self.screen_imshow_y)
+                        self.trk_acl_window_moved = True
+
+                # Show Result (imshow)
+                if len(trk_acl_frame.shape) == 3:
+                    cv2.imshow(trk_acl_winname, cv2.cvtColor(trk_acl_frame, cv2.COLOR_RGB2BGR))
+                else:
+                    cv2.imshow(trk_acl_winname, trk_acl_frame)
 
         # WaitKey for OpenCV
         if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
@@ -598,7 +631,7 @@ class visualizer(object):
             cv2.waitKey(1)
 
         # Show Tracking & Action Classification Results
-        return {"det": det_vis_frame, "trk_acl": trk_acl_frame}
+        return {"det": det_vis_frames, "trk_acl": trk_acl_frames}
 
     # Functional Visualizer Call
     def call_old(self, sensor_data, trajectories, detections, fidx, _check_run_time=False, segmentation=None):
