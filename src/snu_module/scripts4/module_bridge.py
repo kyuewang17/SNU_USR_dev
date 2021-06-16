@@ -160,8 +160,8 @@ class snu_algorithms(algorithms):
             thermal_confs = None
             thermal_labels = None
 
-        self.detections = { "color": {"dets": rgb_dets, "confs": rgb_confs, "labels": rgb_labels},
-                            "thermal": {"dets": thermal_dets, "confs": thermal_confs, "labels": thermal_labels}}
+        self.detections = {"color": {"dets": rgb_dets, "confs": rgb_confs, "labels": rgb_labels},
+                           "thermal": {"dets": thermal_dets, "confs": thermal_confs, "labels": thermal_labels}}
 
         # End Time
         self.fps_dict["det"] = self.det_fps_obj.elapsed
