@@ -146,14 +146,26 @@ class vis_trk_acl_obj(vis_obj):
         self.trks = trajectories
 
     # Draw Tracking Result on Selected Modal Frame
-    def draw_objects(self, sync_data_dict):
-        # Collect Modal-wise Trajectories
+    def draw_objects(self, sync_data_dict, **kwargs):
+        # Get Modals and Generate Modal-wise Trajectories
+        modals = kwargs.get("modals")
+        assert isinstance(modals, (list, str))
         modalwise_trks = {}
+        if isinstance(modals, list):
+            assert set(modals).issubset(set(sync_data_dict.keys()))
+            for modal in modals:
+                modalwise_trks[modal] = []
+        else:
+            assert modals in sync_data_dict.keys()
+            modalwise_trks[modals] = []
+
+        # Collect Modal-wise Trajectories
         for trk in self.trks:
-            if trk.modal not in modalwise_trks.keys():
-                modalwise_trks[trk.modal] = [trk]
-            else:
-                modalwise_trks[trk.modal].append(trk)
+            for modal in modalwise_trks.keys():
+                if trk.modal == modal:
+                    modalwise_trks[modal].append(trk)
+
+        #
 
         # Set Visualization Frames and OpenCV Window Names
         vis_frames = {}
@@ -176,8 +188,8 @@ class vis_trk_acl_obj(vis_obj):
             vis_frames, opencv_winnames = None, None
             return vis_frames, opencv_winnames
 
-        for modal in trks_modals:
-            #
+        # for modal in trks_modals:
+        #     #
 
 
 
