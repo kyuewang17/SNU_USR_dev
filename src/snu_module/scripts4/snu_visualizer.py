@@ -567,9 +567,7 @@ class visualizer(object):
                         self.det_window_moved = True
 
                 # Show Result (imshow)
-                if modal == "color":
-                    det_vis_frame = cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR)
-                cv2.imshow(det_winname, det_vis_frame)
+                cv2.imshow(det_winname, cv2.cvtColor(det_vis_frame, cv2.COLOR_RGB2BGR))
 
         # Draw Tracking & Action Classification Results
         if self.vopts.tracking["is_draw"] is True:
@@ -585,6 +583,12 @@ class visualizer(object):
             # TODO: Implement
         else:
             trk_acl_frame, trk_acl_winname = None, None
+
+        # WaitKey for OpenCV
+        if self.vopts.detection["is_show"] is True or self.vopts.tracking["is_show"] is True or \
+                self.vopts.aclassifier["is_show"] is True or self.vopts.top_view["is_show"] is True or \
+                self.vopts.segmentation["is_show"] is True :
+            cv2.waitKey(1)
 
         # Show Tracking & Action Classification Results
 
