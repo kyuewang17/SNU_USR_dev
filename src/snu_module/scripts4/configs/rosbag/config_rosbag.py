@@ -150,7 +150,9 @@ __C.detector.visualization.auto_save = False
 __C.detector.visualization.bbox_color = (255, 0, 0)
 
 __C.detector.visualization.is_result_publish = False
-__C.detector.visualization.result_rostopic_name = "/osr/snu_det_result_image"
+__C.detector.visualization.result_rostopic_name = CN(new_allowed=True)
+__C.detector.visualization.result_rostopic_name.color = "/osr/snu_det_color_result"
+__C.detector.visualization.result_rostopic_name.thermal = "/osr/snu_det_thermal_result"
 
 # ------------------------------- #
 # Multiple Target Tracker Options #
@@ -257,7 +259,9 @@ __C.tracker.visualization.is_show = True
 __C.tracker.visualization.auto_save = False
 
 __C.tracker.visualization.is_result_publish = True
-__C.tracker.visualization.result_rostopic_name = "/osr/snu_trk_acl_result_image"
+__C.tracker.visualization.result_rostopic_name = CN(new_allowed=True)
+__C.tracker.visualization.result_rostopic_name.color = "/osr/snu_trk_acl_color_result_image"
+__C.tracker.visualization.result_rostopic_name.thermal = "/osr/snu_trk_acl_thermal_result_image"
 
 __C.tracker.visualization.top_view = CN(new_allowed=True)
 __C.tracker.visualization.top_view.is_draw = False

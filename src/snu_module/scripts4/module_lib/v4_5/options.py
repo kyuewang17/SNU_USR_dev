@@ -139,9 +139,20 @@ class snu_option_class(object):
         # Rostopic Message for Publisher
         self.publish_mesg = {
             "tracks": cfg.publisher.tracks,
-            "det_result_rostopic_name": cfg.detector.visualization.result_rostopic_name,
-            "trk_acl_result_rostopic_name": cfg.tracker.visualization.result_rostopic_name,
-            "trk_top_view_rostopic_name": cfg.tracker.visualization.top_view.result_rostopic_name,
+            "visualizations": {
+                "det": {
+                    "color": cfg.detector.visualization.result_rostopic_name.color,
+                    "thermal": cfg.detector.visualization.result_rostopic_name.thermal,
+                },
+                "trk_acl": {
+                    "color": cfg.tracker.visualization.result_rostopic_name.color,
+                    "thermal": cfg.tracker.visualization.result_rostopic_name.thermal,
+                }
+            },
+
+            # "det_result_rostopic_name": cfg.detector.visualization.result_rostopic_name,
+            # "trk_acl_result_rostopic_name": cfg.tracker.visualization.result_rostopic_name,
+            # "trk_top_view_rostopic_name": cfg.tracker.visualization.top_view.result_rostopic_name,
         }
 
     def __repr__(self):

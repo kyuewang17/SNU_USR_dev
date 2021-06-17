@@ -85,12 +85,35 @@ class backbone(object):
         )
 
         # ROS SNU Result Publisher
-        self.det_result_pub = Publisher(
-            opts.publish_mesg["det_result_rostopic_name"], Image, queue_size=1
-        )
-        self.trk_acl_result_pub = Publisher(
-            opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
-        )
+        # NOTE: Tentative Code
+        self.det_results_pub = {
+            "color": Publisher(
+                opts.publish_mesg["visualizations"]["det"]["color"],
+                Image, queue_size=1
+            ),
+            "thermal": Publisher(
+                opts.publish_mesg["visualizations"]["det"]["thermal"],
+                Image, queue_size=1
+            )
+        }
+
+        self.trk_acl_result_pub = {
+            "color": Publisher(
+                opts.publish_mesg["visualizations"]["trk_acl"]["color"],
+                Image, queue_size=1
+            ),
+            "thermal": Publisher(
+                opts.publish_mesg["visualizations"]["trk_acl"]["thermal"],
+                Image, queue_size=1
+            )
+        }
+
+        # self.det_result_pub = Publisher(
+        #     opts.publish_mesg["det_result_rostopic_name"], Image, queue_size=1
+        # )
+        # self.trk_acl_result_pub = Publisher(
+        #     opts.publish_mesg["trk_acl_result_rostopic_name"], Image, queue_size=1
+        # )
 
     # Point Cloud Callback Function
     def point_cloud_callback(self, msg):
@@ -126,25 +149,36 @@ class backbone(object):
         self.tracks_pub.publish(out_tracks)
 
     # Publish SNU Result Image ( DET / TRK + ACL )
-    def publish_snu_result_image(self, result_frame_dict):
-        for module, result_frame in result_frame_dict.items():
-            if result_frame is not None:
-                if module == "det":
-                    if self.opts.detector.is_result_publish is True:
-                        self.det_result_pub.publish(
-                            self.pub_bridge.cv2_to_imgmsg(
-                                result_frame, "rgb8"
+    def publish_snu_result_image(self, result_frames_dict):
+        for module, result_frames in result_frames_dict.items():
+            if module == "det":
+                if result_frames is not None:
+                    for modal, result_frame in result_frames.items():
+                        if self.opts.detector.is_result_publish is True:
+                            if modal == "color":
+                                pub_fmt = "rgb8"
+                            elif modal == "thermal":
+                                pub_fmt = "mono8"
+                            else:
+                                raise NotImplementedError()
+                            self.det_results_pub[modal].publish(
+                                self.pub_bridge.cv2_to_imgmsg(result_frame, pub_fmt)
                             )
-                        )
-                elif module == "trk_acl":
-                    if self.opts.tracker.is_result_publish is True:
-                        self.trk_acl_result_pub.publish(
-                            self.pub_bridge.cv2_to_imgmsg(
-                                result_frame, "rgb8"
+            elif module == "trk_acl":
+                if result_frames is not None:
+                    for modal, result_frame in result_frames.items():
+                        if self.opts.tracker.is_result_publish is True:
+                            if modal == "color":
+                                pub_fmt = "rgb8"
+                            elif modal == "thermal":
+                                pub_fmt = "mono8"
+                            else:
+                                raise NotImplementedError()
+                            self.trk_acl_result_pub[modal].publish(
+                                self.pub_bridge.cv2_to_imgmsg(result_frame, pub_fmt)
                             )
-                        )
-                else:
-                    raise NotImplementedError("Undefined Module: {}".format(module))
+            else:
+                raise NotImplementedError("Undefined Module: {}".format(module))
 
     # Update All Modal Data
     def update_all_modal_data(self, sync_data):

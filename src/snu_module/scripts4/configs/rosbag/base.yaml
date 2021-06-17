@@ -68,12 +68,11 @@ detector:
         nightvision: false
         lidar: false
     visualization:
-        is_draw: false
+        is_draw: true
         is_show: false
         auto_save: false
         bbox_color: (255, 0, 0)
         is_result_publish: true
-        result_rostopic_name: "/osr/snu_det_result_image"
 
 tracker:
     name: "Custom"
@@ -88,18 +87,9 @@ tracker:
             similarity_thresh: 0.6
     visualization:
         is_draw: true
-        is_show: true
+        is_show: false
         auto_save: false
-        is_result_publish: false
-        result_rostopic_name: "/osr/snu_trk_acl_result_image"
-        top_view:
-            is_draw: false
-            is_show: false
-            # map_size -> (depth_range, horizontal length*2)
-            map_size: (30000, 5000)
-            trk_radius: 100
-            is_result_publish: false
-            result_rostopic_name: "/osr/trk_top_view_image"
+        is_result_publish: true
 
 aclassifier:
     name: "Custom"

@@ -242,7 +242,7 @@ class snu_module(backbone):
                 #     segmentation=heatmap
                 # )
 
-                result_frame_dict = self.visualizer(sync_data_dict=sync_data_dict, trajectories=trajectories, detections=detections, segmentation=heatmap, fidx=self.fidx)
+                result_frames_dict = self.visualizer(sync_data_dict=sync_data_dict, trajectories=trajectories, detections=detections, segmentation=heatmap, fidx=self.fidx)
 
                 # # Visualize Thermal Image
                 # self.visualizer.visualize_modal_frames(sensor_data=self.thermal, precision=np.uint8)
@@ -256,7 +256,7 @@ class snu_module(backbone):
                 self.publish_tracks(trajectories=trajectories, odometry_msg=self.odometry_msg)
 
                 # Publish SNU Result Image Results
-                self.publish_snu_result_image(result_frame_dict=result_frame_dict)
+                self.publish_snu_result_image(result_frames_dict=result_frames_dict)
 
                 # # Draw / Show / Publish Top-view Result
                 # if self.opts.visualization.top_view["is_draw"] is True:
