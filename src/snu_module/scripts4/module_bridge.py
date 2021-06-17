@@ -54,7 +54,8 @@ class snu_algorithms(algorithms):
         self.det_framework = self.snu_det.load_model(opts=opts)
 
         # Load Action Classification Model
-        self.acl_framework = self.snu_acl.load_model(opts=opts)
+        # self.acl_framework = self.snu_acl.load_model(opts=opts)
+        self.acl_framework = self.snu_acl.load_models(opts=opts)
 
         # Initialize MOT Framework
         self.snu_mot = self.snu_trk.SNU_MOT(opts=opts)
@@ -166,47 +167,6 @@ class snu_algorithms(algorithms):
         # End Time
         self.fps_dict["det"] = self.det_fps_obj.elapsed
 
-    # Detection Module
-    def osr_object_detection_old(self, sync_data_dict):
-        # Start Time
-        self.det_fps_obj.reset()
-
-        # Parse-out Required Sensor Modalities
-        # TODO: Integrate this for all 3 modules
-        detection_sensor_data = {}
-        for modal, modal_switch in self.opts.detector.sensor_dict.items():
-            if modal_switch is True:
-                detection_sensor_data[modal] = sync_data_dict[modal]
-
-        if self.att_net is not None:
-            output = self.snu_ATT.run(attnet=self.att_net, sync_data_dict=detection_sensor_data, opts=self.opts)
-            detection_sensor_data['att_tensor'] = output
-
-        # Activate Module
-        dets = self.snu_det.detect(detector=self.det_framework, sync_data_dict=detection_sensor_data, opts=self.opts)
-        confs, labels = dets[:, 4:5], dets[:, 5:6]
-        dets = dets[:, 0:4]
-
-        # Remove Too Small Detections
-        keep_indices = []
-        for det_idx, det in enumerate(dets):
-            if det[2] * det[3] >= self.opts.detector.tiny_area_threshold:
-                keep_indices.append(det_idx)
-        dets = dets[keep_indices, :]
-        confs = confs[keep_indices, :]
-        labels = labels[keep_indices, :]
-
-        # self.detections = {"dets": dets, "confs": confs, "labels": labels}
-        # NOTE: Tentative Code for Thermal Modality
-        self.detections = {
-            "color": {"dets": dets, "confs": confs, "labels": labels},
-            "thermal": {"dets": dets, "confs": confs, "labels": labels}
-        }
-        # print(self.detections)
-
-        # End Time
-        self.fps_dict["det"] = self.det_fps_obj.elapsed
-
     # Multiple Target Tracking Module
     def osr_multiple_target_tracking(self, sync_data_dict):
         # Start Time
@@ -239,7 +199,7 @@ class snu_algorithms(algorithms):
 
         # Activate Module
         trks = self.snu_acl.aclassify(
-            model=self.acl_framework,
+            models=self.acl_framework,
             sync_data_dict=aclassify_sensor_data,
             trajectories=self.get_trajectories(), opts=self.opts
         )

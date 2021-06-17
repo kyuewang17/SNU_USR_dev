@@ -31,6 +31,7 @@ class vis_obj(object):
     def draw_objects(self, *args, **kwargs):
         raise NotImplementedError
 
+
 # Define Detection Result Visualization Object
 class vis_seg_obj(vis_obj):
     def __init__(self, vopts):

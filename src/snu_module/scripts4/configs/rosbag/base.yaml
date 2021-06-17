@@ -105,5 +105,5 @@ aclassifier:
     name: "Custom"
     device: 0
     visualization:
-        is_draw: false
-        is_show: false
+        is_draw: true
+        is_show: true

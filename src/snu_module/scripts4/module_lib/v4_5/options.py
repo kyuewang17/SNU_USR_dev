@@ -109,7 +109,7 @@ class snu_option_class(object):
         if cfg.screen_compensate is True:
             screen_geometry_dict = get_screen_geometry()
             _x = screen_geometry_dict["curr_monitor"]["width_pixels"] * 0.025
-            _y = screen_geometry_dict["curr_monitor"]["height_pixels"] * 0.025
+            _y = screen_geometry_dict["curr_monitor"]["height_pixels"] * 0.05
             self.screen_imshow_x, self.screen_imshow_y = int(_x), int(_y)
         else:
             self.screen_imshow_x, self.screen_imshow_y = None, None

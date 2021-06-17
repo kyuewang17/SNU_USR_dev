@@ -195,12 +195,18 @@ class ros_sensor_image(ros_sensor):
             self.HEIGHT = frame.shape[0]
 
     def get_data(self, **kwargs):
-        # Type Conversion
+        # Get Division
+        division = kwargs.get("division", 1.0)
+        assert isinstance(division, (float, int)) and division > 0
+
+        # Get Type Conversion
         type_conversion = kwargs.get("astype")
+
+        # Return Frame Data
         if self.dtype() != type_conversion:
-            return self._frame.astype(type_conversion)
+            return (self._frame / division).astype(type_conversion)
         else:
-            return self._frame
+            return (self._frame / division).astype(self.dtype())
 
     def get_data_aux(self):
         return self._frame
@@ -212,6 +218,33 @@ class ros_sensor_image(ros_sensor):
     def dtype(self):
         assert isinstance(self._frame, np.ndarray)
         return self._frame.dtype
+
+    def type_minmax_normalization(self, **kwargs):
+        # Get Type
+        type_conversion = kwargs.get("astype")
+        if type_conversion is None:
+            # Get Keep Type
+            keep_type = kwargs.get("keep_type", False)
+            if keep_type is True:
+                type_conversion = self.dtype()
+
+        # Override Mode
+        is_override = kwargs.get("override", False)
+
+        # Convert
+        frame_type_info = self.get_type_minmax()
+        min_value, max_value = frame_type_info["min"], frame_type_info["max"]
+        minmax_normalized_frame = (self._frame - min_value) / float(max_value - min_value)
+        if type_conversion is not None:
+            if is_override is False:
+                return minmax_normalized_frame.astype(type_conversion)
+            else:
+                self._frame = minmax_normalized_frame.astype(type_conversion)
+        else:
+            if is_override is False:
+                return minmax_normalized_frame
+            else:
+                self._frame = minmax_normalized_frame
 
     def get_type_minmax(self):
         type_iinfo = np.iinfo(self.dtype())
