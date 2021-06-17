@@ -39,10 +39,10 @@ sensors:
 segmentation:
     name: "DeepLabv3"
     device: 0
-    run: False
+    run: false
     visualization:
-        is_draw: False
-        is_show: False
+        is_draw: false
+        is_show: false
         auto_save: false
         is_result_publish: false
         result_rostopic_name: "/osr/snu_seg_result_image"
