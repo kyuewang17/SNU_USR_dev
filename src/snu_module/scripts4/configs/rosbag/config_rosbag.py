@@ -149,7 +149,7 @@ __C.detector.visualization.is_show = True
 __C.detector.visualization.auto_save = False
 __C.detector.visualization.bbox_color = (255, 0, 0)
 
-__C.detector.visualization.is_result_publish = False
+__C.detector.visualization.is_result_publish = True
 __C.detector.visualization.result_rostopic_name = CN(new_allowed=True)
 __C.detector.visualization.result_rostopic_name.color = "/osr/snu_det_color_result"
 __C.detector.visualization.result_rostopic_name.thermal = "/osr/snu_det_thermal_result"

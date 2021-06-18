@@ -9,6 +9,7 @@ SNU Integrated Module v4.5
 # Import Modules
 import random
 from utils.profiling import Timer
+import copy
 import cv2
 import numpy as np
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
@@ -137,23 +138,6 @@ class SNU_MOT(object):
                 frame_objs[modal] = sync_data_dict[modal]
         frame_objs["disparity"] = sync_data_dict["disparity"]
 
-        color_frame = sync_data_dict["color"].get_data()
-        # disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
-
-        # Normalize Disparity Frame to uint8 scale (0~255)
-        if sync_data_dict["disparity"] is not None:
-            normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(
-                min_value=0.0, max_value=255.0
-            )
-        else:
-            normalized_disparity_frame = None
-
-        # Concatenate
-        if normalized_disparity_frame is not None:
-            frame = np.dstack((color_frame, normalized_disparity_frame.astype(np.uint8)))
-        else:
-            frame = color_frame
-
         # Calculate Similarity Matrix
         for det_idx, det in enumerate(dets):
             for trk_idx, trk in enumerate(self.trks):
@@ -173,10 +157,6 @@ class SNU_MOT(object):
                 det_patch = frame_objs[modal].get_patch(bbox=det)
                 trk_patch = frame_objs[modal].get_patch(bbox=trk_bbox)
                 patch_minmax = frame_objs[modal].get_type_minmax()
-
-                # # Get RGBD Patches
-                # det_patch = snu_patch.get_patch(frame, det)
-                # trk_patch = snu_patch.get_patch(frame, trk_bbox)
 
                 # Skip Association Conditions
                 if trk_patch.shape[0] <= 0 or trk_patch.shape[1] <= 0:
@@ -248,12 +228,9 @@ class SNU_MOT(object):
                 workers=dets, works=self.trks
             )
 
-        test_color_ts = sync_data_dict["color"]._timestamp
-
         # Update Associated Trajectories
         for match in matches:
             matched_det, matched_conf, matched_label = dets[match[0]], confs[match[0]], labels[match[0]]
-            matched_modal = modals[match[0]]
 
             matched_trk = self.trks[match[1]]
             matched_trk.get_depth(sync_data_dict, self.opts)
@@ -450,6 +427,15 @@ class SNU_MOT(object):
         return new_trks
 
     def __call__(self, sync_data_dict, fidx, detections):
+        # NOTE: For Static Agent, use Color Modal Detection Results Only
+        if self.opts.agent_type == "static":
+            detections = {"color": detections["color"]}
+        else:
+            if self.opts.time == "day":
+                detections = {"color": detections["color"]}
+            else:
+                detections = {"thermal": detections["thermal"]}
+
         if self.trk_bbox_size_limits is None:
             _width = sync_data_dict["color"].get_data().shape[1]
             _height = sync_data_dict["color"].get_data().shape[0]
@@ -503,17 +489,28 @@ class SNU_MOT(object):
             del new_trk
         del new_trks
 
+        # Allocate Dictionary for Sensor Parameters
+        trk_sensor_param_dict = {}
+        for trk in self.trks:
+            if trk.modal not in trk_sensor_param_dict.keys():
+                trk_sensor_param_dict[trk.modal] = sync_data_dict[trk.modal].get_sensor_params()
+
         # Trajectory Prediction, Projection, and Message
-        # TODO: Retrieve Code for Static Agent (github branch), consider modality!!
         for trk_idx, trk in enumerate(self.trks):
+            # Get Sensor Params
+            sensor_params = trk_sensor_param_dict[trk.modal]
+
             # Get Pseudo-inverse of Projection Matrix
-            Pinv = sync_data_dict[trk.modal].get_sensor_params().pinv_projection_matrix
+            Pinv = sensor_params.pinv_projection_matrix
 
             # Predict Trajectory States
             trk.predict()
 
             # Project Image Coordinate State (x3) to Camera Coordinate State (c3)
-            trk.img_coord_to_cam_coord(inverse_projection_matrix=Pinv, opts=self.opts)
+            if self.opts.agent_type == "dynamic":
+                trk.img_coord_to_cam_coord(inverse_projection_matrix=Pinv, opts=self.opts)
+            elif self.opts.agent_type == "static":
+                trk.img_coord_to_ground_plane(sensor_params=sensor_params)
 
             # Compute RPY
             trk.compute_rpy(roll=0.0)
