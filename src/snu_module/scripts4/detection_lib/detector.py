@@ -77,11 +77,9 @@ class YOLOv5(DetectorBase):
 
         self.net.eval()
 
-    def class_thresh(self, pred):
-        a = pred[:, :, 5]
-
     def forward(self, img):
-        img = img.float().cuda(self.device).permute(2, 0, 1).unsqueeze(dim=0) / 255.0
+        # img = img.float().cuda(self.device).permute(2, 0, 1).unsqueeze(dim=0) / 255.0
+        img = img.float().cuda(self.device).permute(0, 3, 1, 2) / 255.0
         # img shape : (1, 3, 416, 416)
         # original_size : (480, 640) - tuple
 
@@ -93,9 +91,11 @@ class YOLOv5(DetectorBase):
         # Apply NMS
         pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[float(x) for x in range(10)])
 
-        boxes, confs, labels = list(), list(), list()
+        result_dict = {}
         for i, det in enumerate(pred):  # detections per image
             # det shape : (#obj, 6)
+            boxes, confs, labels = list(), list(), list()
+
             if len(det):
                 # det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img.shape[2:]).round()
                 boxes.append(det[:, :4])
@@ -106,13 +106,16 @@ class YOLOv5(DetectorBase):
                 confs.append(torch.ones(1, 1).cuda())
                 labels.append(torch.zeros(1, 1).cuda())
 
-        boxes = torch.cat(boxes, dim=0).detach().cpu().numpy()
-        confs = torch.cat(confs, dim=0).detach().cpu().numpy()
-        labels = torch.cat(labels, dim=0).detach().cpu().numpy()
-        # for i in range(len(labels)):
-        #     print (self.name[int(labels[i].item())])
-        return boxes, confs, labels
+            boxes = torch.cat(boxes, dim=0).detach().cpu().numpy()
+            confs = torch.cat(confs, dim=0).detach().cpu().numpy()
+            labels = torch.cat(labels, dim=0).detach().cpu().numpy()
 
+            # for j in range(len(labels)):
+            #     print (self.name[int(labels[j].item())])
+
+            result_dict[i] = [boxes, confs, labels]
+
+        return result_dict
 
 class YOLOv4(DetectorBase):
     def __init__(self, global_args, network_args):
