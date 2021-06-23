@@ -57,21 +57,15 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
     """
     color_frame = (sync_data_dict["color"].get_data() if "color" in sync_data_dict.keys() else None)
     thermal_frame = (sync_data_dict["thermal"].get_data() if "thermal" in sync_data_dict.keys() else None)
-
-    # import time
-    # if 'att_tensor' in sync_data_dict.keys():
-    #     img = sync_data_dict['att_tensor'][0].permute(1, 2, 0).cpu().numpy()
-    #     # print(time.time()-start)
-
-    # Get Color Frame Size
     input_size = (opts.detector.detection_args['input_h'], opts.detector.detection_args['input_w'])
 
     if (opts.detector.sensor_dict["thermal"] is True) and (thermal_frame is not None):
         thermal_img_size = thermal_frame.shape[:2]
 
-        thermal_frame = np.expand_dims(thermal_frame, axis=2)
-        thermal_frame = np.concatenate((thermal_frame, thermal_frame, thermal_frame), axis=2)
         thermal_img = cv2.normalize(thermal_frame, None, 0, 256, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        # thermal_img = cv2.equalizeHist(thermal_img)
+        thermal_img = np.expand_dims(thermal_img, axis=2)
+        thermal_img = np.concatenate((thermal_img, thermal_img, thermal_img), axis=2)
 
         thermal_img = torch.from_numpy(cv2.resize(thermal_img, dsize=input_size))
         thermal_img = thermal_img.unsqueeze(dim=0)
@@ -82,17 +76,8 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
         # YOLOv5
         img = torch.from_numpy(cv2.resize(color_frame, dsize=input_size))
         img = img.unsqueeze(dim=0)
-
-        ## YOLOv4 ##
-        # img = color_frame
     else:
         raise NotImplementedError
-
-    # Feed-forward / Get BBOX, Confidence, Labels
-    # result_dict = darknet.inference_(framework, img)
-
-    # # Copy Before Conversion
-    # thermal_boxes = boxes.copy() if opts.detector.sensor_dict["thermal"] else None
 
     if (opts.detector.sensor_dict["color"] is True) and (opts.detector.sensor_dict["thermal"] is True):
         batch_imgs = torch.cat([img, thermal_img.double()], dim=0)
@@ -109,7 +94,6 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
         thermal_det_results = np.concatenate([thermal_boxes, thermal_confs, thermal_labels], axis=1)
 
         return rgb_det_results, thermal_det_results
-
     elif opts.detector.sensor_dict["color"] is True:
         result_dict = detector.forward(img)
         rgb_boxes, rgb_confs, rgb_labels = result_dict[0]

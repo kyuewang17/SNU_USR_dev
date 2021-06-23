@@ -25,6 +25,7 @@ class YOLOv5(DetectorBase):
         self.conf_thres = network_args['conf_thres']
         self.iou_thres = network_args['iou_thres']
         self.weight_path = network_args['weight_path']
+        self.model_name = network_args['model_name']
         self.net = None
         self.name = ['background', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
                      'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep',
@@ -40,8 +41,6 @@ class YOLOv5(DetectorBase):
             hyp = yaml.load(f, Loader=yaml.SafeLoader)
         weight_path = os.path.join(self.weight_path, 'yolov5m.yaml')
         self.net = Model(weight_path, ch=3, nc=80, anchors=hyp.get('anchors')).cuda()
-        print(self.name)
-        print(len(self.name))
         print("Build DONE!")
 
     def replace_Identity(self, module):
@@ -61,7 +60,8 @@ class YOLOv5(DetectorBase):
             self.replace_Identity(immediate_child_module)
 
     def load(self, load_dir):
-        weight_path = os.path.join(self.weight_path, 'yolov5m.pth')
+        weight_path = os.path.join(self.weight_path, self.model_name)
+        print(weight_path)
         ckpt = torch.load(weight_path, map_location=lambda storage, loc: storage.cuda())
         self.net.load_state_dict(ckpt)
         self.replace_Identity(self.net)

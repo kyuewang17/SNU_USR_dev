@@ -323,6 +323,7 @@ class detector_options(object):
             "conf_thres": cfg.detector.run.conf_thres,
             "iou_thres": cfg.detector.run.iou_thres,
             "weight_path": cfg.detector.run.weight_path,
+            "model_name": cfg.detector.run.model_name,
 
             # "name": "yolov4",
             # # "net_width": 448, "net_height": 320,
