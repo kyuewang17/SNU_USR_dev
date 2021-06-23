@@ -3,7 +3,7 @@ env:
     id: "06"
 #    time: "day"
 
-screen_compensate: true
+screen_compensate: false
 
 machine_name: "snu"
 
@@ -37,43 +37,61 @@ sensors:
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
-detector:
-    name: "YOLOv4"
+segmentation:
+    name: "DeepLabv3"
     device: 0
-    tiny_area_threshold: 300
+    run: false
+    visualization:
+        is_draw: false
+        is_show: false
+        auto_save: false
+        is_result_publish: false
+        result_rostopic_name: "/osr/snu_seg_result_image"
+
+attnet:
+    name: "ATT"
+    device: 0
+    run: false
+
+detector:
+    name: "YOLOv5"
+    device: 0
+    run:
+        augment: False
+        conf_thres: 0.25
+        iou_thres: 0.45
+        weight_path: '/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/models/detector/YOLOv5/day/'
+        model_name: 'yolov5m_coco_thermal_pretrained.pth'
+    sensors:
+        color: true
+        disparity: false
+        thermal: true
+        infrared: false
+        nightvision: false
+        lidar: false
     visualization:
         is_draw: true
         is_show: false
         auto_save: false
         bbox_color: (255, 0, 0)
         is_result_publish: true
-        result_rostopic_name: "/osr/snu_det_result_image"
 
 tracker:
     name: "Custom"
     device: 0
     association:
         trk:
-            init_age: 3
+            init_age: 2
             destroy_age: 3
-            similarity_thresh: 0.1
+            similarity_thresh: 0.325
         trk_cand:
-            destroy_age: 3
+            destroy_age: 2
             similarity_thresh: 0.6
     visualization:
         is_draw: true
         is_show: false
         auto_save: false
         is_result_publish: true
-        result_rostopic_name: "/osr/snu_trk_acl_result_image"
-        top_view:
-            is_draw: false
-            is_show: false
-            # map_size -> (depth_range, horizontal length*2)
-            map_size: (30000, 5000)
-            trk_radius: 100
-            is_result_publish: false
-            result_rostopic_name: "/osr/trk_top_view_image"
 
 aclassifier:
     name: "Custom"
