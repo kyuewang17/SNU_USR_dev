@@ -60,7 +60,7 @@ detector:
         augment: False
         conf_thres: 0.25
         iou_thres: 0.45
-        weight_path: '/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/models/detector/YOLOv5/day/'
+        weight_path: '/home/snu/SNU_USR_dev/src/snu_module/models/detector/YOLOv5/day/'
         model_name: 'yolov5m_coco_thermal_pretrained.pth'
     sensors:
         color: true
