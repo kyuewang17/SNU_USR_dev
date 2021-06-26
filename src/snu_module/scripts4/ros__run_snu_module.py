@@ -51,7 +51,10 @@ class snu_module(backbone):
         self.loop_timer = Timer(convert="FPS")
 
         # Initialize TF Transform
-        self.tf_transform = TF_TRANSFORM(opts=self.opts)
+        if opts.agent_type == "dynamic":
+            self.tf_transform = TF_TRANSFORM(opts=self.opts)
+        else:
+            self.tf_transform = None
         self.tf2_transform = None
 
         # Synchronized Timestamp of Multimodal Sensors
