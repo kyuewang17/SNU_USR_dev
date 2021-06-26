@@ -272,7 +272,7 @@ class attnet_options(object):
         self.run = cfg.attnet.run
         self.device = cfg.attnet.device
         self.model_dir =\
-            os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
+            os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.time)
 
 
 # Detector Option Class # TODO: Change cfg.env.time into cfg.time later
