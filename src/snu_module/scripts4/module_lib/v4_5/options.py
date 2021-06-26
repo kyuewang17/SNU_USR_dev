@@ -115,11 +115,11 @@ class snu_option_class(object):
         # Segmnet Options
         self.segnet = segnet_options(cfg=cfg)
         
-        # Det input Att Options # TODO
-        self.attnet = attnet_options(cfg=cfg, time=self.time)
+        # Det input Att Options
+        self.attnet = attnet_options(cfg=cfg)
 
         # Detector Options
-        self.detector = detector_options(cfg=cfg, time=self.time)
+        self.detector = detector_options(cfg=cfg)
 
         # Tracker Options
         self.tracker = tracker_options(cfg=cfg)
@@ -264,20 +264,20 @@ class segnet_options(object):
             # background, bicycle, bus, car, motorbike, person
         }
 
-# TODO: Change cfg.env.time into cfg.time later
+
 class attnet_options(object):
-    def __init__(self, cfg, time):
+    def __init__(self, cfg):
         self.run = cfg.attnet.run
         self.device = cfg.attnet.device
         self.model_dir =\
-            os.path.join(cfg.detector.model_base_path, cfg.detector.name, time)
+            os.path.join(cfg.detector.model_base_path, cfg.detector.name, "day")
 
 
-# Detector Option Class # TODO: Change cfg.env.time into cfg.time later
+# Detector Option Class
 class detector_options(object):
-    def __init__(self, cfg, time):
+    def __init__(self, cfg):
         # Get Model Path for Detector
-        self.model_dir = os.path.join(cfg.detector.model_base_path, cfg.detector.name, time)
+        self.model_dir = os.path.join(cfg.detector.model_base_path, cfg.detector.name, "day")
 
         # Set Actually Using Sensor Modalities
         self.sensor_dict = {

@@ -57,7 +57,7 @@ __C.sensors.color.rostopic_name = "/osr/image_color"
 __C.sensors.color.camerainfo_rostopic_name = "/osr/image_color_camerainfo"
 
 __C.sensors.disparity = CN(new_allowed=True)
-__C.sensors.disparity.is_valid = True
+__C.sensors.disparity.is_valid = False
 __C.sensors.disparity.encoding = "16UC1"
 __C.sensors.disparity.rostopic_name = "/osr/image_aligned_depth"
 __C.sensors.disparity.camerainfo_rostopic_name = "/osr/image_depth_camerainfo"
@@ -68,7 +68,7 @@ __C.sensors.disparity.clip.min_distance = 1000
 __C.sensors.disparity.clip.max_distance = 15000
 
 __C.sensors.thermal = CN(new_allowed=True)
-__C.sensors.thermal.is_valid = True
+__C.sensors.thermal.is_valid = False
 __C.sensors.thermal.encoding = "16UC1"
 __C.sensors.thermal.rostopic_name = "/osr/image_thermal"
 __C.sensors.thermal.camerainfo_rostopic_name = "NULL"
@@ -85,7 +85,7 @@ __C.sensors.nightvision.rostopic_name = "/osr/image_nv1"
 __C.sensors.nightvision.camerainfo_rostopic_name = "NULL"
 
 __C.sensors.lidar = CN(new_allowed=True)
-__C.sensors.lidar.is_valid = True
+__C.sensors.lidar.is_valid = False
 __C.sensors.lidar.encoding = "NULL"
 __C.sensors.lidar.rostopic_name = "/osr/lidar_pointcloud"
 __C.sensors.lidar.camerainfo_rostopic_name = "NULL"
