@@ -68,7 +68,7 @@ class snu_option_class(object):
         self.env_type = env_type
 
         # Agent Type
-        if env_type == "agent":
+        if env_type in ["dynamic", "static"]:
             self.agent_type, self.agent_id = env_type, cfg.env.id if hasattr(cfg.env, "id") else None
         else:
             self.agent_type, self.agent_id = None, None
