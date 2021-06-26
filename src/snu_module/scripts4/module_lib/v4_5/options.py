@@ -86,8 +86,6 @@ class snu_option_class(object):
             self.time = "day"
         else:
             self.time = "night"
-        # NOTE: Tentative (to check thermal acl module)
-        self.time = "night"
 
         # Development Version
         self.dev_version = dev_version
@@ -118,10 +116,10 @@ class snu_option_class(object):
         self.segnet = segnet_options(cfg=cfg)
         
         # Det input Att Options # TODO
-        self.attnet = attnet_options(cfg=cfg)
+        self.attnet = attnet_options(cfg=cfg, time=self.time)
 
         # Detector Options
-        self.detector = detector_options(cfg=cfg)
+        self.detector = detector_options(cfg=cfg, time=self.time)
 
         # Tracker Options
         self.tracker = tracker_options(cfg=cfg)
@@ -268,18 +266,18 @@ class segnet_options(object):
 
 # TODO: Change cfg.env.time into cfg.time later
 class attnet_options(object):
-    def __init__(self, cfg):
+    def __init__(self, cfg, time):
         self.run = cfg.attnet.run
         self.device = cfg.attnet.device
         self.model_dir =\
-            os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.time)
+            os.path.join(cfg.detector.model_base_path, cfg.detector.name, time)
 
 
 # Detector Option Class # TODO: Change cfg.env.time into cfg.time later
 class detector_options(object):
-    def __init__(self, cfg):
+    def __init__(self, cfg, time):
         # Get Model Path for Detector
-        self.model_dir = os.path.join(cfg.detector.model_base_path, cfg.detector.name, cfg.env.time)
+        self.model_dir = os.path.join(cfg.detector.model_base_path, cfg.detector.name, time)
 
         # Set Actually Using Sensor Modalities
         self.sensor_dict = {
