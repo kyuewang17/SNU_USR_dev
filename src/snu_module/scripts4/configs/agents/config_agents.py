@@ -164,11 +164,11 @@ __C.tracker.device = 0
 
 __C.tracker.sensors = CN(new_allowed=False)
 __C.tracker.sensors.color = True
-__C.tracker.sensors.disparity = True
+__C.tracker.sensors.disparity = False
 __C.tracker.sensors.thermal = False
 __C.tracker.sensors.infrared = False
 __C.tracker.sensors.nightvision = False
-__C.tracker.sensors.lidar = True
+__C.tracker.sensors.lidar = False
 
 # Kalman Filter Parameters
 __C.tracker.kalman_params = CN(new_allowed=False)
@@ -285,7 +285,7 @@ __C.aclassifier.model_base_path = os.path.join(model_base_path, "aclassifier")
 __C.aclassifier.sensors = CN(new_allowed=False)
 __C.aclassifier.sensors.color = True
 __C.aclassifier.sensors.disparity = False
-__C.aclassifier.sensors.thermal = True
+__C.aclassifier.sensors.thermal = False
 __C.aclassifier.sensors.infrared = False
 __C.aclassifier.sensors.nightvision = False
 __C.aclassifier.sensors.lidar = False
