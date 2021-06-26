@@ -51,6 +51,9 @@ class snu_module(backbone):
         self.loop_timer = Timer(convert="FPS")
 
         # Initialize TF Transform
+        # NOTE: Tentative Code for testing...!
+        opts.agent_type = "dynamic"
+        opts.agent_id = "02"
         self.tf_transform = TF_TRANSFORM(opts=self.opts)
         self.tf2_transform = None
 

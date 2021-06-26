@@ -26,7 +26,7 @@ def load_snu_module(logger, opts):
         from ros__run_snu_module import snu_module
         return snu_module(logger=logger, opts=opts)
     elif opts.env_type == "imseq":
-        from imseq__run_snu_module import snu_module
+        # from imseq__run_snu_module import snu_module
         raise NotImplementedError()
     else:
         raise AssertionError()
