@@ -143,11 +143,12 @@ class snu_algorithms(algorithms):
         # NOTE: Change Label for Bicycle(2->3) and Car(3->2)
         for label_idx in range(rgb_labels.shape[0]):
             rgb_label = rgb_labels[label_idx, 0]
-            if rgb_label == 2:
-                change_rgb_label = 3
-            elif rgb_label == 3:
-                change_rgb_label = 2
-            rgb_labels[label_idx, 0] = change_rgb_label
+            if rgb_label == 2 or rgb_label == 3:
+                if rgb_label == 2:
+                    change_rgb_label = 3
+                else:
+                    change_rgb_label = 2
+                rgb_labels[label_idx, 0] = change_rgb_label
 
         if thermal_dets is not None:
             # Thermal Detection Parsing
@@ -166,11 +167,12 @@ class snu_algorithms(algorithms):
             # NOTE: Change Label for Bicycle(2->3) and Car(3->2)
             for label_idx in range(thermal_labels.shape[0]):
                 thermal_label = thermal_labels[label_idx, 0]
-                if thermal_label == 2:
-                    change_thermal_label = 3
-                elif thermal_label == 3:
-                    change_thermal_label = 2
-                thermal_labels[label_idx, 0] = change_thermal_label
+                if thermal_label == 2 or thermal_label == 3:
+                    if thermal_label == 2:
+                        change_thermal_label = 3
+                    else:
+                        change_thermal_label = 2
+                    thermal_labels[label_idx, 0] = change_thermal_label
 
             # Set Detection
             self.detections = {

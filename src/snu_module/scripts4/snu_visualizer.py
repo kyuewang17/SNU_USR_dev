@@ -80,7 +80,10 @@ class vis_det_obj(vis_obj):
         for modal in self.detections.keys():
             if modal not in vis_frames.keys():
                 # Get Visualization Frame
-                vis_frames[modal] = copy.deepcopy(sync_data_dict[modal].get_data(astype=np.uint8))
+                vis_frame = copy.deepcopy(sync_data_dict[modal].get_data(astype=np.uint8))
+                if len(vis_frame.shape) == 2:
+                    vis_frame = np.dstack((vis_frame, vis_frame, vis_frame))
+                vis_frames[modal] = vis_frame
 
                 # Set OpenCV Window Names
                 opencv_winnames[modal] = "detection ({})".format(modal)

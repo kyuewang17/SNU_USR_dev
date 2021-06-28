@@ -158,7 +158,8 @@ class backbone(object):
                             if modal == "color":
                                 pub_fmt = "rgb8"
                             elif modal == "thermal":
-                                pub_fmt = "mono8"
+                                # pub_fmt = "mono8"
+                                pub_fmt = "rgb8"
                             else:
                                 raise NotImplementedError()
                             self.det_results_pub[modal].publish(

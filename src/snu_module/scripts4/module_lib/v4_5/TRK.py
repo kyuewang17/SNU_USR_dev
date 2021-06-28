@@ -429,12 +429,12 @@ class SNU_MOT(object):
     def __call__(self, sync_data_dict, fidx, detections):
         # NOTE: For Static Agent, use Color Modal Detection Results Only
         if self.opts.agent_type == "static":
-            detections = {"color": detections["color"]}
+            trk_detections = {"color": detections["color"]}
         else:
             if self.opts.time == "day":
-                detections = {"color": detections["color"]}
+                trk_detections = {"color": detections["color"]}
             else:
-                detections = {"thermal": detections["thermal"]}
+                trk_detections = {"thermal": detections["thermal"]}
 
         if self.trk_bbox_size_limits is None:
             _width = sync_data_dict["color"].get_data().shape[1]
@@ -459,13 +459,13 @@ class SNU_MOT(object):
 
         # Associate Detections with Trajectories (return residual detections)
         if len(self.trks) != 0:
-            detections = self.associate_detections_with_trajectories(
-                sync_data_dict=sync_data_dict, detections=detections
+            trk_detections = self.associate_detections_with_trajectories(
+                sync_data_dict=sync_data_dict, detections=trk_detections
             )
 
         # Associate Residual Detections with Trajectory Candidates
         if len(self.trk_cands) == 0:
-            for modal, modal_detections in detections.items():
+            for modal, modal_detections in trk_detections.items():
                 for det_idx, det in enumerate(modal_detections["dets"]):
                     new_trk_cand = TrajectoryCandidate(
                         frame=sync_data_dict[modal].get_data(), modal=modal, bbox=det,
@@ -476,7 +476,7 @@ class SNU_MOT(object):
                     del new_trk_cand
         else:
             self.associate_resdets_trkcands(
-                sync_data_dict=sync_data_dict, residual_detections=detections
+                sync_data_dict=sync_data_dict, residual_detections=trk_detections
             )
         # Generate New Trajectories from Trajectory Candidates
         new_trks = self.generate_new_trajectories(sync_data_dict=sync_data_dict, new_trks=new_trks)
