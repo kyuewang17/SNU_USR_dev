@@ -149,10 +149,10 @@ def aclassify(models, sync_data_dict, trajectories, opts):
                 elif trk.modal == "thermal":
                     e = cr_rsz_img.tolist()
                     z = torch.tensor(e, dtype=torch.float).view(1, 60, 60)
-                    x = transforms.Normalize([0.677], [0.172])(z)
+                    x = transforms.Normalize([9.96], [1.11])(z)
                     x = (x.view(1, 1, 60, 60)).to(device)
                     tmp = models[trk.modal](x, ratio)
-                    tmp = tmp + torch.tensor([0.7, 0.1, 0.0]).to(device)
+                    # tmp = tmp + torch.tensor([0.7, 0.1, 0.0]).to(device)
                 else:
                     raise NotImplementedError()
 
