@@ -5,7 +5,6 @@ STATIC_01:
   fps: 30
   camera_param: [664.8, 664.8, 320.0, 240.0, 0.000000, 2.890, 4.720, 3.390, -113.3, -27.4, 3.0]
 
-# Temp Temp Temp
 STATIC_02:
   img_w: 640
   img_h: 480
@@ -13,6 +12,19 @@ STATIC_02:
   camera_param: [619.2, 619.2, 320.0, 240.0, 0.000000, 4.860, -2.520, 3.940, 151.8, -20.2, 1.0]
 
 STATIC_03:
+  img_w: 640
+  img_h: 480
+  fps: 30
+  camera_param: [643.6, 643.6, 320.0, 240.0, 0.000000, 8.860, 3.280, 6.560, -177.6, -28.4, -3.7]
+
+# NOTE: Static-4 and Static-5 Parameters are Temporary Values (will be updated later...)
+STATIC_04:
+  img_w: 640
+  img_h: 480
+  fps: 30
+  camera_param: [643.6, 643.6, 320.0, 240.0, 0.000000, 8.860, 3.280, 6.560, -177.6, -28.4, -3.7]
+
+STATIC_05:
   img_w: 640
   img_h: 480
   fps: 30
