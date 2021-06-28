@@ -154,6 +154,15 @@ class snu_algorithms(algorithms):
             thermal_confs = thermal_confs[keep_indices, :]
             thermal_labels = thermal_labels[keep_indices, :]
 
+            # NOTE: Change Label for Bicycle(2->3) and Car(3->2)
+            for label_idx in range(rgb_labels.shape[0]):
+                rgb_label = rgb_labels[label_idx, 0]
+                if rgb_label == 2:
+                    change_rgb_label = 3
+                elif rgb_label == 3:
+                    change_rgb_label = 2
+                rgb_labels[label_idx, 0] = change_rgb_label
+
             # Set Detection
             self.detections = {
                 "color": {"dets": rgb_dets, "confs": rgb_confs, "labels": rgb_labels},
