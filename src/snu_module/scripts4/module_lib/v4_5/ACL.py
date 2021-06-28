@@ -115,7 +115,8 @@ def aclassify(models, sync_data_dict, trajectories, opts):
             trk.pose = None
         else:
             # Check for Modalities and Get Normalized Frame
-            modal_frame = sync_data_dict[trk.modal].type_minmax_normalization()
+            # modal_frame = sync_data_dict[trk.modal].type_minmax_normalization()
+            modal_frame = sync_data_dict[trk.modal].get_data(division=255.0)
 
             # Get Shape
             H, W = modal_frame.shape[0], modal_frame.shape[1]
