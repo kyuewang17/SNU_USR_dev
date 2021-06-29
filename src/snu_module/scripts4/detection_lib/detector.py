@@ -89,7 +89,8 @@ class YOLOv5(DetectorBase):
         # pred shape : (#batch, #boxes, 5(xywh+conf) + #classes)
 
         # Apply NMS
-        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[float(x) for x in range(10)])
+        # pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[float(x) for x in range(10)])
+        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[0.0, 1.0, 2.0, 3.0, 4.0, 6.0, 7.0, 8.0])
 
         result_dict = {}
         for i, det in enumerate(pred):  # detections per image
