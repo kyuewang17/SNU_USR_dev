@@ -161,9 +161,10 @@ class TrajectoryCandidate(object_instance):
                 depth_value = 0.0
             else:
                 # Define Steepness Parameter w.r.t. Standard Deviation of Point-cloud Distance Distribution
-                # PC_stdev is High -> Gradual Counting Weight (to consider less samples near average point)
-                #             Low  -> Steep Counting Weight (to consider more samples)
-                stnp = (1.0 / (np.std(pc_distances) + 1e-6))
+                # PC_stdev is Low -> Gradual Counting Weight (to consider more samples)
+                #             High  -> Steep Counting Weight (to consider less samples near average point)
+                # stnp = (1.0 / (np.std(pc_distances) + 1e-6))
+                stnp = np.std(pc_distances)
 
                 # Compute Counting Weight for LiDAR UV-points, w.r.t. center L2-distance
                 _denom = (patch_bbox[2] - patch_bbox[0]) ** 2 + (patch_bbox[3] - patch_bbox[1]) ** 2
@@ -405,8 +406,8 @@ class Trajectory(object_instance):
                 depth_value = self.depth[-1]
             else:
                 # Define Steepness Parameter w.r.t. Standard Deviation of Point-cloud Distance Distribution
-                # PC_stdev is Low -> Gradual Counting Weight (to consider less samples near average point)
-                #             High  -> Steep Counting Weight (to consider more samples)
+                # PC_stdev is Low -> Gradual Counting Weight (to consider more samples)
+                #             High  -> Steep Counting Weight (to consider less samples near average point)
                 # stnp = (1.0 / (np.std(pc_distances) + 1e-6))
                 stnp = np.std(pc_distances)
 
