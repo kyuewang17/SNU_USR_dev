@@ -189,6 +189,7 @@ class snu_module(backbone):
                         self.opts.time = "day"
                     else:
                         self.opts.time = "night"
+                self.opts.time = "day"
 
                 # Make Synchronized Data
                 sync_ss.make_sync_data()
