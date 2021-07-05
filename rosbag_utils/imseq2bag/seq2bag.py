@@ -4,6 +4,8 @@
 
 """
 import os
+import logging
+import argparse
 import ros_numpy
 import numpy as np
 from pandas import read_csv
@@ -19,7 +21,53 @@ from mmt_params import CAMERA_INFO as _CAMERAINFO
 from camera_objects import IMAGE_MODAL_OBJ, LIDAR_MODAL_OBJ, MODAL_DATA_OBJ, MULTIMODAL_DATA_OBJ
 
 
-def load_multimodal_data(base_path):
+def argument_parser():
+    # Define Argument Parser
+    parser = argparse.ArgumentParser(
+        prog="seq2bag.py",
+        description="Python Script to Multi-modal Sensor Data to ROS bag file"
+    )
+    parser.add_argument(
+        "--base-path", "-P",
+        help="Base Path"
+    )
+    parser.add_argument(
+        "--start-fidx", "-S", default=3500,
+        help="Starting Frame Index"
+    )
+    parser.add_argument(
+        "--end-fidx", "-E", default=5500,
+        help="Ending Frame Index"
+    )
+    parser.add_argument(
+        "--override-mode", "-O", default=False, type=bool,
+        help="Override Mode for Bag File if same exists...! (False: creates new bag file with additional character) (True: overrides previous bag file)"
+    )
+
+    # Parse Arguments
+    args = parser.parse_args()
+
+    return args
+
+
+def set_logger(logging_level=logging.INFO):
+    # Define Logger
+    logger = logging.getLogger()
+
+    # Set Logger Display Level
+    logger.setLevel(level=logging_level)
+
+    # Set Stream Handler
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(
+        logging.Formatter("[%(levelname)s] | %(asctime)s : %(message)s")
+    )
+    logger.addHandler(stream_handler)
+
+    return logger
+
+
+def load_multimodal_data(base_path, logger, frame_interval):
     # Check if Base Path Exists
     if os.path.isdir(base_path) is False:
         raise AssertionError()
@@ -33,9 +81,17 @@ def load_multimodal_data(base_path):
     for matching in matchings:
         modal_lists.remove(matching)
 
+    # Get Frame Interval
+    if frame_interval[0] == 0 and frame_interval[1] == -1:
+        min_fidx, max_fidx = -1, -1
+    else:
+        # Assertion
+        assert 0 <= frame_interval[0] < frame_interval[1]
+        min_fidx, max_fidx = frame_interval[0], frame_interval[1]
+
     # for each modalities
     modal_data_obj_dict = {}
-    for modal in modal_lists:
+    for modal_idx, modal in enumerate(modal_lists):
         # Join Path
         curr_modal_base_path = os.path.join(base_path, modal)
 
@@ -44,7 +100,23 @@ def load_multimodal_data(base_path):
         curr_modal_file_lists = sorted(os.listdir(curr_modal_base_path))
         if len(curr_modal_file_lists) > 0:
             # Traverse through Files
-            for filename in curr_modal_file_lists:
+            for file_idx, filename in enumerate(curr_modal_file_lists):
+                # Break for Frame Interval
+                if min_fidx == -1 and max_fidx == -1:
+                    total_proc_frame_numbers = len(curr_modal_file_lists)+1
+                else:
+                    if min_fidx < file_idx < max_fidx:
+                        total_proc_frame_numbers = (max_fidx - min_fidx)
+                    else:
+                        continue
+
+                # Log
+                if (file_idx + 1) % 100 == 0 and file_idx > 0:
+                    logging_mesg = "[Modal: {}] ({}/{}) -- Processing ( #{} out of total #{} frames )".format(
+                        modal, modal_idx+1, len(modal_lists), file_idx+1, total_proc_frame_numbers
+                    )
+                    logger.info(logging_mesg)
+
                 # Current File Path
                 curr_filepath = os.path.join(curr_modal_base_path, filename)
 
@@ -104,15 +176,24 @@ def load_multimodal_data(base_path):
     return multimodal_data_obj
 
 
-def generate_multimodal_bag_file(MMT_OBJ, base_path):
+def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
     # Get Bag File Name
     bag_name = os.path.split(base_path)[-1] + ".bag"
 
     # Initialize Bag File
-    if os.path.isfile(os.path.join(base_path, bag_name)) is False:
-        bag = rosbag.Bag(os.path.join(base_path, bag_name), "w")
+    save_path = os.path.dirname(base_path)
+    if os.path.isfile(os.path.join(save_path, bag_name)) is False:
+        bag = rosbag.Bag(os.path.join(save_path, bag_name), "w")
     else:
-        bag = None
+        if override_mode is True:
+            os.remove(os.path.join(save_path, bag_name))
+            bag = rosbag.Bag(os.path.join(save_path, bag_name), "w")
+        else:
+            while True:
+                bag_name = bag_name.split(".")[0] + "c.bag"
+                if os.path.isfile(os.path.join(save_path, bag_name)) is False:
+                    break
+            bag = rosbag.Bag(os.path.join(save_path, bag_name), "w")
 
     # Iterate for Multimodal Sensors
     try:
@@ -130,7 +211,7 @@ def generate_multimodal_bag_file(MMT_OBJ, base_path):
                     modal_frame_id = "osr/image_" + modal.lower()
                 elif modal == "thermal":
                     # modal_encoding = "mono16"
-                    modal_encoding = "mono8"
+                    modal_encoding = "mono16"
                     modal_frame_id = "osr/image_" + modal.lower()
                 elif modal == "infrared":
                     modal_encoding = "mono8"
@@ -194,7 +275,18 @@ def generate_multimodal_bag_file(MMT_OBJ, base_path):
 
 
 if __name__ == "__main__":
-    base_path = "/home/snu/DATA/4th-year-dynamic/005"
-    MMT_DATA_OBJ = load_multimodal_data(base_path=base_path)
-    generate_multimodal_bag_file(MMT_OBJ=MMT_DATA_OBJ, base_path=base_path)
+    # # base_path = "/home/snu/DATA/4th-year-dynamic/005"
+    # base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2020/Detection/ICCAS2021"
+    # folder_name = "1-10d"
+    # base_path = os.path.join(base_path, folder_name)
+
+    # Argparser
+    args = argument_parser()
+    args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2020/Detection/ICCAS2021/1-01d"
+
+    # Set Logger
+    logger = set_logger()
+
+    MMT_DATA_OBJ = load_multimodal_data(base_path=args.base_path, logger=logger, frame_interval=[args.start_fidx, args.end_fidx])
+    generate_multimodal_bag_file(MMT_OBJ=MMT_DATA_OBJ, logger=logger, base_path=args.base_path, override_mode=args.override_mode)
     pass

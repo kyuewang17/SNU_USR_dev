@@ -165,7 +165,7 @@ __C.tracker.device = 0
 __C.tracker.sensors = CN(new_allowed=False)
 __C.tracker.sensors.color = True
 __C.tracker.sensors.disparity = True
-__C.tracker.sensors.thermal = False
+__C.tracker.sensors.thermal = True
 __C.tracker.sensors.infrared = False
 __C.tracker.sensors.nightvision = False
 __C.tracker.sensors.lidar = True
