@@ -1,6 +1,5 @@
 env:
-    type: "dynamic"
-    id: "04"
+    type: "bag"
 #    time: "day"
 
 screen_compensate: true
@@ -21,7 +20,7 @@ sensors:
             min_distance: 1000
             max_distance: 15000
     thermal:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/image_thermal"
         camerainfo_rostopic_name: "/osr/image_thermal_camerainfo"
     infrared:
@@ -33,7 +32,7 @@ sensors:
         rostopic_name: "/osr/image_nv1"
         camerainfo_rostopic_name: "NULL"
     lidar:
-        is_valid: false
+        is_valid: true
         rostopic_name: "/osr/lidar_pointcloud"
         camerainfo_rostopic_name: "NULL"
 
@@ -65,14 +64,14 @@ detector:
     sensors:
         color: true
         disparity: false
-        thermal: false
+        thermal: true
         infrared: false
         nightvision: false
         lidar: false
     visualization:
         is_draw: true
         is_show: false
-        auto_save: true
+        auto_save: false
         bbox_color: (255, 0, 0)
         is_result_publish: true
 
@@ -86,21 +85,16 @@ tracker:
             similarity_thresh: 0.325
         trk_cand:
             destroy_age: 2
-            similarity_thresh: 0.25
-    sensors:
-        thermal: false
-        lidar: false
+            similarity_thresh: 0.6
     visualization:
         is_draw: true
         is_show: false
-        auto_save: true
+        auto_save: false
         is_result_publish: true
 
 aclassifier:
     name: "Custom"
     device: 0
-    sensors:
-        thermal: false
     visualization:
         is_draw: true
         is_show: false

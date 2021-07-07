@@ -122,6 +122,7 @@ class ros_sensor(object):
         return self._timestamp
 
     def update_sensor_params_rostopic(self, msg):
+        print(11)
         if msg is not None:
             # Save Camerainfo Message
             self._camerainfo_msg = msg

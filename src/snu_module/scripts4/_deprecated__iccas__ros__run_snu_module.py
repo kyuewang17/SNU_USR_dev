@@ -52,13 +52,9 @@ class snu_module(backbone):
 
         # Initialize TF Transform
         # NOTE: Tentative Code for testing...!
-        self.opts.agent_type = "static"
-        self.opts.agent_id = "01"
-        if opts.agent_type == "dynamic":
-            self.tf_transform = TF_TRANSFORM(opts=self.opts)
-        else:
-            self.tf_transform = None
-        self.tf2_transform = None
+        opts.agent_type = "dynamic"
+        opts.agent_id = "02"
+        self.tf_transform = None
 
         # Synchronized Timestamp of Multimodal Sensors
         self.sync_stamp = None
@@ -77,10 +73,9 @@ class snu_module(backbone):
 
     def gather_all_sensor_params_via_files(self):
         # Get Sensor Parameter File Path
-        if self.opts.agent_type in ["static", "imseq"]:
+        if self.opts.env_type in ["static", "imseq"]:
             if self.opts.env_type == "imseq":
-                raise NotImplementedError()
-                # sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", "sensor_params")
+                sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", "sensor_params")
             else:
                 sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "agents", "static", "sensor_params")
             if os.path.isdir(sensor_params_path) is True:
@@ -96,7 +91,7 @@ class snu_module(backbone):
                         tmp = yaml.safe_load(stream=stream)
 
                     if self.opts.env_type in ["static", "dynamic"]:
-                        sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(int(self.opts.agent_id))]["camera_param"])
+                        sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(self.opts.agent_id)]["camera_param"])
                     else:
                         raise NotImplementedError()
 
@@ -121,59 +116,76 @@ class snu_module(backbone):
         rospy.loginfo("Checking Sensor Parameter Directory...!")
         self.gather_all_sensor_params_via_files()
 
-        # # Check for TF_STATIC, Sensor Parameter Files (yaml)
-        # if self.opts.env_type in ["dynamic", "bag"]:
-        #
-        #     # Subscribe for TF_STATIC
-        #     tf_buffer = tf2_ros.Buffer()
-        #     tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
-        #
-        #     # Iterate Loop until "tf_static is heard"
-        #     tf_static_check_flag = 0
-        #     while self.tf2_transform is None:
-        #         try:
-        #             self.tf_transform = tf_buffer.lookup_transform(
-        #                 "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
-        #             )
-        #         except:
-        #             if tf_static_check_flag == 0:
-        #                 rospy.loginfo("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
-        #             tf_static_check_flag += 1
-        #
-        #             if tf_static_check_flag >= 30 and self.opts.env_type == "bag":
-        #                 rospy.loginfo("TF_STATIC: Custom TF Static Transform Loaded...!")
-        #
-        #                 class TF_TRANSLATION(object):
-        #                     def __init__(self, x, y, z):
-        #                         self.x = x
-        #                         self.y = y
-        #                         self.z = z
-        #
-        #                 class TF_ROTATION(object):
-        #                     def __init__(self, x, y, z, w):
-        #                         self.x = x
-        #                         self.y = y
-        #                         self.z = z
-        #                         self.w = w
-        #
-        #                 class _TF_TRANSFORM(object):
-        #                     def __init__(self, translation, rotation):
-        #                         self.translation = translation
-        #                         self.rotation = rotation
-        #
-        #                 class TF_TRANSFORM(object):
-        #                     def __init__(self):
-        #                         translation = TF_TRANSLATION(
-        #                             x=0.44415, y=0.128996, z=0.238593
-        #                         )
-        #                         rotation = TF_ROTATION(
-        #                             x=0.482089, y=-0.501646, z=0.526684, w=0.488411
-        #                         )
-        #                         self.transform = _TF_TRANSFORM(
-        #                             translation=translation, rotation=rotation
-        #                         )
-        #
-        #                 self.tf2_transform = TF_TRANSFORM()
+        # Check for TF_STATIC, Sensor Parameter Files (yaml)
+        if self.opts.env_type in ["dynamic", "bag"]:
+
+            # Subscribe for TF_STATIC
+            tf_buffer = tf2_ros.Buffer()
+            tf_listener = tf2_ros.TransformListener(buffer=tf_buffer)
+
+            # Iterate Loop until "tf_static is heard"
+            tf_static_check_flag = 0
+            while self.tf_transform is None:
+                try:
+                    self.tf_transform = tf_buffer.lookup_transform(
+                        "rgb_frame", 'velodyne_frame_from_rgb', rospy.Time(0)
+                    )
+                except:
+                    if tf_static_check_flag == 0:
+                        rospy.loginfo("SNU-MODULE : TF_STATIC Transform Unreadable...! >> WAIT FOR A MOMENT...")
+                    tf_static_check_flag += 1
+
+                    if tf_static_check_flag >= 30 and self.opts.env_type == "bag":
+                        rospy.loginfo("TF_STATIC: Custom TF Static Transform Loaded...!")
+
+                        class TF_TRANSLATION(object):
+                            def __init__(self, x, y, z):
+                                self.x = x
+                                self.y = y
+                                self.z = z
+
+                        class TF_ROTATION(object):
+                            def __init__(self, x, y, z, w):
+                                self.x = x
+                                self.y = y
+                                self.z = z
+                                self.w = w
+
+                        class _TF_TRANSFORM(object):
+                            def __init__(self, translation, rotation):
+                                self.translation = translation
+                                self.rotation = rotation
+
+                        class TF_TRANSFORM(object):
+                            def __init__(self, modal):
+                                self.modal = modal
+                                if modal == "color":
+                                    translation = TF_TRANSLATION(
+                                        x=0.44415, y=0.128996, z=0.238593
+                                    )
+                                    rotation = TF_ROTATION(
+                                        x=0.482089, y=-0.501646, z=0.526684, w=0.488411
+                                    )
+                                    self.transform = _TF_TRANSFORM(
+                                        translation=translation, rotation=rotation
+                                    )
+                                elif modal == "thermal":
+                                    translation = TF_TRANSLATION(
+                                        x=0.44415, y=0.128996, z=0.238593
+                                    )
+                                    rotation = TF_ROTATION(
+                                        x=0.482089, y=-0.501646, z=0.526684, w=0.488411
+                                    )
+                                    self.transform = _TF_TRANSFORM(
+                                        translation=translation, rotation=rotation
+                                    )
+                                else:
+                                    raise NotImplementedError()
+
+                        self.tf_transform = {
+                            "color": TF_TRANSFORM(modal="color"),
+                            "thermal": TF_TRANSFORM(modal="thermal")
+                        }
 
         # Load ROS Synchronized Subscriber
         rospy.loginfo("Load ROS Synchronized Subscriber...!")
@@ -193,6 +205,8 @@ class snu_module(backbone):
                         self.opts.time = "day"
                     else:
                         self.opts.time = "night"
+
+                # NOTE: Manual Time Change Here
                 self.opts.time = "day"
 
                 # Make Synchronized Data

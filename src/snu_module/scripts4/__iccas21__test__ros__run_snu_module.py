@@ -52,12 +52,9 @@ class snu_module(backbone):
 
         # Initialize TF Transform
         # NOTE: Tentative Code for testing...!
-        self.opts.agent_type = "static"
-        self.opts.agent_id = "01"
-        if opts.agent_type == "dynamic":
-            self.tf_transform = TF_TRANSFORM(opts=self.opts)
-        else:
-            self.tf_transform = None
+        opts.agent_type = "dynamic"
+        opts.agent_id = "04"
+        self.tf_transform = TF_TRANSFORM(opts=self.opts)
         self.tf2_transform = None
 
         # Synchronized Timestamp of Multimodal Sensors
@@ -77,10 +74,9 @@ class snu_module(backbone):
 
     def gather_all_sensor_params_via_files(self):
         # Get Sensor Parameter File Path
-        if self.opts.agent_type in ["static", "imseq"]:
+        if self.opts.env_type in ["static", "imseq"]:
             if self.opts.env_type == "imseq":
-                raise NotImplementedError()
-                # sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", "sensor_params")
+                sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", "sensor_params")
             else:
                 sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "agents", "static", "sensor_params")
             if os.path.isdir(sensor_params_path) is True:
@@ -96,7 +92,7 @@ class snu_module(backbone):
                         tmp = yaml.safe_load(stream=stream)
 
                     if self.opts.env_type in ["static", "dynamic"]:
-                        sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(int(self.opts.agent_id))]["camera_param"])
+                        sensor_param_array = np.asarray(tmp["STATIC_{:02d}".format(self.opts.agent_id)]["camera_param"])
                     else:
                         raise NotImplementedError()
 

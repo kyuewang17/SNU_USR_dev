@@ -428,13 +428,14 @@ class SNU_MOT(object):
 
     def __call__(self, sync_data_dict, fidx, detections):
         # NOTE: For Static Agent, use Color Modal Detection Results Only
-        if self.opts.agent_type == "static":
-            trk_detections = {"color": detections["color"]}
-        else:
-            if self.opts.time == "day":
-                trk_detections = {"color": detections["color"]}
-            else:
-                trk_detections = {"thermal": detections["thermal"]}
+        # if self.opts.agent_type == "static":
+        #     trk_detections = {"color": detections["color"]}
+        # else:
+        #     if self.opts.time == "day":
+        #         trk_detections = {"color": detections["color"]}
+        #     else:
+        #         trk_detections = {"thermal": detections["thermal"]}
+        trk_detections = copy.deepcopy(detections)
 
         if self.trk_bbox_size_limits is None:
             _width = sync_data_dict["color"].get_data().shape[1]
