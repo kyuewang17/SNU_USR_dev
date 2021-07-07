@@ -39,6 +39,7 @@ class SNU_MOT(object):
         self.fidx = None
 
         # Trajectory BBOX Size Limit
+        #self.trk_bbox_size_limits = [8*8, 640*480*0.1]
         self.trk_bbox_size_limits = None
 
         # Set Timer Object
@@ -169,6 +170,9 @@ class SNU_MOT(object):
                 if trk.label != labels[det_idx]:
                     similarity_matrix[det_idx, trk_idx] = -1000.0
                     continue
+                #if trk_patch.shape[0] >= 480*0.2 or trk_patch.shape[1] >= 640*0.2:
+                #    similarity_matrix[det_idx, trk_idx] = -1000.0
+                #    continue
 
                 # Resize Patches
                 resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
@@ -446,7 +450,7 @@ class SNU_MOT(object):
             _height = sync_data_dict["color"].get_data().shape[0]
 
             size_min_limit = 10
-            size_max_limit = _width*_height / 2.0
+            size_max_limit = _width*_height / 20.0
             self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data
@@ -472,6 +476,7 @@ class SNU_MOT(object):
         if len(self.trk_cands) == 0:
             for modal, modal_detections in trk_detections.items():
                 for det_idx, det in enumerate(modal_detections["dets"]):
+                    # Initialize Trajectory Candidate
                     new_trk_cand = TrajectoryCandidate(
                         frame=sync_data_dict[modal].get_data(), modal=modal, bbox=det,
                         conf=modal_detections["confs"][det_idx], label=modal_detections["labels"][det_idx],

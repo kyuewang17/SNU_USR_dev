@@ -459,8 +459,8 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
 
         if len(x) != 0:
             for box in x:
-                if box[5] in [6.0, 7.0, 8.0]:
-                    # change bus, train, truck to car
+                if box[5] in [6.0, 8.0]:
+                    # change bus, truck to car
                     box[5] = torch.tensor(3.0).cuda(x.device)
                 elif box[5] in [4.0]:
                     # change motorcycle to bicycle

@@ -90,7 +90,7 @@ class YOLOv5(DetectorBase):
 
         # Apply NMS
         # pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[float(x) for x in range(10)])
-        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[0.0, 1.0, 2.0, 3.0, 4.0, 6.0, 7.0, 8.0])
+        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=[0.0, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0])
 
         result_dict = {}
         for i, det in enumerate(pred):  # detections per image
@@ -111,8 +111,8 @@ class YOLOv5(DetectorBase):
             confs = torch.cat(confs, dim=0).detach().cpu().numpy()
             labels = torch.cat(labels, dim=0).detach().cpu().numpy()
 
-            # for j in range(len(labels)):
-            #     print (self.name[int(labels[j].item())])
+            #for j in range(len(labels)):
+            #    print (self.name[int(labels[j].item())])
 
             result_dict[i] = [boxes, confs, labels]
 

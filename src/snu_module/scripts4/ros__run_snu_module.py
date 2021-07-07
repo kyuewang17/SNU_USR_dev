@@ -33,7 +33,7 @@ from module_bridge import snu_algorithms
 
 
 # Run Mode (choose btw ==>> bag / imseq / agent)
-RUN_MODE = "bag"
+RUN_MODE = "agent"
 
 
 # Define SNU Module Class
