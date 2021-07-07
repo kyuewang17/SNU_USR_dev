@@ -74,7 +74,7 @@ class snu_module(backbone):
 
     def gather_all_sensor_params_via_files(self):
         # Get Sensor Parameter File Path
-        if self.opts.env_type in ["static", "imseq"]:
+        if self.opts.agent_type in ["static", "imseq"]:
             if self.opts.env_type == "imseq":
                 sensor_params_path = os.path.join(os.path.dirname(__file__), "configs", "imseq", "sensor_params")
             else:
