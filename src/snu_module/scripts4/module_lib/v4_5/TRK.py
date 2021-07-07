@@ -13,6 +13,7 @@ import copy
 import cv2
 import numpy as np
 from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
+#from scipy.optimize import linear_sum_assignment as hungarian
 
 # Import Custom Modules
 import utils.patch as snu_patch
@@ -86,7 +87,8 @@ class SNU_MOT(object):
     @staticmethod
     def associate(similarity_matrix, similarity_thresh, workers, works):
         # Hungarian Algorithm
-        matched_indices = hungarian(-similarity_matrix)
+        #matched_indices = np.array(hungarian(-similarity_matrix))
+        matched_indices = (hungarian(-similarity_matrix))
 
         # Collect Unmatched Worker Indices
         unmatched_worker_indices = []
