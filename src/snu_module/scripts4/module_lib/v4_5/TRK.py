@@ -41,6 +41,9 @@ class SNU_MOT(object):
         # Trajectory BBOX Size Limit
         self.trk_bbox_size_limits = None
 
+        # Set Timer Object
+        self.test_timer = Timer(convert="FPS")
+
     def __len__(self):
         return len(self.trks)
 
@@ -152,10 +155,11 @@ class SNU_MOT(object):
 
                 # Get Predicted State of Trajectory
                 trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
-
+                # self.test_timer.reset()
                 # Get Appropriate Patches
                 det_patch = frame_objs[modal].get_patch(bbox=det)
                 trk_patch = frame_objs[modal].get_patch(bbox=trk_bbox)
+                # print(self.test_timer.elapsed)
                 patch_minmax = frame_objs[modal].get_type_minmax()
 
                 # Skip Association Conditions

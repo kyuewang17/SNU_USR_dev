@@ -196,18 +196,16 @@ class ros_sensor_image(ros_sensor):
             self.HEIGHT = frame.shape[0]
 
     def get_data(self, **kwargs):
-        # Get Division
-        division = kwargs.get("division", 1.0)
-        assert isinstance(division, (float, int)) and division > 0
-
         # Get Type Conversion
         type_conversion = kwargs.get("astype")
 
-        # Return Frame Data
-        if self.dtype() != type_conversion:
-            return (self._frame / division).astype(type_conversion)
+        if type_conversion is None:
+            return self._frame
         else:
-            return (self._frame / division).astype(self.dtype())
+            if self.dtype() != type_conversion:
+                return self._frame.astype(type_conversion)
+            else:
+                return self._frame.astype(self.dtype())
 
     def get_data_aux(self):
         return self._frame
