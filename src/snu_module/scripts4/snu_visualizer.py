@@ -139,6 +139,10 @@ class vis_trk_acl_obj(vis_obj):
         modals = kwargs.get("det_modals")
         assert modals is not None
 
+        # Draw Classes
+        draw_class_list = kwargs.get("draw_classes", [1, 2])
+        assert isinstance(draw_class_list, list)
+
         # Initialize Modal-wise Trajectories
         modalwise_trks = {}
         for modal in modals:
@@ -190,6 +194,10 @@ class vis_trk_acl_obj(vis_obj):
                     # Convert State BBOX coordinate type and precision
                     state_bbox, _ = fbbox.zx_to_bbox(trk.states[-1])
                     state_bbox = state_bbox.astype(np.int32)
+
+                    # Filter-out Specific Classes
+                    if trk.label not in draw_class_list:
+                        continue
 
                     # Draw Rectangle BBOX
                     cv2.rectangle(
