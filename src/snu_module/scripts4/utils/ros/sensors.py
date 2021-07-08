@@ -662,6 +662,9 @@ class sensor_params_file_array(sensor_params):
         self.intrinsic_matrix, self.extrinsic_matrix, self.rotation_matrix = None, None, None
         self.translation_vector = None
 
+        # Initalize World Center Coordinate
+        self.world_center_coord = None
+
     # Update Parameter Variables
     def update_params(self, param_array):
         # Intrinsic-related
@@ -693,13 +696,31 @@ class sensor_params_file_array(sensor_params):
         )
         self.translation_vector = translation_vector
 
-        self.extrinsic_matrix = np.block(
-            [np.vstack((self.rotation_matrix, np.zeros((1, 3)))), np.append(translation_vector, 1).reshape(-1, 1)]
+        # Set World Center Coordinate
+        self.world_center_coord = self.get_world_coord_center()
+
+        # self.extrinsic_matrix = np.block(
+        #     [np.vstack((self.rotation_matrix, np.zeros((1, 3)))), np.append(translation_vector, 1).reshape(-1, 1)]
+        # )
+        #
+        # # Get Projection Matrix and its Pseudo-inverse
+        # self.projection_matrix = np.matmul(self.intrinsic_matrix, self.extrinsic_matrix)
+        # self.pinv_projection_matrix = np.linalg.pinv(self.projection_matrix)
+
+    def get_camera_coords_from_image_coords(self, x, y):
+        u = (x - self.cx) / self.fx
+        v = (y - self.cy) / self.fy
+        return u, v
+
+    def get_world_coords_from_camera_coords(self, u, v):
+        return np.matmul(
+            self.rotation_matrix.T,
+            (np.array([u, v, 1.0]).reshape(3, 1)) - self.translation_vector
         )
 
-        # Get Projection Matrix and its Pseudo-inverse
-        self.projection_matrix = np.matmul(self.intrinsic_matrix, self.extrinsic_matrix)
-        self.pinv_projection_matrix = np.linalg.pinv(self.projection_matrix)
+    def get_world_coords_from_image_coords(self, x, y):
+        u, v = self.get_camera_coords_from_image_coords(x=x, y=y)
+        return self.get_world_coords_from_camera_coords(u=u, v=v)
 
     # Convert PTR to Rotation Matrix
     def convert_ptr_to_rotation(self):
@@ -725,6 +746,26 @@ class sensor_params_file_array(sensor_params):
     def get_world_coord_center(self):
         return -np.matmul(self.rotation_matrix.T, self.translation_vector)
 
+    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
+        assert norm_mode in ["pos", "vel"]
+        if norm_mode == "pos":
+            world_coord = self.get_world_coords_from_image_coords(x=x, y=y)
+            x = self.world_center_coord[0, 0]
+            y = self.world_center_coord[1, 0]
+            z = self.world_center_coord[2, 0]
+            k_G = z / (z - world_coord[2, 0])
+
+            ground_coord = np.array([
+                x + k_G*(world_coord[0, 0] - x),
+                y + k_G*(world_coord[1, 0] - y),
+                0.0
+            ]).reshape(-1, 1)
+            return ground_coord
+        else:
+            g1 = self.get_ground_plane_coord(x=x, y=y, norm_mode="pos")
+            g2 = self.get_ground_plane_coord(x=0, y=0, norm_mode="pos")
+            return g1-g2
+
     def __get_marked_k(self, u, v):
         pass
 
@@ -742,7 +783,7 @@ class sensor_params_file_array(sensor_params):
 
         return _numerator / _denom
 
-    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
+    def get_ground_plane_coord_old(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
             # Normalize Coordinates
@@ -758,8 +799,8 @@ class sensor_params_file_array(sensor_params):
             )
             return ground_plane_coord
         else:
-            g1 = self.get_ground_plane_coord(x=x, y=y, norm_mode="pos")
-            g2 = self.get_ground_plane_coord(x=0, y=0, norm_mode="pos")
+            g1 = self.get_ground_plane_coord_old(x=x, y=y, norm_mode="pos")
+            g2 = self.get_ground_plane_coord_old(x=0, y=0, norm_mode="pos")
             return g1 - g2
 
 
