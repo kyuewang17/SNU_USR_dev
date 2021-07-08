@@ -40,7 +40,7 @@ class SNU_MOT(object):
         self.fidx = None
 
         # Trajectory BBOX Size Limit
-        #self.trk_bbox_size_limits = [8*8, 640*480*0.1]
+        # self.trk_bbox_size_limits = [8*8, 640*480*0.1]
         self.trk_bbox_size_limits = None
 
         # Set Timer Object
@@ -71,7 +71,7 @@ class SNU_MOT(object):
         for trkc_idx, trk_cand in enumerate(self.trk_cands):
             # (1) Trajectory Candidates with Abnormal Size
             if self.trk_bbox_size_limits is not None and trk_cand.z[-1] is not None:
-                trkc_size = trk_cand.z[-1][4]*trk_cand.z[-1][5]
+                trkc_size = trk_cand.z[-1][4] * trk_cand.z[-1][5]
                 if trkc_size < min(self.trk_bbox_size_limits) or trkc_size > max(self.trk_bbox_size_limits):
                     destroy_trkc_indices.append(trkc_idx)
 
@@ -172,9 +172,6 @@ class SNU_MOT(object):
                 if trk.label != labels[det_idx]:
                     similarity_matrix[det_idx, trk_idx] = -1000.0
                     continue
-                #if trk_patch.shape[0] >= 480*0.2 or trk_patch.shape[1] >= 640*0.2:
-                #    similarity_matrix[det_idx, trk_idx] = -1000.0
-                #    continue
 
                 # Resize Patches
                 resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
@@ -200,8 +197,8 @@ class SNU_MOT(object):
                 # print(hist_similarity)
 
                 # [2] Get IOU Similarity
-                aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
-                aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
+                aug_LT_coord = trk_bbox[0:2] - trk_velocity * 0.5
+                aug_RB_coord = trk_bbox[2:4] + trk_velocity * 1.5
                 aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
                 # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
 
@@ -337,9 +334,9 @@ class SNU_MOT(object):
                     # iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
 
                     # IOC
-                    #aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
-                    #aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
-                    #aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                    # aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
+                    # aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
+                    # aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
                     # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
                     # iou_similarity = snu_bbox.ioc(det, aug_trk_cand_bbox, denom_comp=1)
 
@@ -452,7 +449,7 @@ class SNU_MOT(object):
             _height = sync_data_dict["color"].get_data().shape[0]
 
             size_min_limit = 10
-            size_max_limit = _width*_height / 20.0
+            size_max_limit = _width * _height / 20.0
             self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data

@@ -5,9 +5,13 @@ SNU Integrated Module v2.0
 # Import Modules
 import numpy as np
 import matplotlib.pyplot as plt
+from fast_histogram import histogram1d
 
 # Import Source Modules
 import general_functions as gfuncs
+from profiling import Timer
+
+test_timer = Timer(convert="FPS")
 
 
 # Get Weighted Depth Histogram
@@ -38,16 +42,21 @@ def histogramize_patch(sensor_patch, dhist_bin, min_value, max_value, count_wind
         hist, idx = [], []
     else:
         np.set_printoptions(threshold=np.inf)
-        patch_max_value = sensor_patch.flatten().max()
+        sensor_patch_vec = sensor_patch.flatten()
+        patch_max_value = sensor_patch_vec.max()
         if patch_max_value < 0:
             hist = np.zeros(dhist_bin, dtype=int)
             idx = np.zeros(dhist_bin+1, dtype=float)
         else:
-            # Weighted Histogram
+            # Weighted Histogram (#Fixme: Fast Method???)
             if count_window is not None:
-                hist, idx = np.histogram(sensor_patch, bins=dhist_bin, range=(min_value, max_value), weights=count_window)
+                hist = histogram1d(sensor_patch_vec, bins=dhist_bin, range=(min_value, max_value), weights=count_window)
+                # hist, idx = np.histogram(sensor_patch_vec, bins=dhist_bin, range=(min_value, max_value))
+                idx = None
             else:
-                hist, idx = np.histogram(sensor_patch, bins=dhist_bin, range=(min_value, max_value))
+                hist = histogram1d(sensor_patch_vec, bins=dhist_bin, range=(min_value, max_value))
+                # hist, idx = np.histogram(sensor_patch_vec, bins=dhist_bin, range=(min_value, max_value))
+                idx = None
 
     return hist, idx
 
