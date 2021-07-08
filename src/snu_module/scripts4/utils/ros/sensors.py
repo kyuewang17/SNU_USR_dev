@@ -682,10 +682,10 @@ class sensor_params_file_array(sensor_params):
         self.roll = param_array[10] * (np.pi / 180.0)
         # self.pan, self.tilt, self.roll = param_array[8], param_array[9], param_array[10]
 
-        # Intrinsic Matrix < 3 x 4 >
-        self.intrinsic_matrix = np.array([[self.fx, self.w, self.cx, 0],
-                                          [0, self.fy, self.cy, 0],
-                                          [0, 0, 1, 0]], dtype=self.param_precision)
+        # # Intrinsic Matrix < 3 x 4 >
+        # self.intrinsic_matrix = np.array([[self.fx, self.w, self.cx, 0],
+        #                                   [0, self.fy, self.cy, 0],
+        #                                   [0, 0, 1, 0]], dtype=self.param_precision)
 
         # Rotation Matrix
         self.rotation_matrix = self.convert_ptr_to_rotation()
@@ -747,7 +747,7 @@ class sensor_params_file_array(sensor_params):
     def get_world_coord_center(self):
         return -np.matmul(self.rotation_matrix.T, self.translation_vector)
 
-    def get_ground_plane_coord_etri(self, x, y, norm_mode="pos"):
+    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
             world_coord = self.get_world_coords_from_image_coords(x=x, y=y)
@@ -799,7 +799,7 @@ class sensor_params_file_array(sensor_params):
 
         pass
 
-    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
+    def get_ground_plane_coord_old(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
             # Normalize Coordinates
