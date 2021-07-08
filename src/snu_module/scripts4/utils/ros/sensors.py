@@ -667,6 +667,7 @@ class sensor_params_file_array(sensor_params):
 
     # Update Parameter Variables
     def update_params(self, param_array):
+        import math
         # Intrinsic-related
         self.fx, self.fy, self.cx, self.cy = \
             param_array[0], param_array[1], param_array[2], param_array[3]
@@ -689,7 +690,7 @@ class sensor_params_file_array(sensor_params):
         # Rotation Matrix
         self.rotation_matrix = self.convert_ptr_to_rotation()
 
-        # Extrinsic Matrix < 4 x 4 >
+        # Translation Vector
         translation_vector = -np.matmul(
             self.rotation_matrix.T,
             np.array([self.x, self.y, self.z], dtype=self.param_precision).reshape((3, 1))
@@ -746,7 +747,7 @@ class sensor_params_file_array(sensor_params):
     def get_world_coord_center(self):
         return -np.matmul(self.rotation_matrix.T, self.translation_vector)
 
-    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
+    def get_ground_plane_coord_etri(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
             world_coord = self.get_world_coords_from_image_coords(x=x, y=y)
@@ -783,7 +784,22 @@ class sensor_params_file_array(sensor_params):
 
         return _numerator / _denom
 
-    def get_ground_plane_coord_old(self, x, y, norm_mode="pos"):
+    def __undistort(self, u, v):
+        _max_iter = 100
+        err_thr = 2 * 0.01 / (self.fx + self.fy)
+
+        # Newton Method
+        rd = np.sqrt(u*u + v*v)
+
+        # Iterate
+        cnt = 0
+        # whiㅔle (cnt < _max_iter):
+
+
+
+        pass
+
+    def get_ground_plane_coord(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
             # Normalize Coordinates
@@ -799,8 +815,8 @@ class sensor_params_file_array(sensor_params):
             )
             return ground_plane_coord
         else:
-            g1 = self.get_ground_plane_coord_old(x=x, y=y, norm_mode="pos")
-            g2 = self.get_ground_plane_coord_old(x=0, y=0, norm_mode="pos")
+            g1 = self.get_ground_plane_coord(x=x, y=y, norm_mode="pos")
+            g2 = self.get_ground_plane_coord(x=0, y=0, norm_mode="pos")
             return g1 - g2
 
 
