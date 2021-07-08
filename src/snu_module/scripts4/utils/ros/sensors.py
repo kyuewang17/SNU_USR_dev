@@ -712,10 +712,13 @@ class sensor_params_file_array(sensor_params):
         rotation_matrix = np.array([[r11, r12, r13],
                                     [r21, r22, r23],
                                     [r31, r32, r33]], dtype=self.param_precision)
-        return rotation_matrix
+        return rotation_matrix.T
 
     def get_world_coord_center(self):
         return -np.matmul(self.rotation_matrix.T, self.translation_vector)
+
+    def __get_marked_k(self, u, v):
+        pass
 
     def __get_ground_k(self, u, v):
         r13 = self.rotation_matrix[0, 2]
@@ -727,6 +730,7 @@ class sensor_params_file_array(sensor_params):
 
         _numerator = t1*r13 + t2*r23 + t3*r33
         _denom = u*r13 + v*r23 + r33
+        # _denom = u*r13 + v*r23
 
         return _numerator / _denom
 
