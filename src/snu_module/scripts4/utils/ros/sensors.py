@@ -684,11 +684,12 @@ class sensor_params_file_array(sensor_params):
         self.rotation_matrix = self.convert_ptr_to_rotation()
 
         # Extrinsic Matrix < 4 x 4 >
-        translation_vector = np.matmul(
-            self.rotation_matrix,
+        translation_vector = -np.matmul(
+            self.rotation_matrix.T,
             np.array([self.x, self.y, self.z], dtype=self.param_precision).reshape((3, 1))
         )
         self.translation_vector = translation_vector
+
         self.extrinsic_matrix = np.block(
             [np.vstack((self.rotation_matrix, np.zeros((1, 3)))), np.append(translation_vector, 1).reshape(-1, 1)]
         )
@@ -712,7 +713,11 @@ class sensor_params_file_array(sensor_params):
         rotation_matrix = np.array([[r11, r12, r13],
                                     [r21, r22, r23],
                                     [r31, r32, r33]], dtype=self.param_precision)
-        return rotation_matrix.T
+        # rotation_matrix = np.array([[r11, r12, r13],
+        #                             [r21, r22, r23],
+        #                             [r31, r32, r33],
+        #                             [0, 0, 0]], dtype=self.param_precision)
+        return rotation_matrix
 
     def get_world_coord_center(self):
         return -np.matmul(self.rotation_matrix.T, self.translation_vector)
