@@ -673,7 +673,10 @@ class sensor_params_file_array(sensor_params):
         self.x, self.y, self.z = param_array[5], param_array[6], param_array[7]
 
         # Pan / Tilt / Roll
-        self.pan, self.tilt, self.roll = param_array[8], param_array[9], param_array[10]
+        self.pan = param_array[8] * (np.pi / 180.0)
+        self.tilt = param_array[9] * (np.pi / 180.0)
+        self.roll = param_array[10] * (np.pi / 180.0)
+        # self.pan, self.tilt, self.roll = param_array[8], param_array[9], param_array[10]
 
         # Intrinsic Matrix < 3 x 4 >
         self.intrinsic_matrix = np.array([[self.fx, self.w, self.cx, 0],
