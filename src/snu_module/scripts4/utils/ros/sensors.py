@@ -692,7 +692,7 @@ class sensor_params_file_array(sensor_params):
 
         # Translation Vector
         translation_vector = -np.matmul(
-            self.rotation_matrix.T,
+            self.rotation_matrix,
             np.array([self.x, self.y, self.z], dtype=self.param_precision).reshape((3, 1))
         )
         self.translation_vector = translation_vector
@@ -793,7 +793,7 @@ class sensor_params_file_array(sensor_params):
 
         # Iterate
         cnt = 0
-        # whiㅔle (cnt < _max_iter):
+        # while (cnt < _max_iter):
 
 
 
