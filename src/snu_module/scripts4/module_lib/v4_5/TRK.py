@@ -61,6 +61,11 @@ class SNU_MOT(object):
                     self.opts.tracker.association["trk"]["destroy_age"]:
                 destroy_trk_indices.append(trk_idx)
 
+            # Destroy Too Fast Trajectories
+            vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
+            if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 3.0:
+                destroy_trk_indices.append(trk_idx)
+
         # Remove Duplicate Indices
         destroy_trk_indices = list(set(destroy_trk_indices))
         self.trks = snu_gfuncs.exclude_from_list(self.trks, destroy_trk_indices)
@@ -79,6 +84,12 @@ class SNU_MOT(object):
             if snu_gfuncs.get_max_consecutive(trk_cand.is_associated, False) == \
                     self.opts.tracker.association["trk_cand"]["destroy_age"]:
                 destroy_trkc_indices.append(trkc_idx)
+
+            # Destroy Too Fast Trajectory Candidates
+            if trk_cand.z[-1] is not None:
+                vel_vec_mag = np.sqrt(trk_cand.z[-1][2] ** 2 + trk_cand.z[-1][3] ** 2)
+                if vel_vec_mag >= (trk_cand.z[-1][4] + trk_cand.z[-1][5]) / 4.0:
+                    destroy_trkc_indices.append(trkc_idx)
 
         # Remove Duplicate Indices
         destroy_trkc_indices = list(set(destroy_trkc_indices))
@@ -174,16 +185,18 @@ class SNU_MOT(object):
                     continue
 
                 # Resize Patches
-                resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
-                resized_trk_patch = cv2.resize(trk_patch, dsize=(64, 64))
+                resized_sz = (64, 64)
+                resized_det_patch = cv2.resize(det_patch, dsize=resized_sz)
+                resized_trk_patch = cv2.resize(trk_patch, dsize=resized_sz)
 
                 # Get Histograms of Detection and Trajectory Patch
+                dhist_bin = 64
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=resized_det_patch, dhist_bin=128,
+                    sensor_patch=resized_det_patch, dhist_bin=dhist_bin,
                     min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
                 )
                 trk_hist, trk_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=resized_trk_patch, dhist_bin=128,
+                    sensor_patch=resized_trk_patch, dhist_bin=dhist_bin,
                     min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
                 )
 

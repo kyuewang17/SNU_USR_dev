@@ -455,7 +455,7 @@ class Trajectory(object_instance):
         img_coord_pos = np.array([self.x3[0][0], (self.x3[1][0] + 0.5 * self.x3[6][0])])
         img_coord_vel = np.array([self.x3[3][0], self.x3[4][0]])
 
-        # TEST
+        # NOTE: Change Variable names to Ground Coordinates
         world_coord_pos = sensor_params.get_ground_plane_coord(
             x=img_coord_pos[0], y=img_coord_pos[1], norm_mode="pos"
         )

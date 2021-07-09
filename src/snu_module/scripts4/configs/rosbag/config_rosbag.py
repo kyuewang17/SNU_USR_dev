@@ -207,8 +207,8 @@ Q = np.float32([[1, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 1, 0, 0, 0],
                 [0, 0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 0, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1]]) * 1e-3
-Q = np.multiply(Q, Q) * 1e-1
+                [0, 0, 0, 0, 0, 0, 1]]) * 1e-4
+Q = np.multiply(Q, Q)
 __C.tracker.kalman_params.Q = Q.tolist()
 
 # Measurement Covariance Matrix
