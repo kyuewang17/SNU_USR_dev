@@ -193,11 +193,11 @@ class SNU_MOT(object):
                 dhist_bin = 64
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
                     sensor_patch=resized_det_patch, dhist_bin=dhist_bin,
-                    min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
+                    min_value=patch_minmax["min"], max_value=patch_minmax["max"]
                 )
                 trk_hist, trk_hist_idx = snu_hist.histogramize_patch(
                     sensor_patch=resized_trk_patch, dhist_bin=dhist_bin,
-                    min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
+                    min_value=patch_minmax["min"], max_value=patch_minmax["max"]
                 )
 
                 # [1] Get Histogram Similarity
