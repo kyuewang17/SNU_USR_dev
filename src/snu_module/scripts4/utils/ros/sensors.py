@@ -727,8 +727,8 @@ class sensor_params_file_array(sensor_params):
             (np.array([u, v, 1.0]).reshape(3, 1)) - self.translation_vector
         )
 
-    def get_world_coords_from_image_coords(self, x, y):
-        u, v = self.get_camera_coords_from_image_coords(x=x, y=y)
+    def get_world_coords_from_image_coords(self, x, y, undistort=False):
+        u, v = self.get_camera_coords_from_image_coords(x=x, y=y, undistort=undistort)
         return self.get_world_coords_from_camera_coords(u=u, v=v)
 
     # Convert PTR to Rotation Matrix
@@ -758,7 +758,7 @@ class sensor_params_file_array(sensor_params):
     def get_ground_plane_coord(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
-            world_coord = self.get_world_coords_from_image_coords(x=x, y=y)
+            world_coord = self.get_world_coords_from_image_coords(x=x, y=y, undistort=True)
             x = self.world_center_coord[0, 0]
             y = self.world_center_coord[1, 0]
             z = self.world_center_coord[2, 0]
