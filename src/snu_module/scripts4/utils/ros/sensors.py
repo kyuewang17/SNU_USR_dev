@@ -10,6 +10,7 @@ SNU Integrated Module v4.0
     - Sensor Parameter Class
 
 """
+import copy
 import random
 import cv2
 import matplotlib
@@ -708,10 +709,17 @@ class sensor_params_file_array(sensor_params):
         # self.projection_matrix = np.matmul(self.intrinsic_matrix, self.extrinsic_matrix)
         # self.pinv_projection_matrix = np.linalg.pinv(self.projection_matrix)
 
-    def get_camera_coords_from_image_coords(self, x, y):
-        u = (x - self.cx) / self.fx
-        v = (y - self.cy) / self.fy
-        return u, v
+    def get_camera_coords_from_image_coords(self, x, y, undistort=False):
+        if undistort is False:
+            u = (x - self.cx) / self.fx
+            v = (y - self.cy) / self.fy
+            return u, v
+        else:
+            x -= self.cx
+            y -= self.cy
+            x, y = self.__undistort(x, y)
+            u, v = x / self.fx, y / self.fy
+            return u, v
 
     def get_world_coords_from_camera_coords(self, u, v):
         return np.matmul(
@@ -784,20 +792,26 @@ class sensor_params_file_array(sensor_params):
 
         return _numerator / _denom
 
-    def __undistort(self, u, v):
-        _max_iter = 100
+    def __undistort(self, u, v, max_iter=100):
         err_thr = 2 * 0.01 / (self.fx + self.fy)
 
         # Newton Method
         rd = np.sqrt(u*u + v*v)
+        ru = copy.copy(rd)
 
         # Iterate
         cnt = 0
-        # while (cnt < _max_iter):
+        while cnt < max_iter:
+            f = (1 + ru**2 + ru**4) * ru - ru
+            fp = 1 + 3*(ru**2) + 5*(ru**4)
+            ru = ru - f / fp
+            if abs(f) < err_thr:
+                break
+            cnt += 1
 
-
-
-        pass
+        u += ru / rd
+        v += ru / rd
+        return u, v
 
     def get_ground_plane_coord_old(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
