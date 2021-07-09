@@ -186,8 +186,8 @@ class SNU_MOT(object):
 
                 # Resize Patches
                 resized_sz = (64, 64)
-                resized_det_patch = cv2.resize(det_patch, dsize=resized_sz)
-                resized_trk_patch = cv2.resize(trk_patch, dsize=resized_sz)
+                resized_det_patch = cv2.resize(det_patch, dsize=resized_sz, interpolation=cv2.INTER_NEAREST)
+                resized_trk_patch = cv2.resize(trk_patch, dsize=resized_sz, interpolation=cv2.INTER_NEAREST)
 
                 # Get Histograms of Detection and Trajectory Patch
                 dhist_bin = 64
