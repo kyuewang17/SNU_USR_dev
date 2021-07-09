@@ -709,7 +709,7 @@ class sensor_params_file_array(sensor_params):
         # self.projection_matrix = np.matmul(self.intrinsic_matrix, self.extrinsic_matrix)
         # self.pinv_projection_matrix = np.linalg.pinv(self.projection_matrix)
 
-    def get_camera_coords_from_image_coords(self, x, y, undistort=False):
+    def get_camera_coords_from_image_coords(self, x, y, undistort=True):
         if undistort is False:
             u = (x - self.cx) / self.fx
             v = (y - self.cy) / self.fy
@@ -727,7 +727,7 @@ class sensor_params_file_array(sensor_params):
             (np.array([u, v, 1.0]).reshape(3, 1)) - self.translation_vector
         )
 
-    def get_world_coords_from_image_coords(self, x, y, undistort=False):
+    def get_world_coords_from_image_coords(self, x, y, undistort=True):
         u, v = self.get_camera_coords_from_image_coords(x=x, y=y, undistort=undistort)
         return self.get_world_coords_from_camera_coords(u=u, v=v)
 
@@ -758,7 +758,7 @@ class sensor_params_file_array(sensor_params):
     def get_ground_plane_coord(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]
         if norm_mode == "pos":
-            world_coord = self.get_world_coords_from_image_coords(x=x, y=y, undistort=True)
+            world_coord = self.get_world_coords_from_image_coords(x=x, y=y)
             x = self.world_center_coord[0, 0]
             y = self.world_center_coord[1, 0]
             z = self.world_center_coord[2, 0]
@@ -792,26 +792,15 @@ class sensor_params_file_array(sensor_params):
 
         return _numerator / _denom
 
-    def __undistort(self, u, v, max_iter=100):
-        err_thr = 2 * 0.01 / (self.fx + self.fy)
-
-        # Newton Method
-        rd = np.sqrt(u*u + v*v)
-        ru = copy.copy(rd)
-
-        # Iterate
-        cnt = 0
-        while cnt < max_iter:
-            f = (1 + ru**2 + ru**4) * ru - ru
-            fp = 1 + 3*(ru**2) + 5*(ru**4)
-            ru = ru - f / fp
-            if abs(f) < err_thr:
-                break
-            cnt += 1
-
-        u += ru / rd
-        v += ru / rd
-        return u, v
+    def __undistort(self, u, v):
+        if self.w <= 0:
+            return u, v
+        else:
+            rd = np.sqrt(u**2 + v**2)
+            ru = np.tan(rd*self.w) / (2*np.tan(self.w / 2))
+            u = u * ru / rd
+            v = v * ru / rd
+            return u, v
 
     def get_ground_plane_coord_old(self, x, y, norm_mode="pos"):
         assert norm_mode in ["pos", "vel"]

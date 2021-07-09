@@ -463,8 +463,8 @@ class Trajectory(object_instance):
             x=img_coord_vel[0], y=img_coord_vel[1], norm_mode="vel"
         )
 
-        self.c3 = np.array([world_coord_pos[0][0], world_coord_pos[1][0], world_coord_pos[2][0],
-                            world_coord_vel[0][0], world_coord_vel[1][0], world_coord_vel[2][0]]).reshape((6, 1))
+        self.c3 = np.array([world_coord_pos[1][0], -world_coord_pos[0][0], world_coord_pos[2][0],
+                            world_coord_vel[1][0], -world_coord_vel[0][0], world_coord_vel[2][0]]).reshape((6, 1))
 
     # Camera Coordinates(3D) to Image Coordinates(2D)
     def cam_coord_to_img_coord(self):
