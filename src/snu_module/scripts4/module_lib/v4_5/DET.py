@@ -80,7 +80,8 @@ def detect(detector, sync_data_dict, opts, is_default_device=True):
         raise NotImplementedError
 
     if (opts.detector.sensor_dict["color"] is True) and (opts.detector.sensor_dict["thermal"] is True):
-        batch_imgs = torch.cat([img, thermal_img.double()], dim=0)
+        # batch_imgs = torch.cat([img, thermal_img.double()], dim=0)
+        batch_imgs = torch.cat([img, thermal_img], dim=0)
         result_dict = detector.forward(batch_imgs)
 
         rgb_boxes, rgb_confs, rgb_labels = result_dict[0]
