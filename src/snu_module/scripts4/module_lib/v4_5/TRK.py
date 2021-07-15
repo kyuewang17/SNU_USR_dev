@@ -432,9 +432,8 @@ class SNU_MOT(object):
             new_trk_id = self.max_trk_id + 1 + sel_trkc_idx
 
             # Initialize New Trajectory
-            disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False) if sync_data_dict["disparity"] is not None else None
             new_trk = sel_trk_cand.init_tracklet(
-                disparity_frame=disparity_frame,
+                sync_data_dict=sync_data_dict,
                 trk_id=new_trk_id, fidx=self.fidx, opts=self.opts
             )
             new_trks.append(new_trk)

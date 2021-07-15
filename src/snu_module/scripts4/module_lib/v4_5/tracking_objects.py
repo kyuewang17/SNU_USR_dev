@@ -108,37 +108,6 @@ class TrajectoryCandidate(object_instance):
         # Extract Patch
         return snu_patch.get_patch(img=modal_frame, bbox=fidx_bbox)
 
-    def get_rough_depth(self, disparity_frame, opts):
-        if disparity_frame is not None:
-            # Get Disparity Patch
-            disparity_patch = self.get_fidx_patch(modal_frame=disparity_frame, fidx=self.fidxs[-1])
-
-            # Get Histogram
-            disparity_hist, disparity_hist_idx = snu_hist.histogramize_patch(
-                sensor_patch=disparity_patch, dhist_bin=opts.tracker.disparity_params["rough_hist_bin"],
-                min_value=opts.sensors.disparity["clip_distance"]["min"],
-                max_value=opts.sensors.disparity["clip_distance"]["max"]
-            )
-
-            # Get Max-bin and Representative Depth Value of Disparity Histogram
-            max_bin = disparity_hist.argmax()
-            depth_value = ((disparity_hist_idx[max_bin] + disparity_hist_idx[max_bin + 1]) / 2.0) / 1000.0
-
-        else:
-            depth_value = 1.0
-
-        return depth_value
-
-    def get_depth_new(self, sync_data_dict, **kwargs):
-        # Parse and Check KWARGS Variable
-        opts = kwargs.get("opts")
-        assert opts.__class__.__name__ == "snu_option_class"
-        modal = kwargs.get("modal")
-        assert modal in sync_data_dict.keys()
-
-        # TODO: TO-Coding
-        raise NotImplementedError()
-
     def get_depth(self, sync_data_dict, opts):
         # Parse and Check KWARGS Variable
         assert opts.__class__.__name__ == "snu_option_class"
@@ -181,56 +150,6 @@ class TrajectoryCandidate(object_instance):
 
         return depth_value
 
-    def get_depth_old(self, sync_data_dict, opts):
-        # Get Observation Patch bbox
-        patch_bbox = self.asso_dets[-1]
-
-        # If Label is Human, then re-assign bbox area
-        if self.label == 1:
-            patch_bbox = snu_bbox.resize_bbox(patch_bbox, x_ratio=0.7, y_ratio=0.7)
-
-        # Get Disparity Frame
-        disparity_frame = sync_data_dict["disparity"].get_data(is_processed=True)
-
-        # Get Disparity Patch
-        disparity_patch = snu_patch.get_patch(
-            img=disparity_frame, bbox=patch_bbox
-        )
-
-        # Project XYZ to uv-coordinate
-        uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
-            camerainfo_msg=sync_data_dict["color"].camerainfo_msg,
-            bbox=patch_bbox, random_sample_number=opts.tracker.lidar_params["sampling_number"]
-        )
-
-        # Define LiDAR Kernels
-        fusion_depth_list = []
-        for uv_array_idx in range(len(uv_array)):
-            uv_point, pc_distance = uv_array[uv_array_idx], pc_distances[uv_array_idx]
-            l_kernel = lidar_window(
-                sensor_data=sync_data_dict["disparity"],
-                pc_uv=uv_point, pc_distance=pc_distance,
-                window_size=opts.tracker.lidar_params["lidar_kernel_size"]
-            )
-            fusion_depth_list.append(l_kernel.get_window_average_depth())
-
-        # Get Depth Histogram from Fusion Depth List
-        if len(fusion_depth_list) >= np.floor(0.1 * opts.tracker.lidar_params["sampling_number"]):
-            depth_hist, depth_hist_idx = np.histogram(fusion_depth_list)
-
-            # Get Max-bin and Representative Depth Value of Disparity Histogram
-            max_bin = depth_hist.argmax()
-            depth_value = ((depth_hist_idx[max_bin] + depth_hist_idx[max_bin + 1]) / 2.0)
-
-        elif len(fusion_depth_list) > 0:
-            # Get Average Depth Value of the Fusion Depth List
-            depth_value = np.average(fusion_depth_list)
-
-        else:
-            depth_value = 0.0
-
-        return depth_value
-
     def update(self, fidx, bbox=None, conf=None):
         assert ~np.logical_xor((bbox is None), (conf is None)), "Input Error!"
 
@@ -256,12 +175,12 @@ class TrajectoryCandidate(object_instance):
         return self.BBOX_PREDICTOR.predict_bbox(frame=frame, roi_bbox=bbox)
 
     # Initialize Trajectory Class from TrajectoryCandidate
-    def init_tracklet(self, disparity_frame, trk_id, fidx, opts):
-        # Get Rough Depth
-        if disparity_frame is not None:
-            depth = self.get_rough_depth(disparity_frame, opts)
-        else:
+    def init_tracklet(self, sync_data_dict, trk_id, fidx, opts):
+        # Get Depth
+        if sync_data_dict["disparity"] is None:
             depth = 1.0
+        else:
+            depth = self.get_depth(sync_data_dict=sync_data_dict, opts=opts)
 
         # Trajectory Initialization Dictionary
         init_trk_dict = {
