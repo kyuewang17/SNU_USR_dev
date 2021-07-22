@@ -547,19 +547,53 @@ class SNU_MOT(object):
         aux_destroy_trk_indices = []
         for trk_idx, trk in enumerate(self.trks):
             # Destroy Too Fast Trajectories
-            vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
-            if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 2.5:
-                print("velocity removed: {}".format(trk_idx))
-                aux_destroy_trk_indices.append(trk_idx)
+            vel_vec_mag = np.linalg.norm(trk.x3[3:5])
+            if len(trk.states) >= 2:
+                acc_vec_mag = np.linalg.norm(trk.states[-1][3:5] - trk.states[-2][3:5])
+
+                if trk.is_associated[-1] is True:
+                    _delta = 100.0
+                else:
+                    _delta = 50.0
+
+                if acc_vec_mag > _delta*vel_vec_mag:
+                    print("acceleration too much: ( acc_mag: {:.3f} / vel_mag: {:.3f} ) TRK [{}]".format(
+                        acc_vec_mag, vel_vec_mag, trk_idx
+                    ))
+                    aux_destroy_trk_indices.append(trk_idx)
+            else:
+                if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 4.0:
+                    print("velocity too much: {}".format(trk_idx))
+                    aux_destroy_trk_indices.append(trk_idx)
 
             # Destroy distant trajectories with small-size
             trk_size = trk.x3[5][0] * trk.x3[6][0]
             dist_size_ratio = trk.depth[-1] / np.sqrt(trk_size)
             self.dsr["samples"] += 1
 
-            if self.dsr["mean"] is None:
-                self.dsr["mean"] = dist_size_ratio
-            else:
+            if self.dsr["samples"] < 200:
+                if self.dsr["mean"] is None:
+                    self.dsr["mean"] = dist_size_ratio
+                else:
+                    # Recursive DSR Mean
+                    prev_dsr_mean = copy.deepcopy(self.dsr["mean"])
+                    dsr_mean = prev_dsr_mean + (dist_size_ratio - prev_dsr_mean) / self.dsr["samples"]
+
+                    # Recursive DSR Variance
+                    prev_dsr_var = copy.deepcopy(self.dsr["var"])
+                    prev_dsr_mean_square = prev_dsr_mean ** 2
+                    first_term = prev_dsr_var + prev_dsr_mean_square - dsr_mean ** 2
+                    second_term = (dist_size_ratio ** 2 - prev_dsr_var - prev_dsr_mean_square) / self.dsr["samples"]
+                    dsr_var = first_term + second_term
+
+                    # Update
+                    self.dsr["mean"], self.dsr["var"] = dsr_mean, dsr_var
+
+                if dist_size_ratio > 0.03:
+                    # print("(INIT) dsr statistically removed: {}".format(trk_idx))
+                    aux_destroy_trk_indices.append(trk_idx)
+
+            elif self.dsr["samples"] < 1000:
                 # Recursive DSR Mean
                 prev_dsr_mean = copy.deepcopy(self.dsr["mean"])
                 dsr_mean = prev_dsr_mean + (dist_size_ratio - prev_dsr_mean) / self.dsr["samples"]
@@ -574,14 +608,12 @@ class SNU_MOT(object):
                 # Update
                 self.dsr["mean"], self.dsr["var"] = dsr_mean, dsr_var
 
-            _gamma = 1.75
-            dsr_stdev = np.sqrt(self.dsr["var"])
+                _gamma = 1.25
+                dsr_stdev = np.sqrt(self.dsr["var"])
 
-            if dist_size_ratio <= (self.dsr["mean"] + _gamma*dsr_stdev):
-                pass
-            else:
-                print("dsr statistically removed: {}".format(trk_idx))
-                aux_destroy_trk_indices.append(trk_idx)
+                if dist_size_ratio > (self.dsr["mean"] + _gamma*dsr_stdev):
+                    # print("dsr statistically removed: {}".format(trk_idx))
+                    aux_destroy_trk_indices.append(trk_idx)
 
         # Remove Duplicate Indices
         destroy_trk_indices = list(set(aux_destroy_trk_indices))
