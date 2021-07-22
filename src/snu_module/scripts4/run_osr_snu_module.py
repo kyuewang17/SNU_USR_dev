@@ -15,8 +15,13 @@ Outdoor Surveillance Robot SNU Module
 """
 import os
 import logging
+from tendo import singleton
 
 from utils.loader import set_logger, argument_parser, cfg_loader, load_options
+
+
+# Singleton Mode
+me = singleton.SingleInstance()
 
 
 # Module Loader

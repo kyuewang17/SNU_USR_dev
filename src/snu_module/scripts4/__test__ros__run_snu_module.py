@@ -21,6 +21,7 @@ import logging
 import tf2_ros
 import numpy as np
 from datetime import datetime
+from tendo import singleton
 
 import utils.loader
 from registration.tf_object import TF_TRANSFORM
@@ -31,6 +32,9 @@ from utils.ros.sensors import snu_SyncSubscriber
 import snu_visualizer
 from module_bridge import snu_algorithms
 
+
+# Test Singleton
+me = singleton.SingleInstance()
 
 # Run Mode (choose btw ==>> bag / imseq / agent)
 RUN_MODE = "bag"
