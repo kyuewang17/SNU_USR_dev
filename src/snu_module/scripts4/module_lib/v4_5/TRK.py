@@ -43,6 +43,9 @@ class SNU_MOT(object):
         # self.trk_bbox_size_limits = [8*8, 640*480*0.1]
         self.trk_bbox_size_limits = None
 
+        # Distance-Size Ratio Holder
+        self.dsr = {"mean": None, "var": 0.0, "samples": 0}
+
         # Set Timer Object
         self.test_timer = Timer(convert="FPS")
 
@@ -61,10 +64,10 @@ class SNU_MOT(object):
                     self.opts.tracker.association["trk"]["destroy_age"]:
                 destroy_trk_indices.append(trk_idx)
 
-            # Destroy Too Fast Trajectories
-            vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
-            if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 3.0:
-                destroy_trk_indices.append(trk_idx)
+            # # Destroy Too Fast Trajectories
+            # vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
+            # if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 3.0:
+            #     destroy_trk_indices.append(trk_idx)
 
         # Remove Duplicate Indices
         destroy_trk_indices = list(set(destroy_trk_indices))
@@ -447,22 +450,22 @@ class SNU_MOT(object):
 
     def __call__(self, sync_data_dict, fidx, detections):
         # NOTE: For Static Agent, use Color Modal Detection Results Only
-        # if self.opts.agent_type == "static":
-        #     trk_detections = {"color": detections["color"]}
-        # else:
-        #     if self.opts.time == "day":
-        #         trk_detections = {"color": detections["color"]}
-        #     else:
-        #         trk_detections = {"thermal": detections["thermal"]}
-        trk_detections = copy.deepcopy(detections)
+        if self.opts.agent_type == "static":
+            trk_detections = {"color": detections["color"]}
+        else:
+            if self.opts.time == "day":
+                trk_detections = {"color": detections["color"]}
+            else:
+                trk_detections = {"thermal": detections["thermal"]}
+        # trk_detections = copy.deepcopy(detections)
 
-        if self.trk_bbox_size_limits is None:
-            _width = sync_data_dict["color"].get_data().shape[1]
-            _height = sync_data_dict["color"].get_data().shape[0]
-
-            size_min_limit = 10
-            size_max_limit = _width * _height / 20.0
-            self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
+        # if self.trk_bbox_size_limits is None:
+        #     _width = sync_data_dict["color"].get_data().shape[1]
+        #     _height = sync_data_dict["color"].get_data().shape[0]
+        #
+        #     size_min_limit = 10
+        #     size_max_limit = _width * _height / 20.0
+        #     self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data
         if sync_data_dict["lidar"] is not None:
@@ -539,6 +542,59 @@ class SNU_MOT(object):
             # Adjust to Trajectory List
             self.trks[trk_idx] = trk
             del trk
+
+        # Auxiliary Trajectory Destroy
+        aux_destroy_trk_indices = []
+        for trk_idx, trk in enumerate(self.trks):
+            # Destroy Too Fast Trajectories
+            vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
+            if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 2.5:
+                print("velocity removed: {}".format(trk_idx))
+                aux_destroy_trk_indices.append(trk_idx)
+
+            # Destroy distant trajectories with small-size
+            trk_size = trk.x3[5][0] * trk.x3[6][0]
+            dist_size_ratio = trk.depth[-1] / np.sqrt(trk_size)
+            self.dsr["samples"] += 1
+
+            if self.dsr["mean"] is None:
+                self.dsr["mean"] = dist_size_ratio
+            else:
+                # Recursive DSR Mean
+                prev_dsr_mean = copy.deepcopy(self.dsr["mean"])
+                dsr_mean = prev_dsr_mean + (dist_size_ratio - prev_dsr_mean) / self.dsr["samples"]
+
+                # Recursive DSR Variance
+                prev_dsr_var = copy.deepcopy(self.dsr["var"])
+                prev_dsr_mean_square = prev_dsr_mean ** 2
+                first_term = prev_dsr_var + prev_dsr_mean_square - dsr_mean ** 2
+                second_term = (dist_size_ratio ** 2 - prev_dsr_var - prev_dsr_mean_square) / self.dsr["samples"]
+                dsr_var = first_term + second_term
+
+                # Update
+                self.dsr["mean"], self.dsr["var"] = dsr_mean, dsr_var
+
+            _gamma = 1.75
+            dsr_stdev = np.sqrt(self.dsr["var"])
+
+            if dist_size_ratio <= (self.dsr["mean"] + _gamma*dsr_stdev):
+                pass
+            else:
+                print("dsr statistically removed: {}".format(trk_idx))
+                aux_destroy_trk_indices.append(trk_idx)
+
+        # Remove Duplicate Indices
+        destroy_trk_indices = list(set(aux_destroy_trk_indices))
+        self.trks = snu_gfuncs.exclude_from_list(self.trks, destroy_trk_indices)
+
+        # if self.dsr["mean"] is not None:
+        #     # print(np.exp(self.dsr["mean"]))
+        #     print("{:.4f} , {:.4f}".format(self.dsr["mean"], np.sqrt(self.dsr["var"])))
+
+
+
+            # print(self.dsr["mean"], np.sqrt(self.dsr["var"]))
+
 
 
 if __name__ == "__main__":
