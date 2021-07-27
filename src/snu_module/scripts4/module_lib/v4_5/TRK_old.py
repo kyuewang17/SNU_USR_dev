@@ -9,9 +9,11 @@ SNU Integrated Module v4.5
 # Import Modules
 import random
 from utils.profiling import Timer
+import copy
 import cv2
 import numpy as np
-from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
+# from sklearn.utils.linear_assignment_ import linear_assignment as hungarian
+from scipy.optimize import linear_sum_assignment as hungarian
 
 # Import Custom Modules
 import utils.patch as snu_patch
@@ -38,7 +40,14 @@ class SNU_MOT(object):
         self.fidx = None
 
         # Trajectory BBOX Size Limit
+        # self.trk_bbox_size_limits = [8*8, 640*480*0.1]
         self.trk_bbox_size_limits = None
+
+        # Distance-Size Ratio Holder
+        self.dsr = {"mean": None, "var": 0.0, "samples": 0}
+
+        # Set Timer Object
+        self.test_timer = Timer(convert="FPS")
 
     def __len__(self):
         return len(self.trks)
@@ -55,6 +64,11 @@ class SNU_MOT(object):
                     self.opts.tracker.association["trk"]["destroy_age"]:
                 destroy_trk_indices.append(trk_idx)
 
+            # # Destroy Too Fast Trajectories
+            # vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
+            # if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 3.0:
+            #     destroy_trk_indices.append(trk_idx)
+
         # Remove Duplicate Indices
         destroy_trk_indices = list(set(destroy_trk_indices))
         self.trks = snu_gfuncs.exclude_from_list(self.trks, destroy_trk_indices)
@@ -65,7 +79,7 @@ class SNU_MOT(object):
         for trkc_idx, trk_cand in enumerate(self.trk_cands):
             # (1) Trajectory Candidates with Abnormal Size
             if self.trk_bbox_size_limits is not None and trk_cand.z[-1] is not None:
-                trkc_size = trk_cand.z[-1][4]*trk_cand.z[-1][5]
+                trkc_size = trk_cand.z[-1][4] * trk_cand.z[-1][5]
                 if trkc_size < min(self.trk_bbox_size_limits) or trkc_size > max(self.trk_bbox_size_limits):
                     destroy_trkc_indices.append(trkc_idx)
 
@@ -74,6 +88,12 @@ class SNU_MOT(object):
                     self.opts.tracker.association["trk_cand"]["destroy_age"]:
                 destroy_trkc_indices.append(trkc_idx)
 
+            # Destroy Too Fast Trajectory Candidates
+            if trk_cand.z[-1] is not None:
+                vel_vec_mag = np.sqrt(trk_cand.z[-1][2] ** 2 + trk_cand.z[-1][3] ** 2)
+                if vel_vec_mag >= (trk_cand.z[-1][4] + trk_cand.z[-1][5]) / 4.0:
+                    destroy_trkc_indices.append(trkc_idx)
+
         # Remove Duplicate Indices
         destroy_trkc_indices = list(set(destroy_trkc_indices))
         self.trk_cands = snu_gfuncs.exclude_from_list(self.trk_cands, destroy_trkc_indices)
@@ -81,7 +101,8 @@ class SNU_MOT(object):
     @staticmethod
     def associate(similarity_matrix, similarity_thresh, workers, works):
         # Hungarian Algorithm
-        matched_indices = hungarian(-similarity_matrix)
+        matched_indices = np.array(hungarian(-similarity_matrix)).T
+        # matched_indices = (hungarian(-similarity_matrix))
 
         # Collect Unmatched Worker Indices
         unmatched_worker_indices = []
@@ -137,23 +158,6 @@ class SNU_MOT(object):
                 frame_objs[modal] = sync_data_dict[modal]
         frame_objs["disparity"] = sync_data_dict["disparity"]
 
-        color_frame = sync_data_dict["color"].get_data()
-        # disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False)
-
-        # Normalize Disparity Frame to uint8 scale (0~255)
-        if sync_data_dict["disparity"] is not None:
-            normalized_disparity_frame = sync_data_dict["disparity"].get_normalized_data(
-                min_value=0.0, max_value=255.0
-            )
-        else:
-            normalized_disparity_frame = None
-
-        # Concatenate
-        if normalized_disparity_frame is not None:
-            frame = np.dstack((color_frame, normalized_disparity_frame.astype(np.uint8)))
-        else:
-            frame = color_frame
-
         # Calculate Similarity Matrix
         for det_idx, det in enumerate(dets):
             for trk_idx, trk in enumerate(self.trks):
@@ -168,15 +172,12 @@ class SNU_MOT(object):
 
                 # Get Predicted State of Trajectory
                 trk_bbox, trk_velocity = snu_bbox.zx_to_bbox(trk.pred_states[-1])
-
+                # self.test_timer.reset()
                 # Get Appropriate Patches
                 det_patch = frame_objs[modal].get_patch(bbox=det)
                 trk_patch = frame_objs[modal].get_patch(bbox=trk_bbox)
+                # print(self.test_timer.elapsed)
                 patch_minmax = frame_objs[modal].get_type_minmax()
-
-                # # Get RGBD Patches
-                # det_patch = snu_patch.get_patch(frame, det)
-                # trk_patch = snu_patch.get_patch(frame, trk_bbox)
 
                 # Skip Association Conditions
                 if trk_patch.shape[0] <= 0 or trk_patch.shape[1] <= 0:
@@ -187,17 +188,19 @@ class SNU_MOT(object):
                     continue
 
                 # Resize Patches
-                resized_det_patch = cv2.resize(det_patch, dsize=(64, 64))
-                resized_trk_patch = cv2.resize(trk_patch, dsize=(64, 64))
+                resized_sz = (64, 64)
+                resized_det_patch = cv2.resize(det_patch, dsize=resized_sz, interpolation=cv2.INTER_NEAREST)
+                resized_trk_patch = cv2.resize(trk_patch, dsize=resized_sz, interpolation=cv2.INTER_NEAREST)
 
                 # Get Histograms of Detection and Trajectory Patch
+                dhist_bin = 64
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=resized_det_patch, dhist_bin=128,
-                    min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
+                    sensor_patch=resized_det_patch, dhist_bin=dhist_bin,
+                    min_value=patch_minmax["min"], max_value=patch_minmax["max"]
                 )
                 trk_hist, trk_hist_idx = snu_hist.histogramize_patch(
-                    sensor_patch=resized_trk_patch, dhist_bin=128,
-                    min_value=patch_minmax["min"], max_value=patch_minmax["max"], count_window=None
+                    sensor_patch=resized_trk_patch, dhist_bin=dhist_bin,
+                    min_value=patch_minmax["min"], max_value=patch_minmax["max"]
                 )
 
                 # [1] Get Histogram Similarity
@@ -210,8 +213,8 @@ class SNU_MOT(object):
                 # print(hist_similarity)
 
                 # [2] Get IOU Similarity
-                aug_LT_coord = trk_bbox[0:2] - trk_velocity*0.5
-                aug_RB_coord = trk_bbox[2:4] + trk_velocity*1.5
+                aug_LT_coord = trk_bbox[0:2] - trk_velocity * 0.5
+                aug_RB_coord = trk_bbox[2:4] + trk_velocity * 1.5
                 aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
                 # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
 
@@ -248,12 +251,9 @@ class SNU_MOT(object):
                 workers=dets, works=self.trks
             )
 
-        test_color_ts = sync_data_dict["color"]._timestamp
-
         # Update Associated Trajectories
         for match in matches:
             matched_det, matched_conf, matched_label = dets[match[0]], confs[match[0]], labels[match[0]]
-            matched_modal = modals[match[0]]
 
             matched_trk = self.trks[match[1]]
             matched_trk.get_depth(sync_data_dict, self.opts)
@@ -350,9 +350,9 @@ class SNU_MOT(object):
                     # iou_similarity = snu_bbox.iou(det, trk_cand_bbox)
 
                     # IOC
-                    #aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
-                    #aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
-                    #aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                    # aug_LT_coord = trk_cand_bbox[0:2] - trk_cand_vel * 0.5
+                    # aug_RB_coord = trk_cand_bbox[2:4] + trk_cand_vel * 1.5
+                    # aug_trk_cand_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
                     # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
                     # iou_similarity = snu_bbox.ioc(det, aug_trk_cand_bbox, denom_comp=1)
 
@@ -435,9 +435,8 @@ class SNU_MOT(object):
             new_trk_id = self.max_trk_id + 1 + sel_trkc_idx
 
             # Initialize New Trajectory
-            disparity_frame = sync_data_dict["disparity"].get_data(is_processed=False) if sync_data_dict["disparity"] is not None else None
             new_trk = sel_trk_cand.init_tracklet(
-                disparity_frame=disparity_frame,
+                sync_data_dict=sync_data_dict,
                 trk_id=new_trk_id, fidx=self.fidx, opts=self.opts
             )
             new_trks.append(new_trk)
@@ -450,13 +449,23 @@ class SNU_MOT(object):
         return new_trks
 
     def __call__(self, sync_data_dict, fidx, detections):
-        if self.trk_bbox_size_limits is None:
-            _width = sync_data_dict["color"].get_data().shape[1]
-            _height = sync_data_dict["color"].get_data().shape[0]
+        # NOTE: For Static Agent, use Color Modal Detection Results Only
+        if self.opts.agent_type == "static":
+            trk_detections = {"color": detections["color"]}
+        else:
+            if self.opts.time == "day":
+                trk_detections = {"color": detections["color"]}
+            else:
+                trk_detections = {"thermal": detections["thermal"]}
+        # trk_detections = copy.deepcopy(detections)
 
-            size_min_limit = 10
-            size_max_limit = _width*_height / 2.0
-            self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
+        # if self.trk_bbox_size_limits is None:
+        #     _width = sync_data_dict["color"].get_data().shape[1]
+        #     _height = sync_data_dict["color"].get_data().shape[0]
+        #
+        #     size_min_limit = 10
+        #     size_max_limit = _width * _height / 20.0
+        #     self.trk_bbox_size_limits = [size_min_limit, size_max_limit]
 
         # Load Point-Cloud XYZ Data
         if sync_data_dict["lidar"] is not None:
@@ -473,14 +482,15 @@ class SNU_MOT(object):
 
         # Associate Detections with Trajectories (return residual detections)
         if len(self.trks) != 0:
-            detections = self.associate_detections_with_trajectories(
-                sync_data_dict=sync_data_dict, detections=detections
+            trk_detections = self.associate_detections_with_trajectories(
+                sync_data_dict=sync_data_dict, detections=trk_detections
             )
 
         # Associate Residual Detections with Trajectory Candidates
         if len(self.trk_cands) == 0:
-            for modal, modal_detections in detections.items():
+            for modal, modal_detections in trk_detections.items():
                 for det_idx, det in enumerate(modal_detections["dets"]):
+                    # Initialize Trajectory Candidate
                     new_trk_cand = TrajectoryCandidate(
                         frame=sync_data_dict[modal].get_data(), modal=modal, bbox=det,
                         conf=modal_detections["confs"][det_idx], label=modal_detections["labels"][det_idx],
@@ -490,7 +500,7 @@ class SNU_MOT(object):
                     del new_trk_cand
         else:
             self.associate_resdets_trkcands(
-                sync_data_dict=sync_data_dict, residual_detections=detections
+                sync_data_dict=sync_data_dict, residual_detections=trk_detections
             )
         # Generate New Trajectories from Trajectory Candidates
         new_trks = self.generate_new_trajectories(sync_data_dict=sync_data_dict, new_trks=new_trks)
@@ -503,17 +513,28 @@ class SNU_MOT(object):
             del new_trk
         del new_trks
 
+        # Allocate Dictionary for Sensor Parameters
+        trk_sensor_param_dict = {}
+        for trk in self.trks:
+            if trk.modal not in trk_sensor_param_dict.keys():
+                trk_sensor_param_dict[trk.modal] = sync_data_dict[trk.modal].get_sensor_params()
+
         # Trajectory Prediction, Projection, and Message
-        # TODO: Retrieve Code for Static Agent (github branch), consider modality!!
         for trk_idx, trk in enumerate(self.trks):
+            # Get Sensor Params
+            sensor_params = trk_sensor_param_dict[trk.modal]
+
             # Get Pseudo-inverse of Projection Matrix
-            Pinv = sync_data_dict[trk.modal].get_sensor_params().pinv_projection_matrix
+            Pinv = sensor_params.pinv_projection_matrix
 
             # Predict Trajectory States
             trk.predict()
 
             # Project Image Coordinate State (x3) to Camera Coordinate State (c3)
-            trk.img_coord_to_cam_coord(inverse_projection_matrix=Pinv, opts=self.opts)
+            if self.opts.agent_type == "dynamic":
+                trk.img_coord_to_cam_coord(inverse_projection_matrix=Pinv, opts=self.opts)
+            elif self.opts.agent_type == "static":
+                trk.img_coord_to_ground_plane(sensor_params=sensor_params)
 
             # Compute RPY
             trk.compute_rpy(roll=0.0)
@@ -521,6 +542,91 @@ class SNU_MOT(object):
             # Adjust to Trajectory List
             self.trks[trk_idx] = trk
             del trk
+
+        # Auxiliary Trajectory Destroy
+        aux_destroy_trk_indices = []
+        for trk_idx, trk in enumerate(self.trks):
+            # Destroy Too Fast Trajectories
+            vel_vec_mag = np.linalg.norm(trk.x3[3:5])
+            if len(trk.states) >= 2:
+                acc_vec_mag = np.linalg.norm(trk.states[-1][3:5] - trk.states[-2][3:5])
+
+                if trk.is_associated[-1] is True:
+                    _delta = 100.0
+                else:
+                    _delta = 50.0
+
+                if acc_vec_mag > _delta*vel_vec_mag:
+                    print("acceleration too much: ( acc_mag: {:.3f} / vel_mag: {:.3f} ) TRK [{}]".format(
+                        acc_vec_mag, vel_vec_mag, trk_idx
+                    ))
+                    aux_destroy_trk_indices.append(trk_idx)
+            else:
+                if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 4.0:
+                    print("velocity too much: {}".format(trk_idx))
+                    aux_destroy_trk_indices.append(trk_idx)
+
+            # Destroy distant trajectories with small-size
+            trk_size = trk.x3[5][0] * trk.x3[6][0]
+            dist_size_ratio = trk.depth[-1] / np.sqrt(trk_size)
+            self.dsr["samples"] += 1
+
+            if self.dsr["samples"] < 200:
+                if self.dsr["mean"] is None:
+                    self.dsr["mean"] = dist_size_ratio
+                else:
+                    # Recursive DSR Mean
+                    prev_dsr_mean = copy.deepcopy(self.dsr["mean"])
+                    dsr_mean = prev_dsr_mean + (dist_size_ratio - prev_dsr_mean) / self.dsr["samples"]
+
+                    # Recursive DSR Variance
+                    prev_dsr_var = copy.deepcopy(self.dsr["var"])
+                    prev_dsr_mean_square = prev_dsr_mean ** 2
+                    first_term = prev_dsr_var + prev_dsr_mean_square - dsr_mean ** 2
+                    second_term = (dist_size_ratio ** 2 - prev_dsr_var - prev_dsr_mean_square) / self.dsr["samples"]
+                    dsr_var = first_term + second_term
+
+                    # Update
+                    self.dsr["mean"], self.dsr["var"] = dsr_mean, dsr_var
+
+                if dist_size_ratio > 0.03:
+                    # print("(INIT) dsr statistically removed: {}".format(trk_idx))
+                    aux_destroy_trk_indices.append(trk_idx)
+
+            elif self.dsr["samples"] < 1000:
+                # Recursive DSR Mean
+                prev_dsr_mean = copy.deepcopy(self.dsr["mean"])
+                dsr_mean = prev_dsr_mean + (dist_size_ratio - prev_dsr_mean) / self.dsr["samples"]
+
+                # Recursive DSR Variance
+                prev_dsr_var = copy.deepcopy(self.dsr["var"])
+                prev_dsr_mean_square = prev_dsr_mean ** 2
+                first_term = prev_dsr_var + prev_dsr_mean_square - dsr_mean ** 2
+                second_term = (dist_size_ratio ** 2 - prev_dsr_var - prev_dsr_mean_square) / self.dsr["samples"]
+                dsr_var = first_term + second_term
+
+                # Update
+                self.dsr["mean"], self.dsr["var"] = dsr_mean, dsr_var
+
+                _gamma = 1.25
+                dsr_stdev = np.sqrt(self.dsr["var"])
+
+                if dist_size_ratio > (self.dsr["mean"] + _gamma*dsr_stdev):
+                    # print("dsr statistically removed: {}".format(trk_idx))
+                    aux_destroy_trk_indices.append(trk_idx)
+
+        # Remove Duplicate Indices
+        destroy_trk_indices = list(set(aux_destroy_trk_indices))
+        self.trks = snu_gfuncs.exclude_from_list(self.trks, destroy_trk_indices)
+
+        # if self.dsr["mean"] is not None:
+        #     # print(np.exp(self.dsr["mean"]))
+        #     print("{:.4f} , {:.4f}".format(self.dsr["mean"], np.sqrt(self.dsr["var"])))
+
+
+
+            # print(self.dsr["mean"], np.sqrt(self.dsr["var"]))
+
 
 
 if __name__ == "__main__":
