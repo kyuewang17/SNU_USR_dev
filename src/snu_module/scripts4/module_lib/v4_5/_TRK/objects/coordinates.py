@@ -77,6 +77,37 @@ class OBSERVATION_COORD(COORD):
     def get_intersection_bbox(self, other, **kwargs):
         assert isinstance(other, (BBOX, OBSERVATION_COORD, STATE_IMAGE_COORD))
 
+        # Get Return Format
+        return_fmt = kwargs.get("return_fmt", "LTRB")
+        assert return_fmt in ["LTRB", "LTWH", "XYWH"]
+
+        # Get Left-Top Right-Bottom Coordinates
+        ltrb_bbox = self.get_bbox(conversion_fmt="LTRB")
+
+        if isinstance(other, BBOX):
+            # Get Min-Max Coordinates
+            uu1 = np.maximum(ltrb_bbox.lt_x, other.lt_x)
+            vv1 = np.maximum(ltrb_bbox.lt_y, other.lt_y)
+            uu2 = np.minimum(ltrb_bbox.rb_x, other.rb_x)
+            vv2 = np.minimum(ltrb_bbox.rb_y, other.rb_y)
+
+        elif isinstance(other, OBSERVATION_COORD):
+            other_ltrb_bbox = other.get_bbox(conversion_fmt="LTRB")
+
+            # Get Min-Max Coordinates
+            uu1 = np.maximum(ltrb_bbox.lt_x, other_ltrb_bbox.lt_x)
+            vv1 = np.maximum(ltrb_bbox.lt_y, other_ltrb_bbox.lt_y)
+            uu2 = np.minimum(ltrb_bbox.rb_x, other_ltrb_bbox.rb_x)
+            vv2 = np.minimum(ltrb_bbox.rb_y, other_ltrb_bbox.rb_y)
+
+        elif isinstance(other, STATE_IMAGE_COORD):
+
+
+
+
+            pass
+
+
 
 class STATE_IMAGE_COORD(COORD):
     def __init__(self, **kwargs):
