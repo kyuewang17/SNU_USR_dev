@@ -35,6 +35,15 @@ class object_instance(object):
         else:
             return other + self
 
+    def __eq__(self, other):
+        assert isinstance(other, object_instance)
+        assert self.label == other.label
+
+        if self.id == other.id:
+            return True
+        else:
+            return False
+
     def __len__(self):
         return len(self.frame_indices)
 

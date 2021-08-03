@@ -83,6 +83,21 @@ class BBOX(object):
         self.__iter_counter += 1
         return iter_item
 
+    def __sub__(self, other):
+        if isinstance(other, (list, tuple)):
+            assert len(other) == 2
+            v_x, v_y = self.x - other[0], self.y - other[1]
+        elif isinstance(other, np.ndarray):
+            assert other.size == 2
+            other_vec = other.reshape(2)
+            v_x, v_y = self.x - other_vec[0], self.y - other_vec[1]
+        elif isinstance(other, BBOX):
+            v_x, v_y = self.x - other.x, self.y - other.y
+        else:
+            raise NotImplementedError()
+
+        return np.array([v_x, v_y])
+
     def get_size(self):
         return np.maximum(self.w * self.h, 0.0)
 
