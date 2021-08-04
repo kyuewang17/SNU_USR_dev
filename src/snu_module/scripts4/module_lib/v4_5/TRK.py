@@ -208,6 +208,20 @@ class SNU_MOT(object):
                     similarity_matrix[det_idx, trk_idx] = np.nan
                     continue
 
+                # [1] Get IOU(IOC) Similarity
+                aug_LT_coord = trk_bbox[0:2] - trk_velocity * 0.5
+                aug_RB_coord = trk_bbox[2:4] + trk_velocity * 1.5
+                aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
+                # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
+
+                iou_similarity = snu_bbox.ioc(det, aug_trk_bbox, denom_comp=1)
+                # iou_similarity = snu_bbox.iou(det, aug_trk_bbox)
+                # iou_similarity = snu_bbox.iou(det, trk_bbox)
+                # iou_similarity = 1.0
+                if iou_similarity < 1e-3:
+                    similarity_matrix[det_idx, trk_idx] = np.nan
+                    continue
+
                 # Resize Patches
                 resized_sz = (64, 64)
                 resized_det_patch = cv2.resize(det_patch, dsize=resized_sz, interpolation=cv2.INTER_NEAREST)
@@ -224,7 +238,7 @@ class SNU_MOT(object):
                     min_value=patch_minmax["min"], max_value=patch_minmax["max"]
                 )
 
-                # [1] Get Histogram Similarity
+                # [2] Get Histogram Similarity
                 if len(det_hist) == 0 or len(trk_hist) == 0:
                     hist_similarity = 1.0
                 else:
@@ -232,17 +246,6 @@ class SNU_MOT(object):
                     hist_similarity = np.sqrt(hist_product / (np.linalg.norm(det_hist) * np.linalg.norm(trk_hist)))
                     hist_similarity = hist_similarity[0, 0]
                 # print(hist_similarity)
-
-                # [2] Get IOU Similarity
-                aug_LT_coord = trk_bbox[0:2] - trk_velocity * 0.5
-                aug_RB_coord = trk_bbox[2:4] + trk_velocity * 1.5
-                aug_trk_bbox = np.concatenate((aug_LT_coord, aug_RB_coord))
-                # iou_similarity = 1.0 if snu_bbox.iou(det, aug_trk_bbox) > 0 else 0.0
-
-                iou_similarity = snu_bbox.ioc(det, aug_trk_bbox, denom_comp=1)
-                # iou_similarity = snu_bbox.iou(det, aug_trk_bbox)
-                # iou_similarity = snu_bbox.iou(det, trk_bbox)
-                # iou_similarity = 1.0
 
                 # [3] Get Distance Similarity
                 l2_distance = snu_gfuncs.l2_distance_dim2(
@@ -567,30 +570,37 @@ class SNU_MOT(object):
         # Auxiliary Trajectory Destroy
         aux_destroy_trk_indices = []
         for trk_idx, trk in enumerate(self.trks):
-            # Destroy Too Fast Trajectories
-            vel_vec_mag = np.linalg.norm(trk.x3[3:5])
-            if len(trk.states) >= 2:
-                acc_vec_mag = np.linalg.norm(trk.states[-1][3:5] - trk.states[-2][3:5])
+            # # Destroy Too Fast Trajectories
+            # vel_vec_mag = np.linalg.norm(trk.x3[3:5])
+            # if len(trk.states) >= 2:
+            #     acc_vec_mag = np.linalg.norm(trk.states[-1][3:5] - trk.states[-2][3:5])
+            #
+            #     if trk.is_associated[-1] is True:
+            #         _delta = 100.0
+            #     else:
+            #         _delta = 50.0
+            #
+            #     if acc_vec_mag > _delta*vel_vec_mag:
+            #         print("acceleration too much: ( acc_mag: {:.3f} / vel_mag: {:.3f} ) TRK [{}]".format(
+            #             acc_vec_mag, vel_vec_mag, trk.id
+            #         ))
+            #         aux_destroy_trk_indices.append(trk_idx)
+            # else:
+            #     if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 3.0:
+            #         print("velocity too much: TRK [{}]".format(trk.id))
+            #         aux_destroy_trk_indices.append(trk_idx)
 
-                if trk.is_associated[-1] is True:
-                    _delta = 100.0
-                else:
-                    _delta = 50.0
+                    # # Destroy Too Fast Trajectories
+                    # vel_vec_mag = np.sqrt(trk.x3[3][0] ** 2 + trk.x3[4][0] ** 2)
+                    # if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 3.0:
+                    #     destroy_trk_indices.append(trk_idx)
 
-                if acc_vec_mag > _delta*vel_vec_mag:
-                    print("acceleration too much: ( acc_mag: {:.3f} / vel_mag: {:.3f} ) TRK [{}]".format(
-                        acc_vec_mag, vel_vec_mag, trk_idx
-                    ))
-                    aux_destroy_trk_indices.append(trk_idx)
-            else:
-                if vel_vec_mag >= (trk.x3[5][0] + trk.x3[6][0]) / 4.0:
-                    print("velocity too much: {}".format(trk_idx))
-                    aux_destroy_trk_indices.append(trk_idx)
-
-            # # Destroy Small Trajectories (brute-force way)
-            # trk_size = trk.x3[5][0] * trk.x3[6][0]
-            # if trk_size < 1000:
-            #     aux_destroy_trk_indices.append(trk_idx)
+            # Destroy Small Trajectories (brute-force way)
+            trk_relative_size = trk.x3[5][0] / 640.0 + trk.x3[6][0] / 480.0
+            trk_depth = trk.depth[-1]
+            trk_size_dist_cost = trk_depth / trk_relative_size
+            if trk_size_dist_cost >= 10:
+                aux_destroy_trk_indices.append(trk_idx)
 
             # # Destroy distant trajectories with small-size
             # trk_size = trk.x3[5][0] * trk.x3[6][0]
