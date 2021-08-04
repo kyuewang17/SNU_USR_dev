@@ -100,6 +100,24 @@ class SNU_MOT(object):
 
     @staticmethod
     def associate(similarity_matrix, similarity_thresh, workers, works):
+        # Handle Numpy Nan Values
+        nan_flag_matrix = np.isnan(similarity_matrix)
+
+        # If All Similarity Matrix Elements are np.nan, return as below
+        if nan_flag_matrix.all():
+            matches = []
+            unmatched_worker_indices = list(range(len(workers)))
+            unmatched_work_indices = list(range(len(works)))
+            return matches, unmatched_worker_indices, unmatched_work_indices
+
+        # If Any np.nan elements are detected, replace the value with very low numeric values
+        elif nan_flag_matrix.any():
+            # Get Negative Maximum Array Value, excluding np.nan elements
+            neg_max_arr = -np.nanmax(similarity_matrix)
+
+            # Set nan element values to 'neg_max_arr'
+            similarity_matrix[nan_flag_matrix] = neg_max_arr
+
         # Hungarian Algorithm
         matched_indices = np.array(hungarian(-similarity_matrix)).T
 
@@ -118,11 +136,15 @@ class SNU_MOT(object):
         # Filter-out Matched with Cost lower then the threshold
         matches = []
         for m in matched_indices:
-            if similarity_matrix[m[0], m[1]] < similarity_thresh:
+            if nan_flag_matrix[m[0], m[1]] is True:
                 unmatched_worker_indices.append(m[0])
                 unmatched_work_indices.append(m[1])
             else:
-                matches.append(m.reshape(1, 2))
+                if similarity_matrix[m[0], m[1]] < similarity_thresh:
+                    unmatched_worker_indices.append(m[0])
+                    unmatched_work_indices.append(m[1])
+                else:
+                    matches.append(m.reshape(1, 2))
         if len(matches) == 0:
             matches = np.empty((0, 2), dtype=int)
         else:
@@ -162,7 +184,7 @@ class SNU_MOT(object):
             for trk_idx, trk in enumerate(self.trks):
                 # Check if Modality btw Detection and Trajectory Candidate is Equal (if not match then continue loop)
                 if modals[det_idx] != trk.modal:
-                    similarity_matrix[det_idx, trk_idx] = -1000.0
+                    similarity_matrix[det_idx, trk_idx] = np.nan
                     continue
                 else:
                     modal = modals[det_idx]
@@ -180,10 +202,10 @@ class SNU_MOT(object):
 
                 # Skip Association Conditions
                 if trk_patch.shape[0] <= 0 or trk_patch.shape[1] <= 0:
-                    similarity_matrix[det_idx, trk_idx] = -1000.0
+                    similarity_matrix[det_idx, trk_idx] = np.nan
                     continue
                 if trk.label != labels[det_idx]:
-                    similarity_matrix[det_idx, trk_idx] = -1000.0
+                    similarity_matrix[det_idx, trk_idx] = np.nan
                     continue
 
                 # Resize Patches
@@ -331,14 +353,14 @@ class SNU_MOT(object):
             for trk_cand_idx, trk_cand in enumerate(self.trk_cands):
                 # Check if Modality btw Detection and Trajectory Candidate is Equal (if not match then continue loop)
                 if modals[det_idx] != trk_cand.modal:
-                    similarity_matrix[det_idx, trk_cand_idx] = -1000.0
+                    similarity_matrix[det_idx, trk_cand_idx] = np.nan
                     continue
                 else:
                     modal = modals[det_idx]
 
                 # Get Similarity
                 if trk_cand.z[-1] is None:
-                    similarity = -1.0
+                    similarity = np.nan
                 else:
                     det_zx = snu_bbox.bbox_to_zx(det)
                     trk_cand_bbox, trk_cand_vel = snu_bbox.zx_to_bbox(trk_cand.z[-1])
@@ -565,10 +587,10 @@ class SNU_MOT(object):
                     print("velocity too much: {}".format(trk_idx))
                     aux_destroy_trk_indices.append(trk_idx)
 
-            # Destroy Small Trajectories (brute-force way)
-            trk_size = trk.x3[5][0] * trk.x3[6][0]
-            if trk_size < 1000:
-                aux_destroy_trk_indices.append(trk_idx)
+            # # Destroy Small Trajectories (brute-force way)
+            # trk_size = trk.x3[5][0] * trk.x3[6][0]
+            # if trk_size < 1000:
+            #     aux_destroy_trk_indices.append(trk_idx)
 
             # # Destroy distant trajectories with small-size
             # trk_size = trk.x3[5][0] * trk.x3[6][0]
