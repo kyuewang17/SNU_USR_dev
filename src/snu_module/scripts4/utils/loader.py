@@ -154,17 +154,6 @@ def cfg_loader(logger, args):
             time.sleep(0.5)
         else:
             logger.info("Loading Configuration File from {}".format(cfg_file_path))
-    elif args.arg_opts == "imseq":
-        from configs.imseq.config_imseq import cfg
-        imseq_folder_name = args.imseq_base_path.split("/")[-1]
-        cfg_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "imseq", imseq_folder_name)
-        if os.path.isfile(cfg_file_path) is False:
-            logger.warn("Could Not Find the Configuration File for Current Targeted Image Sequence...!")
-            logger.warn("Loading Base Configuration File Instead...!")
-            cfg_file_path = os.path.join(os.path.dirname(cfg_file_path), "base.yaml")
-            time.sleep(0.5)
-        else:
-            logger.info("Loading Configuration File from {}".format(cfg_file_path))
     elif args.arg_opts == "agent":
         from configs.agents.config_agents import cfg
         cfg_file_path = os.path.join(

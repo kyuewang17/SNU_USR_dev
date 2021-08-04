@@ -42,9 +42,24 @@ class TRAJECTORY(base.object_instance):
 
         # Initialize Kalman State
         self.x3 = init_z.to_state(depth=asso_depths[-1], d_depth=asso_depths[-1]-asso_depths[-2])
-        
 
-        #
+        # 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
