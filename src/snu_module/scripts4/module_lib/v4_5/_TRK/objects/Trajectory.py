@@ -9,7 +9,7 @@ from module_lib.v4_5._TRK.objects import object_base, bbox, coordinates
 from module_lib.v4_5._TRK.params.kalman_filter import KALMAN_FILTER
 
 
-class TRAJECTORY(base.object_instance):
+class TRAJECTORY(object_base.object_instance):
     def __init__(self, **kwargs):
         super(TRAJECTORY, self).__init__(**kwargs)
 
@@ -107,7 +107,7 @@ class TRAJECTORY(base.object_instance):
         self.x3p = coordinates.STATE_IMAGE_COORD(input_arr=x3p)
 
 
-class TRAJECTORIES(base.object_instances):
+class TRAJECTORIES(object_base.object_instances):
     def __init__(self, **kwargs):
         super(TRAJECTORIES, self).__init__(**kwargs)
 
@@ -119,4 +119,5 @@ class TRAJECTORIES(base.object_instances):
 
 
 if __name__ == "__main__":
+    tt = np.array([1,2,3])
     pass
