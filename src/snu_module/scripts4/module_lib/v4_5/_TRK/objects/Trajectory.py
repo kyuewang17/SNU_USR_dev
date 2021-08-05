@@ -5,7 +5,7 @@ SNU Integrated Module v5.0
 """
 import numpy as np
 
-from module_lib.v4_5._TRK.objects import base, bbox, coordinates
+from module_lib.v4_5._TRK.objects import object_base, bbox, coordinates
 from module_lib.v4_5._TRK.params.kalman_filter import KALMAN_FILTER
 
 
