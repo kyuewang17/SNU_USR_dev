@@ -42,38 +42,80 @@ class TRAJECTORY(base.object_instance):
             bbox_object=curr_asso_det_bbox, dx=curr_asso_vel[0], dy=curr_asso_vel[1]
         )
 
-        # Initialize Kalman State
-        self.x3 = init_z.to_state(depth=asso_depths[-1], d_depth=asso_depths[-1]-asso_depths[-2])
+        # Initialize State and State Prediction
+        self.x3 = init_z.to_state(depth=asso_depths[-1], d_depth=asso_depths[-1] - asso_depths[-2])
+        x3p = self.KALMAN_FILTER.predict(self.x3)
+        self.x3p = coordinates.STATE_IMAGE_COORD(input_arr=x3p)
+        self.states, self.pred_states = [self.x3], [self.x3p]
+
+        # Initialize Camera Coordinate States
+        self.c3 = self.x3.to_camera_coord()
+        self.cam_states = [self.c3]
+
+        # Initialize Roll, Pitch, Yaw Variables
+        self.roll, self.pitch, self.yaw = None, None, None
+
+        # Initialize Action Classification Results
+        self.pose = None
+        self.pose_list = []
+
+        # Set Iteration Counter
+        self.__iter_counter = 0
+
+    def __repr__(self):
+        return "TRK ID - [{}]".format(self.id)
+
+    def __add__(self, other):
+        assert isinstance(other, (TRAJECTORY, TRAJECTORIES))
+        if isinstance(other, TRAJECTORY):
+            raise NotImplementedError()
+        else:
+            return other + self
+
+    def __getitem__(self, idx):
+        assert isinstance(idx, int) and 0 <= idx <= len(self) - 1
+        return {
+            "id": self.id,
+            "label": self.label,
+            "state": self.states[idx],
+            "depth": self.depths[idx],
+            "cam_state": self.cam_states[idx],
+            "is_associated": self.is_associated[idx]
+        }
+
+    def next(self):
+        try:
+            iter_item = self[self.__iter_counter]
+        except IndexError:
+            self.__iter_counter = 0
+            raise StopIteration
+        self.__iter_counter += 1
+        return iter_item
+
+    def get_fidx_data(self, fidx):
+        try:
+            idx = self.frame_indices.index(fidx)
+        except ValueError:
+            return None
+        return self[idx]
+
+    def update(self, *args, **kwargs):
+        pass
+
+    def predict(self):
         x3p = self.KALMAN_FILTER.predict(self.x3)
         self.x3p = coordinates.STATE_IMAGE_COORD(input_arr=x3p)
 
-        #
 
+class TRAJECTORIES(base.object_instances):
+    def __init__(self, **kwargs):
+        super(TRAJECTORIES, self).__init__(**kwargs)
 
+        # Set Trajectories
+        self.trajectories = self.objects
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def associate(self, *args, **kwargs):
+        pass
 
 
 if __name__ == "__main__":

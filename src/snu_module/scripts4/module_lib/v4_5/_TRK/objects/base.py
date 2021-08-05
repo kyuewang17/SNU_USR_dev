@@ -47,7 +47,13 @@ class object_instance(object):
     def __len__(self):
         return len(self.frame_indices)
 
-    def __getitem__(self, fidx):
+    def __iter__(self):
+        return self
+
+    def next(self):
+        raise NotImplementedError()
+
+    def __getitem__(self, idx):
         raise NotImplementedError()
 
     def __del__(self):

@@ -72,7 +72,7 @@ class OBSERVATION_COORD(COORD):
         except IndexError:
             self.__iter_counter = 0
             raise StopIteration
-        self.__iter_counter = 0
+        self.__iter_counter += 1
         return iter_item
 
     def numpify(self):
@@ -238,7 +238,7 @@ class STATE_IMAGE_COORD(COORD):
         except IndexError:
             self.__iter_counter = 0
             raise StopIteration
-        self.__iter_counter = 0
+        self.__iter_counter += 1
         return iter_item
 
     def numpify(self):
@@ -389,7 +389,7 @@ class STATE_CAMERA_COORD(COORD):
         except IndexError:
             self.__iter_counter = 0
             raise StopIteration
-        self.__iter_counter = 0
+        self.__iter_counter += 1
         return iter_item
 
     def numpify(self):

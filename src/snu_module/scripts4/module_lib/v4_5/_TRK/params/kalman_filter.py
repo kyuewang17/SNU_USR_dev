@@ -79,9 +79,9 @@ class KALMAN_FILTER(object):
         Pp = kwargs.get("Pp", np.eye(8, dtype=np.float32))
         self.Pp = Pp
 
-    def predict(self, prev_state):
-        x3, self.Pp = kalmanfilter.predict(prev_state, self.P, self.A, self.Q)
-        return x3
+    def predict(self, state):
+        pred_state, self.Pp = kalmanfilter.predict(state, self.P, self.A, self.Q)
+        return pred_state
 
     def update(self):
         pass
