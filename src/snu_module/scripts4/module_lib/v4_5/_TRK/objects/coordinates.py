@@ -201,11 +201,22 @@ class STATE_IMAGE_COORD(COORD):
     def __init__(self, **kwargs):
         super(STATE_IMAGE_COORD, self).__init__(coord_format="state_image")
 
+        # Get Array
+        input_arr = kwargs.get("input_arr")
+
         # Initialize Coordinates
-        self.x, self.y = kwargs.get("x"), kwargs.get("y")
-        self.dx, self.dy = kwargs.get("dx"), kwargs.get("dy")
-        self.w, self.h = kwargs.get("w"), kwargs.get("h")
-        self.depth, self.d_depth = kwargs.get("depth"), kwargs.get("d_depth")
+        if input_arr is None:
+            self.x, self.y = kwargs.get("x"), kwargs.get("y")
+            self.dx, self.dy = kwargs.get("dx"), kwargs.get("dy")
+            self.w, self.h = kwargs.get("w"), kwargs.get("h")
+            self.depth, self.d_depth = kwargs.get("depth"), kwargs.get("d_depth")
+        else:
+            assert isinstance(input_arr, np.ndarray) and input_arr.size == 8
+            input_arr_vec = input_arr.reshape(-1)
+            self.x, self.y, self.dx, self.dy = \
+                input_arr_vec[0], input_arr_vec[1], input_arr_vec[2], input_arr_vec[3]
+            self.w, self.h, self.depth, self.d_depth = \
+                input_arr_vec[4], input_arr_vec[5], input_arr_vec[6], input_arr_vec[7]
 
         # Set Iteration Counter
         self.__iter_counter = 0

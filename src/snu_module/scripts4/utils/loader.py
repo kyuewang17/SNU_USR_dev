@@ -94,26 +94,6 @@ def argument_parser(logger, script_name, dev_version=None, mode_selection=None):
     rosbag_parser.add_argument("--arg-opts", "-A", default="bag", help="Argument Option - ROS Bag File")
     """"""
 
-    # Image Sequences
-    """ Create Sub-Parsing Command for Testing this Code on Image Sequences
-        (generated from ROS bag file, using 'bag2seq.py') """
-    imseq_parser = subparser.add_parser(
-        "imseq", help="for executing this code with Image Sequences, generated from the given 'bag2seq.py' python package"
-    )
-    if mode_selection is not None:
-        imseq_parser.add_argument(
-            "--imseq-base-path", "-I", type=str,
-            default="/home/kyle/PycharmProjects/SNU_USR_dev/src/snu_module/bag2imseq/_cvt_data__[lidar_error]",
-            help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
-        )
-    else:
-        imseq_parser.add_argument(
-            "--imseq-base-path", "-I", type=str,
-            help="Image Sequence Base Path, which is generated from ROS bag file using the given 'bag2seq.py'"
-        )
-    imseq_parser.add_argument("--arg-opts", "-A", default="imseq", help="Argument Option - Image Sequence")
-    """"""
-
     # Agents
     """ Create Sub-Parsing Command for Testing this Code on Outdoor Surveillance Agents """
     agent_parser = subparser.add_parser(

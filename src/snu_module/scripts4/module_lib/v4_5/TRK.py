@@ -599,7 +599,7 @@ class SNU_MOT(object):
             trk_relative_size = trk.x3[5][0] / 640.0 + trk.x3[6][0] / 480.0
             trk_depth = trk.depth[-1]
             trk_size_dist_cost = trk_depth / trk_relative_size
-            if trk_size_dist_cost >= 10:
+            if trk_size_dist_cost >= 11:
                 aux_destroy_trk_indices.append(trk_idx)
 
             # # Destroy distant trajectories with small-size

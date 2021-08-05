@@ -4,15 +4,17 @@ SNU Integrated Module v5.0
 
 """
 import numpy as np
-import filterpy.kalman.kalman_filter as kalmanfilter
 
 from module_lib.v4_5._TRK.objects import base, bbox, coordinates
-from module_lib.v4_5._TRK.params.kalman_filter import KF_PARAMS
+from module_lib.v4_5._TRK.params.kalman_filter import KALMAN_FILTER
 
 
 class TRAJECTORY(base.object_instance):
     def __init__(self, **kwargs):
         super(TRAJECTORY, self).__init__(**kwargs)
+
+        # Load Kalman Filter Parameters (tentative)
+        self.KALMAN_FILTER = KALMAN_FILTER()
 
         # Initialize Associated Detection List
         self.det_bboxes = kwargs.get("det_bboxes")
@@ -42,8 +44,20 @@ class TRAJECTORY(base.object_instance):
 
         # Initialize Kalman State
         self.x3 = init_z.to_state(depth=asso_depths[-1], d_depth=asso_depths[-1]-asso_depths[-2])
+        x3p = self.KALMAN_FILTER.predict(self.x3)
+        self.x3p = coordinates.STATE_IMAGE_COORD(input_arr=x3p)
 
-        # 
+        #
+
+
+
+
+
+
+
+
+
+
 
 
 
