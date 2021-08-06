@@ -17,34 +17,27 @@ class TRAJECTORY(object_base.object_instance):
         self.KALMAN_FILTER = KALMAN_FILTER()
 
         # Initialize Associated Detection List
-        self.det_bboxes = kwargs.get("det_bboxes")
-        self.det_confs = kwargs.get("det_confs")
-        self.is_associated = kwargs.get("is_associated")
+        det_bbox, det_conf, is_associated = kwargs.get("det_bbox"), kwargs.get("det_conf"), kwargs.get("is_associated")
+        assert isinstance(det_bbox, bbox.BBOX) and isinstance(is_associated, bool)
+        self.det_bboxes, self.det_confs, self.is_associated = [det_bbox], [det_conf], [is_associated]
 
         # Get Trajectory Depth
-        asso_depths = kwargs.get("asso_depths")
-        assert isinstance(asso_depths, list) and len(asso_depths) > 0
-        if len(asso_depths) == 1:
-            asso_depths.insert(0, 0.0)
-        self.depths = asso_depths
-        self.depth = asso_depths[-1]
+        depth = kwargs.get("depth", 0.0)
+        assert depth >= 0
+        self.depths = [depth]
 
         # Initialize Observation Coordinate
         curr_asso_det_bbox = self.det_bboxes[-1]
         assert isinstance(curr_asso_det_bbox, bbox.BBOX)
-        if len(self.det_bboxes) > 1:
-            curr_asso_vel = curr_asso_det_bbox - self.det_bboxes[-2]
-        else:
-            curr_asso_vel = np.array([0.0, 0.0])
 
         # Get Initial Observation
         init_z = coordinates.OBSERVATION_COORD(
-            bbox_object=curr_asso_det_bbox, dx=curr_asso_vel[0], dy=curr_asso_vel[1]
+            bbox_object=curr_asso_det_bbox, dx=0.0, dy=0.0
         )
 
         # Initialize State and State Prediction
-        self.x3 = init_z.to_state(depth=asso_depths[-1], d_depth=asso_depths[-1] - asso_depths[-2])
-        x3p = self.KALMAN_FILTER.predict(self.x3)
+        self.x3 = init_z.to_state(depth=depth, d_depth=0.0)
+        x3p = self.KALMAN_FILTER.predict(self.x3.numpify())
         self.x3p = coordinates.STATE_IMAGE_COORD(input_arr=x3p)
         self.states, self.pred_states = [self.x3], [self.x3p]
 
@@ -99,11 +92,51 @@ class TRAJECTORY(object_base.object_instance):
             return None
         return self[idx]
 
-    def update(self, *args, **kwargs):
-        pass
+    def update(self, **kwargs):
+        # Get Frame Index and Append
+        fidx = kwargs.get("fidx")
+        assert isinstance(fidx, int) and fidx > self.frame_indices[-1]
+        self.frame_indices.append(fidx)
+
+        # Get Depth
+        depth = kwargs.get("depth", self.depths[-1])
+        self.depths.append(depth)
+
+        # Get Detection BBOX and Confidence, and get Observation Object
+        det_bbox, det_conf = kwargs.get("det_bbox"), kwargs.get("det_conf")
+        if det_bbox is None and det_conf is None:
+            self.det_bboxes.append(None)
+            self.det_confs.append(None)
+            self.is_associated.append(False)
+
+            # Think State Prediction as Observation
+            z = self.x3p.to_observation_coord()
+
+        elif det_bbox is not None and det_conf is not None:
+            assert isinstance(det_bbox, bbox.BBOX)
+            self.det_bboxes.append(det_bbox)
+            self.det_confs.append(det_conf)
+            self.is_associated.append(True)
+
+            # Get Velocity (detection - previous state)
+            vel_arr = det_bbox - self.x3.to_bbox()
+
+            # Get Observation Coordinate
+            z = coordinates.OBSERVATION_COORD(bbox_object=det_bbox, dx=vel_arr[0], dy=vel_arr[1])
+
+        else:
+            raise AssertionError("Input Error")
+
+        # Kalman Update
+        x3 = self.KALMAN_FILTER.update(self.x3p.numpify(), z.numpify())
+
+
 
     def predict(self):
-        x3p = self.KALMAN_FILTER.predict(self.x3)
+        # Kalman Prediction
+        x3p = self.KALMAN_FILTER.predict(self.x3.numpify())
+
+        # Transform into State Image Coordinate
         self.x3p = coordinates.STATE_IMAGE_COORD(input_arr=x3p)
 
 

@@ -247,6 +247,11 @@ class STATE_IMAGE_COORD(COORD):
             ret_arr[arr_idx] = self[arr_idx]
         return ret_arr
 
+    def to_observation_coord(self):
+        return OBSERVATION_COORD(
+            x=self.x, y=self.y, dx=self.dx, dy=self.dy, w=self.w, h=self.h
+        )
+
     def to_camera_coord(self, **kwargs):
         """
         Return 'STATE_CAMERA_COORD' Class Object, implemented below,
@@ -275,7 +280,8 @@ class STATE_IMAGE_COORD(COORD):
         )
 
         # Resize
-        bbox_obj.resize(x_ratio=x_ratio, y_ratio=y_ratio)
+        if x_ratio != 1 or y_ratio != 1:
+            bbox_obj.resize(x_ratio=x_ratio, y_ratio=y_ratio)
 
         # Format Conversion
         bbox_obj.convert_bbox_fmt(conversion_fmt)

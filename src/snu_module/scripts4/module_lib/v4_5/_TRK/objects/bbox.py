@@ -268,6 +268,9 @@ class BBOXES(object):
     def __getitem__(self, idx):
         return self.bboxes[idx]
 
+    def append(self, bbox):
+        self.bboxes.append(bbox)
+
     def check_format_integrity(self):
         fmt_list = [self.bboxes[idx].bbox_format for idx in range(len(self))]
         fmt_net_list = list(set(fmt_list))

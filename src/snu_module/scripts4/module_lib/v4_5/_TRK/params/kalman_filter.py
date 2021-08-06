@@ -80,11 +80,17 @@ class KALMAN_FILTER(object):
         self.Pp = Pp
 
     def predict(self, state):
+        assert isinstance(state, np.ndarray) and state.size == 8
+        state = state.reshape(-1)
         pred_state, self.Pp = kalmanfilter.predict(state, self.P, self.A, self.Q)
         return pred_state
 
-    def update(self):
-        pass
+    def update(self, pred_state, observation):
+        assert isinstance(pred_state, np.ndarray) and pred_state.size == 8
+        assert isinstance(observation, np.ndarray) and observation.size == 6
+
+        state, self.P = kalmanfilter.update(pred_state, self.Pp, observation, self.R, self.H)
+        return state
 
 
 if __name__ == "__main__":
