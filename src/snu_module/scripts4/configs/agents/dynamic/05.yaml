@@ -81,9 +81,9 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 2
-            destroy_age: 3
-            similarity_thresh: 0.325
+            init_age: 3
+            destroy_age: 8
+            similarity_thresh: 0.3
         trk_cand:
             destroy_age: 2
             similarity_thresh: 0.6

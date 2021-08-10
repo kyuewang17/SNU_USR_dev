@@ -225,26 +225,26 @@ class vis_trk_acl_obj(vis_obj):
                     #     (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
                     # )
 
-                    # # Visualize Trajectory Depth
-                    # if trk.depth is not None:
-                    #     trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
-                    #     (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
-                    #     text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
-                    #     text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
-                    #
-                    #     # Put Depth Text (Tentative)
-                    #     cv2.putText(modal_vis_frame, trk_depth_str, (text_x, text_y), font, 1.2,
-                    #                 (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
+                    # Visualize Trajectory Depth
+                    if trk.depth is not None:
+                        trk_depth_str = "d=" + str(round(trk.x3[2], 3)) + "(m)"
+                        (tw, th) = cv2.getTextSize(trk_depth_str, font, fontScale=1.2, thickness=2)[0]
+                        text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
+                        text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
 
-                    # Visualize Trajectory Camera Coordinate Position
-                    c3 = trk.c3[0:3].reshape(-1)
-                    c3_str = "({:.2f},{:.2f},{:.2f})".format(c3[0], c3[1], c3[2])
-                    (tw, th) = cv2.getTextSize(c3_str, font, fontScale=0.8, thickness=2)[0]
-                    text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
-                    text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
-                    # Put Text
-                    cv2.putText(modal_vis_frame, c3_str, (text_x, text_y), font, 1.2,
-                                (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
+                        # Put Depth Text (Tentative)
+                        cv2.putText(modal_vis_frame, trk_depth_str, (text_x, text_y), font, 1.2,
+                                    (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
+
+                    # # Visualize Trajectory Camera Coordinate Position
+                    # c3 = trk.c3[0:3].reshape(-1)
+                    # c3_str = "({:.2f},{:.2f},{:.2f})".format(c3[0], c3[1], c3[2])
+                    # (tw, th) = cv2.getTextSize(c3_str, font, fontScale=0.8, thickness=2)[0]
+                    # text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
+                    # text_y = int((state_bbox[1] + state_bbox[3]) / 2.0 - th / 2.0)
+                    # # Put Text
+                    # cv2.putText(modal_vis_frame, c3_str, (text_x, text_y), font, 1.2,
+                    #             (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
                     # Visualize Action Classification Result
                     if trk.pose is not None and self.vopts.aclassifier["is_draw"] is True:

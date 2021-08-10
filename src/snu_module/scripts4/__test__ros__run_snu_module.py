@@ -57,7 +57,7 @@ class snu_module(backbone):
         # Initialize TF Transform
         # NOTE: Tentative Code for testing...!
         self.opts.agent_type = "dynamic"
-        self.opts.agent_id = "03"
+        self.opts.agent_id = "04"
         if opts.agent_type == "dynamic":
             self.tf_transform = TF_TRANSFORM(opts=self.opts)
         else:

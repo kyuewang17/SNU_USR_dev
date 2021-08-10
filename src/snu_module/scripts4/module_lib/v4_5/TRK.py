@@ -228,7 +228,7 @@ class SNU_MOT(object):
                 resized_trk_patch = cv2.resize(trk_patch, dsize=resized_sz, interpolation=cv2.INTER_NEAREST)
 
                 # Get Histograms of Detection and Trajectory Patch
-                dhist_bin = 64
+                dhist_bin = 32
                 det_hist, det_hist_idx = snu_hist.histogramize_patch(
                     sensor_patch=resized_det_patch, dhist_bin=dhist_bin,
                     min_value=patch_minmax["min"], max_value=patch_minmax["max"]
@@ -463,6 +463,8 @@ class SNU_MOT(object):
                 sync_data_dict=sync_data_dict,
                 trk_id=new_trk_id, fidx=self.fidx, opts=self.opts
             )
+            if new_trk is None:
+                continue
             new_trks.append(new_trk)
             del new_trk
         del sel_trk_cands
@@ -528,6 +530,7 @@ class SNU_MOT(object):
             )
         # Generate New Trajectories from Trajectory Candidates
         new_trks = self.generate_new_trajectories(sync_data_dict=sync_data_dict, new_trks=new_trks)
+        print(len(self.trk_cands))
 
         # Append New Trajectories and Update Maximum Trajectory ID
         for new_trk in new_trks:

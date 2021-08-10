@@ -127,7 +127,7 @@ class TrajectoryCandidate(object_instance):
 
             # Get Number of LiDAR uv points inside BBOX, if none replace depth value with previous value
             if len(uv_array) == 0:
-                depth_value = 0.0
+                depth_value = -np.inf
             else:
                 # Define Steepness Parameter w.r.t. Standard Deviation of Point-cloud Distance Distribution
                 # PC_stdev is Low -> Gradual Counting Weight (to consider more samples)
@@ -177,10 +177,14 @@ class TrajectoryCandidate(object_instance):
     # Initialize Trajectory Class from TrajectoryCandidate
     def init_tracklet(self, sync_data_dict, trk_id, fidx, opts):
         # Get Depth
-        if sync_data_dict["disparity"] is None:
+        if opts.agent_type == "static":
+        # if sync_data_dict["disparity"] is None:
             depth = 1.0
         else:
             depth = self.get_depth(sync_data_dict=sync_data_dict, opts=opts)
+
+        if depth == -np.inf:
+            return None
 
         # Trajectory Initialization Dictionary
         init_trk_dict = {
