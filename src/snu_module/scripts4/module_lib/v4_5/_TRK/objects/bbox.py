@@ -59,17 +59,17 @@ class BBOX(object):
             raise AssertionError()
         return ret_list[idx]
 
-    def __setitem__(self, idx, value):
-        if self.bbox_format == "LTRB":
-            attr_str_list = ["lt_x", "lt_y", "rb_x", "rb_y"]
-        elif self.bbox_format == "LTWH":
-            attr_str_list = ["lt_x", "lt_y", "w", "h"]
-        elif self.bbox_format == "XYWH":
-            attr_str_list = ["x", "y", "w", "h"]
-        else:
-            raise AssertionError()
-        setattr(self, attr_str_list[idx], value)
-        self.__adjust_coordinates(pivot_fmt=self.bbox_format)
+    # def __setitem__(self, idx, value):
+    #     if self.bbox_format == "LTRB":
+    #         attr_str_list = ["lt_x", "lt_y", "rb_x", "rb_y"]
+    #     elif self.bbox_format == "LTWH":
+    #         attr_str_list = ["lt_x", "lt_y", "w", "h"]
+    #     elif self.bbox_format == "XYWH":
+    #         attr_str_list = ["x", "y", "w", "h"]
+    #     else:
+    #         raise AssertionError()
+    #     setattr(self, attr_str_list[idx], value)
+    #     self.__adjust_coordinates(pivot_fmt=self.bbox_format)
 
     def __iter__(self):
         return self
@@ -126,6 +126,9 @@ class BBOX(object):
         # Finally Return
         return common_bbox
 
+    def numpify(self):
+        return self.to_ndarray()
+
     def to_ndarray(self, dtype=None):
         ret_arr = np.array([self[0], self[1], self[2], self[3]])
         if dtype is not None:
@@ -135,7 +138,27 @@ class BBOX(object):
     def to_list(self):
         return [self[0], self[1], self[2], self[3]]
 
-    def __adjust_coordinates(self, pivot_fmt=None):
+    def get_patch(self, frame, patch_size_factor=1.0):
+        # Handle Overflow
+        lt_x = 0 if self.lt_x < 0 else self.lt_x
+        lt_y = 0 if self.lt_y < 0 else self.lt_y
+        rb_x = frame.shape[1] if self.rb_x < frame.shape[1] else self.rb_x
+        rb_y = frame.shape[0] if self.rb_y < frame.shape[0] else self.rb_y
+
+        # Apply Factor
+        gamma = patch_size_factor
+        x1 = np.floor(((1 + gamma) * lt_x + (1 - gamma) * rb_x) / 2).astype(int)
+        y1 = np.floor(((1 + gamma) * lt_y + (1 - gamma) * rb_y) / 2).astype(int)
+        x2 = np.floor(((1 - gamma) * lt_x + (1 + gamma) * rb_x) / 2).astype(int)
+        y2 = np.floor(((1 - gamma) * lt_y + (1 + gamma) * rb_y) / 2).astype(int)
+
+        # Crop from Frame and Return
+        row_min, row_max = np.maximum(y1, 0), np.minimum(y2, frame.shape[0])
+        col_min, col_max = np.maximum(x1, 0), np.minimum(x2, frame.shape[1])
+        patch = frame[row_min:row_max, col_min:col_max]
+        return patch
+
+    def adjust_coordinates(self, pivot_fmt=None):
         if pivot_fmt is None:
             pivot_fmt = self.bbox_format
         else:
@@ -175,7 +198,7 @@ class BBOX(object):
         self.rb_y = K_beta_minus * b + K_beta_plus * d
 
         # Adjust Coordinates
-        self.__adjust_coordinates("LTRB")
+        self.adjust_coordinates("LTRB")
 
     def get_iou(self, other):
         assert isinstance(other, BBOX)

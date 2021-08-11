@@ -79,6 +79,8 @@ class KALMAN_FILTER(object):
         Pp = kwargs.get("Pp", np.eye(8, dtype=np.float32))
         self.Pp = Pp
 
+        # Init Params (private variables)
+
     def predict(self, state):
         assert isinstance(state, np.ndarray) and state.size == 8
         state = state.reshape(-1)

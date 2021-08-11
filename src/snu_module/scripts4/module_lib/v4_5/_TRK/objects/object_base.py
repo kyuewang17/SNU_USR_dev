@@ -66,6 +66,9 @@ class object_instance(object):
 # Object Instance Classes
 class object_instances(object):
     def __init__(self, **kwargs):
+        # Initialize Object ID List
+        self.object_ids = []
+
         # Initialize List Placeholder for Object Instances
         self.objects = []
 
@@ -75,6 +78,11 @@ class object_instances(object):
             for obj in objects:
                 assert isinstance(obj, object_instance)
                 self.objects.append(obj)
+                self.object_ids.append(obj.id)
+
+            # Arrange Objects w.r.t. ID
+            self.arrange_objects(arrange_method="id")
+
         else:
             if objects is not None:
                 raise NotImplementedError()
@@ -86,14 +94,7 @@ class object_instances(object):
         return len(self.objects)
 
     def __add__(self, other):
-        assert isinstance(other, (object_instance, object_instances))
-        if isinstance(other, object_instance):
-            self.objects.append(other)
-            self.arrange_objects(arrange_method="id")
-        else:
-            for other_object in other:
-                self.objects.append(other_object)
-            self.arrange_objects(arrange_method="id")
+        self.append(other=other)
         return self
 
     def __getitem__(self, idx):
@@ -108,15 +109,32 @@ class object_instances(object):
         except IndexError:
             self.__iteration_counter = 0
             raise StopIteration
-
         self.__iteration_counter += 1
         return return_value
 
+    def append(self, other):
+        assert isinstance(other, (object_instance, object_instances))
+        if isinstance(other, object_instance):
+            self.objects.append(other)
+            self.object_ids.append(other.id)
+            self.arrange_objects(arrange_method="id")
+        else:
+            for other_object in other:
+                self.objects.append(other_object)
+                self.object_ids.append(other_object.id)
+            self.arrange_objects(arrange_method="id")
+
     def get_ids(self):
-        return [self.objects[obj_idx].id for obj_idx in range(len(self.objects))]
+        return self.object_ids
 
     def get_labels(self):
         return [self.objects[obj_idx].label for obj_idx in range(len(self.objects))]
+
+    def get_object_with_id(self, id):
+        if id not in self.object_ids:
+            return None
+        else:
+            return self.objects[self.object_ids.index(id)]
 
     def arrange_objects(self, **kwargs):
         if len(self.objects) == 0:
@@ -141,84 +159,74 @@ class object_instances(object):
         for i, sidx in enumerate(sorted_index):
             sorted_objects.append(self.objects[sidx])
         self.objects = sorted_objects
+        self.object_ids = [self.objects[obj_idx].id for obj_idx in range(len(self.objects))]
 
     def gather_objects(self, **kwargs):
-        # Condition Dictionary
+        # Get Condition KWARGS
+        id, label, fidx = kwargs.get("id"), kwargs.get("label"), kwargs.get("fidx")
+
+        # Return All Objects when there are no conditions
+        if id is None and label is None and fidx is None:
+            return self.objects
+
+        # Condition Dictionary (conditions are collected with logical "and" method)
         condition_dict = {}
 
         # Accumulate Conditions
-        id = kwargs.get("id", self.get_ids())
-        if isinstance(id, (list, tuple)):
-            assert set(id).issubset(set(self.get_ids()))
-            condition_dict["id"] = list(id)
-        else:
-            assert isinstance(id, int) and id >= 0
-            condition_dict["id"] = [id]
-
-        label = kwargs.get("label", list(set(self.get_labels())))
-        if isinstance(label, (list, tuple)):
-            assert set(label).issubset(set(self.get_labels()))
-            condition_dict["label"] = list(label)
-        else:
-            condition_dict["label"] = [label]
-
-        fidx = kwargs.get("fidx")
-        if fidx is None:
-            min_fidx, max_fidx = None, None
-            for obj in self:
-                if min_fidx is None:
-                    min_fidx, max_fidx = obj.frame_indices[0], obj.frame_indices[-1]
-                else:
-                    if min_fidx > obj.frame_indices[0]:
-                        min_fidx = obj.frame_indices[0]
-                    if max_fidx < obj.frame_indices[-1]:
-                        max_fidx = obj.frame_indices[-1]
-            condition_dict["fidx"] = [min_fidx, max_fidx]
-        else:
+        if id is not None:
+            assert isinstance(id, (int, list, tuple))
+            if isinstance(id, int):
+                assert id >= 0
+                condition_dict["id"] = id
+            else:
+                assert set(id).issubset(set(self.get_ids()))
+                condition_dict["id"] = list(id)
+        if label is not None:
+            if isinstance(label, (list, tuple)):
+                assert set(label).issubset(set(self.get_labels()))
+                condition_dict["label"] = list(label)
+            else:
+                condition_dict["label"] = label
+        if fidx is not None:
             if isinstance(fidx, int) and fidx >= 0:
-                condition_dict["fidx"] = [fidx]
-            elif isinstance(fidx, (list, tuple)):
                 condition_dict["fidx"] = fidx
+            elif isinstance(fidx, (list, tuple)):
+                assert len(fidx) == 2 and fidx[0] <= fidx[1]
+                condition_dict["fidx"] = list(fidx)
             else:
                 raise NotImplementedError()
 
-        # For Conditions, selectively gather objects
-        if id == self.get_ids() and label == list(set(self.get_labels())) and fidx is None:
-            return self.objects
-        else:
-            selected_object_indices = []
-            for obj_idx, obj in enumerate(self):
-                decision_counter_flag = 0
-                for method, condition in condition_dict.items():
-                    if method == "fidx":
-                        # Check Min-fidx
-                        if condition[0] == -1 or obj.frame_indices[0] >= condition[0]:
-                            min_fidx_flag = True
-                        else:
-                            min_fidx_flag = False
-
-                        # Check Max-fidx
-                        if condition[-1] == -1 or obj.frame_indices[-1] <= condition[-1]:
-                            max_fidx_flag = True
-                        else:
-                            max_fidx_flag = False
-
-                        if min_fidx_flag is True and max_fidx_flag is True:
+        # Collect Object Indices according to Conditions
+        selected_object_indices = []
+        for obj_idx, obj in enumerate(self):
+            decision_counter_flag = 0
+            for method, condition in condition_dict.items():
+                # Frame Index Condition
+                if method == "fidx":
+                    if isinstance(condition, list):
+                        min_fidx, max_fidx = fidx[0], fidx[1]
+                        if obj.frame_indices[0] >= min_fidx and obj.frame_indices[-1] <= max_fidx:
                             decision_counter_flag += 1
-
-                    elif method in ["id", "label"]:
+                    else:
+                        if fidx in obj.frame_indices:
+                            decision_counter_flag += 1
+                # ID Condition
+                elif method in ["id", "label"]:
+                    if isinstance(condition, list):
                         if getattr(obj, method) in condition:
                             decision_counter_flag += 1
-
                     else:
-                        raise NotImplementedError()
+                        if getattr(obj, method) == condition:
+                            decision_counter_flag += 1
+                else:
+                    raise NotImplementedError()
 
-                # Decide to Append
-                if decision_counter_flag == len(condition_dict):
-                    selected_object_indices.append(obj_idx)
+            # Decide to Append
+            if decision_counter_flag == len(condition_dict):
+                selected_object_indices.append(obj_idx)
 
-            # Return Selected Objects
-            return [self.objects[idx] for idx in selected_object_indices]
+        # Return Selected Objects
+        return [self.objects[idx] for idx in selected_object_indices]
 
     def associate(self, *args, **kwargs):
         raise NotImplementedError()

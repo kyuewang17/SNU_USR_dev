@@ -84,6 +84,9 @@ class OBSERVATION_COORD(COORD):
     def get_size(self):
         return self.w * self.h
 
+    def get_patch(self, frame, patch_size_factor=1.0):
+        return self.to_bbox().get_patch(frame=frame, patch_size_factor=patch_size_factor)
+
     def to_bbox(self, **kwargs):
         # Get Conversion Format
         conversion_fmt = kwargs.get("conversion_fmt", "XYWH")
@@ -264,6 +267,9 @@ class STATE_IMAGE_COORD(COORD):
 
     def get_size(self):
         return self.w * self.h
+
+    def get_patch(self, frame, patch_size_factor=1.0):
+        return self.to_bbox().get_patch(frame=frame, patch_size_factor=patch_size_factor)
 
     def to_bbox(self, **kwargs):
         # Get Conversion Format
