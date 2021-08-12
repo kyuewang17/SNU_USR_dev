@@ -2,52 +2,47 @@
 SNU Integrated Module v5.0
   - Code which defines Kalman Filter Parameters
   - State Vector Components are as below
-    - [ x y dx dy w h D dD ] (1x8)
+    - [ x y dx dy w h D ] ( 1x7 )
 
 """
 import numpy as np
 import filterpy.kalman.kalman_filter as kalmanfilter
 
 
-_A = np.float32([[1, 0, 1, 0, 0, 0, 0],
-                 [0, 1, 0, 1, 0, 0, 0],
-                 [0, 0, 1, 0, 0, 0, 0],
-                 [0, 0, 0, 1, 0, 0, 0],
-                 [0, 0, 0, 0, 1, 0, 0],
-                 [0, 0, 0, 0, 0, 1, 1],
-                 [0, 0, 0, 0, 0, 0, 1]])
+_A = np.float32([[1, 0, 1, 0, 0, 0],
+                 [0, 1, 0, 1, 0, 0],
+                 [0, 0, 1, 0, 0, 0],
+                 [0, 0, 0, 1, 0, 0],
+                 [0, 0, 0, 0, 1, 0],
+                 [0, 0, 0, 0, 0, 1]])
 
-_H = np.float32([[1, 0, 0, 0, 0, 0, 0],
-                 [0, 1, 0, 0, 0, 0, 0],
-                 [0, 0, 1, 0, 0, 0, 0],
-                 [0, 0, 0, 1, 0, 0, 0],
-                 [0, 0, 0, 0, 1, 0, 0],
-                 [0, 0, 0, 0, 0, 1, 0],
-                 [0, 0, 0, 0, 0, 0, 1]])
+_H = np.float32([[1, 0, 0, 0, 0, 0],
+                 [0, 1, 0, 0, 0, 0],
+                 [0, 0, 1, 0, 0, 0],
+                 [0, 0, 0, 1, 0, 0],
+                 [0, 0, 0, 0, 1, 0],
+                 [0, 0, 0, 0, 0, 1]])
 
-_P = np.float32([[1, 0, 0, 0, 0, 0, 0],
-                 [0, 1, 0, 0, 0, 0, 0],
-                 [0, 0, 1, 0, 0, 0, 0],
-                 [0, 0, 0, 1, 0, 0, 0],
-                 [0, 0, 0, 0, 1, 0, 0],
-                 [0, 0, 0, 0, 0, 1, 0],
-                 [0, 0, 0, 0, 0, 0, 1]])
+_P = np.float32([[1, 0, 0, 0, 0, 0],
+                 [0, 1, 0, 0, 0, 0],
+                 [0, 0, 1, 0, 0, 0],
+                 [0, 0, 0, 1, 0, 0],
+                 [0, 0, 0, 0, 1, 0],
+                 [0, 0, 0, 0, 0, 1]])
 
-_Q = np.float32([[1, 0, 0, 0, 0, 0, 0],
-                 [0, 1, 0, 0, 0, 0, 0],
-                 [0, 0, 1, 0, 0, 0, 0],
-                 [0, 0, 0, 1, 0, 0, 0],
-                 [0, 0, 0, 0, 1, 0, 0],
-                 [0, 0, 0, 0, 0, 1, 0],
-                 [0, 0, 0, 0, 0, 0, 1]])
+_Q = np.float32([[1, 0, 0, 0, 0, 0],
+                 [0, 1, 0, 0, 0, 0],
+                 [0, 0, 1, 0, 0, 0],
+                 [0, 0, 0, 1, 0, 0],
+                 [0, 0, 0, 0, 1, 0],
+                 [0, 0, 0, 0, 0, 1]])
 
-_R = np.float32([[1, 0, 0, 0, 0, 0, 0],
-                 [0, 1, 0, 0, 0, 0, 0],
-                 [0, 0, 1, 0, 0, 0, 0],
-                 [0, 0, 0, 1, 0, 0, 0],
-                 [0, 0, 0, 0, 1, 0, 0],
-                 [0, 0, 0, 0, 0, 1, 0],
-                 [0, 0, 0, 0, 0, 0, 1]])
+_R = np.float32([[1, 0, 0, 0, 0, 0],
+                 [0, 1, 0, 0, 0, 0],
+                 [0, 0, 1, 0, 0, 0],
+                 [0, 0, 0, 1, 0, 0],
+                 [0, 0, 0, 0, 1, 0],
+                 [0, 0, 0, 0, 0, 1]])
 
 
 class KALMAN_FILTER(object):
@@ -82,14 +77,14 @@ class KALMAN_FILTER(object):
         # Init Params (private variables)
 
     def predict(self, state):
-        assert isinstance(state, np.ndarray) and state.size == 8
+        assert isinstance(state, np.ndarray) and state.size == 7
         state = state.reshape(-1)
         pred_state, self.Pp = kalmanfilter.predict(state, self.P, self.A, self.Q)
         return pred_state
 
     def update(self, pred_state, observation):
-        assert isinstance(pred_state, np.ndarray) and pred_state.size == 8
-        assert isinstance(observation, np.ndarray) and observation.size == 6
+        assert isinstance(pred_state, np.ndarray) and pred_state.size == 7
+        assert isinstance(observation, np.ndarray) and observation.size == 7
 
         state, self.P = kalmanfilter.update(pred_state, self.Pp, observation, self.R, self.H)
         return state

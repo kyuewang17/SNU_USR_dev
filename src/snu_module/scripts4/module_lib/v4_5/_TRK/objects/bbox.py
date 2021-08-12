@@ -246,90 +246,90 @@ class BBOX(object):
         self.bbox_format = dest_fmt
 
 
-class BBOXES(object):
-    def __init__(self, **kwargs):
-        # Initialize Placeholder List for BBOXES
-        self.bboxes = []
-
-        # Get List of BBOX Objects
-        bboxes = kwargs.get("bboxes")
-        if isinstance(bboxes, (list, tuple)):
-            for bbox in bboxes:
-                assert isinstance(bbox, BBOX)
-                self.bboxes.append(bbox)
-        else:
-            if bboxes is not None:
-                raise NotImplementedError()
-
-        # Initialize Iteration Counter
-        self.__iter_counter = 0
-
-    def __add__(self, other):
-        assert isinstance(other, (BBOX, BBOXES))
-        if isinstance(other, BBOX):
-            self.bboxes.append(other)
-        else:
-            for other_bbox in other:
-                self.bboxes.append(other_bbox)
-        return self
-
-    def __len__(self):
-        return len(self.bboxes)
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        try:
-            return_bbox = self[self.__iter_counter]
-        except IndexError:
-            self.__iter_counter = 0
-            raise StopIteration
-        self.__iter_counter += 1
-        return return_bbox
-
-    def __getitem__(self, idx):
-        return self.bboxes[idx]
-
-    def append(self, bbox):
-        self.bboxes.append(bbox)
-
-    def check_format_integrity(self):
-        fmt_list = [self.bboxes[idx].bbox_format for idx in range(len(self))]
-        fmt_net_list = list(set(fmt_list))
-        if len(fmt_net_list) == 0:
-            raise AssertionError("BBOXES Data is Empty")
-        elif len(fmt_net_list) > 1:
-            raise AssertionError("Formats of BBOXES do not match...!")
-
-    def get_ious(self, **kwargs):
-        bbox, bboxes = kwargs.get("bbox"), kwargs.get("bboxes")
-        assert np.logical_xor(bbox is None, bboxes is None)
-        if bbox is not None:
-            assert isinstance(bbox, BBOX)
-
-            # Prepare IOU Array of Same Length With BBOX Objects
-            iou_array = np.empty(len(self.bboxes))
-
-            # Iterate for Self BBOXES, Calculate IOU
-            for self_idx, self_bbox in enumerate(self):
-                iou_array[self_idx] = bbox.get_iou(self_bbox)
-
-        elif bboxes is not None:
-            assert isinstance(bboxes, BBOXES)
-
-            # Prepare IOU Array of Row: self-bboxes and Column: other-bboxes
-            iou_array = np.empty((len(self.bboxes), len(bboxes)))
-
-            # Iterate for BBOXES objects
-            for self_idx, self_bbox in enumerate(self):
-                for other_idx, other_bbox in enumerate(bboxes):
-                    iou_array[self_idx, other_idx] = other_bbox.get_iou(self_bbox)
-
-        else:
-            raise AssertionError()
-
-        return iou_array
+# class BBOXES(object):
+#     def __init__(self, **kwargs):
+#         # Initialize Placeholder List for BBOXES
+#         self.bboxes = []
+#
+#         # Get List of BBOX Objects
+#         bboxes = kwargs.get("bboxes")
+#         if isinstance(bboxes, (list, tuple)):
+#             for bbox in bboxes:
+#                 assert isinstance(bbox, BBOX)
+#                 self.bboxes.append(bbox)
+#         else:
+#             if bboxes is not None:
+#                 raise NotImplementedError()
+#
+#         # Initialize Iteration Counter
+#         self.__iter_counter = 0
+#
+#     def __add__(self, other):
+#         assert isinstance(other, (BBOX, BBOXES))
+#         if isinstance(other, BBOX):
+#             self.bboxes.append(other)
+#         else:
+#             for other_bbox in other:
+#                 self.bboxes.append(other_bbox)
+#         return self
+#
+#     def __len__(self):
+#         return len(self.bboxes)
+#
+#     def __iter__(self):
+#         return self
+#
+#     def next(self):
+#         try:
+#             return_bbox = self[self.__iter_counter]
+#         except IndexError:
+#             self.__iter_counter = 0
+#             raise StopIteration
+#         self.__iter_counter += 1
+#         return return_bbox
+#
+#     def __getitem__(self, idx):
+#         return self.bboxes[idx]
+#
+#     def append(self, bbox):
+#         self.bboxes.append(bbox)
+#
+#     def check_format_integrity(self):
+#         fmt_list = [self.bboxes[idx].bbox_format for idx in range(len(self))]
+#         fmt_net_list = list(set(fmt_list))
+#         if len(fmt_net_list) == 0:
+#             raise AssertionError("BBOXES Data is Empty")
+#         elif len(fmt_net_list) > 1:
+#             raise AssertionError("Formats of BBOXES do not match...!")
+#
+#     def get_ious(self, **kwargs):
+#         bbox, bboxes = kwargs.get("bbox"), kwargs.get("bboxes")
+#         assert np.logical_xor(bbox is None, bboxes is None)
+#         if bbox is not None:
+#             assert isinstance(bbox, BBOX)
+#
+#             # Prepare IOU Array of Same Length With BBOX Objects
+#             iou_array = np.empty(len(self.bboxes))
+#
+#             # Iterate for Self BBOXES, Calculate IOU
+#             for self_idx, self_bbox in enumerate(self):
+#                 iou_array[self_idx] = bbox.get_iou(self_bbox)
+#
+#         elif bboxes is not None:
+#             assert isinstance(bboxes, BBOXES)
+#
+#             # Prepare IOU Array of Row: self-bboxes and Column: other-bboxes
+#             iou_array = np.empty((len(self.bboxes), len(bboxes)))
+#
+#             # Iterate for BBOXES objects
+#             for self_idx, self_bbox in enumerate(self):
+#                 for other_idx, other_bbox in enumerate(bboxes):
+#                     iou_array[self_idx, other_idx] = other_bbox.get_iou(self_bbox)
+#
+#         else:
+#             raise AssertionError()
+#
+#         return iou_array
 
 
 if __name__ == "__main__":

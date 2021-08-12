@@ -12,11 +12,22 @@ from module_lib.v4_5._TRK.objects import object_base, bbox, coordinates
 from module_lib.v4_5._TRK.params.kalman_filter import KALMAN_FILTER
 from module_lib.v4_5._TRK.utils.assignment import associate
 from module_lib.v4_5._TRK.utils.histogram import histogramize_patch
+from module_lib.v4_5._TRK.utils.depth import compute_depth
 
 
 class TRAJECTORY(object_base.object_instance):
     def __init__(self, **kwargs):
         super(TRAJECTORY, self).__init__(**kwargs)
+
+        # Get Modal Information
+        modal = kwargs.get("modal", "color")
+        self.__modal = modal
+        kwargs.pop("modal")
+
+        # Get Tracker Options
+        tracker_opts = kwargs.get("tracker_opts")
+        assert tracker_opts is not None
+        self.opts = tracker_opts
 
         # Load Kalman Filter Parameters (tentative)
         self.KALMAN_FILTER = KALMAN_FILTER(**kwargs)
@@ -100,6 +111,9 @@ class TRAJECTORY(object_base.object_instance):
         self.__iter_counter += 1
         return iter_item
 
+    def get_modal(self):
+        return self.__modal
+
     def get_size(self, **kwargs):
         # Get State Method
         state_method = kwargs.get("state_method", "x3")
@@ -116,6 +130,31 @@ class TRAJECTORY(object_base.object_instance):
             return None
         return self[idx]
 
+    def compute_depth(self, lidar_obj, **kwargs):
+        # Get LiDAR Object, if None set depth value as 1.0
+        if lidar_obj is None:
+            self.depths.append(1.0)
+        else:
+            # Get LiDAR Sampling Number
+            pc_sampling = kwargs.get("pc_sampling")
+
+            # Get Observation BBOX Object
+            z_bbox = self.det_bboxes[-1]
+            if z_bbox is None:
+                z_bbox = self.x3p.to_bbox(conversion_fmt="LTRB")
+
+            # TODO: Project LiDAR XYZ to UV-Coordinate, inside "z_bbox"
+            uv_array, pc_distances = [], []
+
+            # Compute Depth
+            if len(uv_array) == 0:
+                depth_value = self.depths[-1]
+            else:
+                depth_value = compute_depth(uv_array, pc_distances, z_bbox)
+
+            # Append Depth
+            self.depths.append(depth_value)
+
     # NOTE: Experimental Functions
     def init_kalman_params(self):
         raise NotImplementedError()
@@ -125,10 +164,6 @@ class TRAJECTORY(object_base.object_instance):
         fidx = kwargs.get("fidx")
         assert isinstance(fidx, int) and fidx > self.frame_indices[-1]
         self.frame_indices.append(fidx)
-
-        # Get Depth
-        depth = kwargs.get("depth", self.depths[-1])
-        self.depths.append(depth)
 
         # Get Detection BBOX and Confidence, and get Observation Object
         det_bbox, det_conf = kwargs.get("det_bbox"), kwargs.get("det_conf")
@@ -285,7 +320,10 @@ class TRAJECTORY(object_base.object_instance):
         # Get Patch Resize Size
         patch_resize_sz = kwargs.get("patch_resize_sz", (64, 64))
         assert isinstance(patch_resize_sz, tuple)
-        kwargs.pop("patch_resize_sz")
+
+        # Get Histogram Bin Number
+        dhist_bin = kwargs.get("dhist_bin", 32)
+        assert isinstance(dhist_bin, int) and dhist_bin > 0
 
         # Get Predicted State of Trajectory, get its bbox version
         x3p = self.x3p
@@ -310,18 +348,18 @@ class TRAJECTORY(object_base.object_instance):
             return np.nan
 
         # Get Detection and Trajectory Patch
+        # NOTE: If "get_patch" is slow, change code to get patch w.r.t. frame image
         det_patch, trk_patch = det_bbox.get_patch(frame=frame), x3p.get_patch(frame=frame)
         resized_det_patch = cv2.resize(det_patch, dsize=patch_resize_sz, interpolation=cv2.INTER_NEAREST)
         resized_trk_patch = cv2.resize(trk_patch, dsize=patch_resize_sz, interpolation=cv2.INTER_NEAREST)
 
         # Get Histograms of Resized Detection and Trajectory Patch
-        dhist_bin = 32
         det_hist, det_hist_idx = histogramize_patch(
-            resized_det_patch, dhist_bin, (frame_dtype_info.min, frame_dtype_info.max),
+            resized_det_patch, dhist_bin, frame_dtype_info.min, frame_dtype_info.max,
             count_window=None, linearize=True
         )
         trk_hist, trk_hist_idx = histogramize_patch(
-            resized_trk_patch, dhist_bin, (frame_dtype_info.min, frame_dtype_info.max),
+            resized_trk_patch, dhist_bin, frame_dtype_info.min, frame_dtype_info.max,
             count_window=None, linearize=True
         )
 
@@ -337,9 +375,18 @@ class TRAJECTORY(object_base.object_instance):
         l2_distance = np.linalg.norm(x3p_bbox - det_bbox)
         dist_similarity = np.exp(-l2_distance)[0]
 
-        # NOTE: Three Similarities are all implemented
-        # NOTE: Now, Let's implement Similarity Merging (weighted-sum) to get total similarity and cost value
-        # NOTE: Cost Value = -Similarity
+        # Get Similarity Weights
+        s_w_dict = self.opts.tracker.association["trk"]["similarity_weights"]
+        s_w = np.array([s_w_dict["intersection"], s_w_dict["histogram"], s_w_dict["distance"]]).reshape(3, 1)
+
+        # Weighted-Sum of Each Similarities
+        similarity = np.matmul(s_w.T, np.array([ioc_similarity, hist_similarity, dist_similarity]).reshape(3, 1))
+
+        # Cost is negative similarity
+        cost = -similarity
+
+        # Return
+        return cost
 
 
 class TRAJECTORIES(object_base.object_instances):
@@ -364,11 +411,67 @@ class TRAJECTORIES(object_base.object_instances):
         self.__iteration_counter += 1
         return return_value
 
-    def associate(self, **kwargs):
-        pass
+    def associate(self, frame, lidar_obj, detections, **kwargs):
+        # Change Association Activation Flag
+        self.__is_asso_activated = True
+
+        # Get Cost Threshold
+        cost_thresh = kwargs.get("cost_thresh")
+        if cost_thresh is not None:
+            assert 0 <= cost_thresh <= 1
+
+        # Unpack Detections
+        dets, confs, labels = detections["dets"], detections["confs"], detections["labels"]
+
+        # Initialize Cost Matrix
+        cost_matrix = np.zeros((len(dets), len(self)), dtype=np.float32)
+
+        # Compute Cost Matrix (for every detection BBOX, for every trajectory objects)
+        det_bboxes = []
+        for det_idx, det in enumerate(dets):
+            det_bbox = bbox.BBOX(bbox_format="LTRB", lt_x=det[0], lt_y=det[1], rb_x=det[2], rb_y=det[3])
+            det_bboxes.append(det_bbox)
+            det_conf, det_label = confs[det_idx], labels[det_idx]
+
+            for trk_idx, trk in enumerate(self):
+
+                # Ignore if Label does not match
+                if trk.label != det_label:
+                    cost_matrix[det_idx, trk_idx] = np.nan
+                    continue
+
+                # Compute Cost
+                cost_matrix[det_idx, trk_idx] = \
+                    trk.compute_association_cost(frame=frame, det_bbox=det_bbox)
+
+        # Associate Using Hungarian Algorithm
+        matches, unmatched_det_indices, unmatched_trk_indices = \
+            associate(cost_matrix=cost_matrix, cost_thresh=cost_thresh)
+
+        # Update Associated Trajectories
+        for match in matches:
+            matched_det_bbox = det_bboxes[match[0]]
+            matched_conf, matched_label = confs[match[0]], labels[match[0]]
+            matched_trk = self[match[1]]
+
+
+
+            # NOTE: Compute Depth after computing current frame state via "Kalman Update" process
+            # matched_trk.get_depth(sync_data_dict, self.opts)
+
+            # If passed, update Trajectory
+            matched_trk.update(self.fidx, matched_det, matched_conf)
+            self.trks[match[1]] = matched_trk
+            del matched_trk
 
     def update(self):
+        # Check if Association has been done
         assert self.__is_asso_activated
+        # Update Code
+        # *$@&$*&^&*#^&*
+
+        # Reset Association Activation Flag
+        self.__is_asso_activated = False
         raise NotImplementedError()
 
     def destroy_trajectories(self, **kwargs):
@@ -395,6 +498,15 @@ class test_A(object):
     def __iter__(self):
         return self
 
+    def next(self):
+        try:
+            return_value = self[self.__iteration_counter]
+        except IndexError:
+            self.__iteration_counter = 0
+            raise StopIteration
+        self.__iteration_counter += 1
+        return return_value
+
     def __getitem__(self, idx):
         return self.jkjk[idx]
 
@@ -412,14 +524,7 @@ class test_A_sub(test_A):
         self.opop.append(other)
         return self
 
-    def next(self):
-        try:
-            return_value = self[self.__iteration_counter]
-        except IndexError:
-            self.__iteration_counter = 0
-            raise StopIteration
-        self.__iteration_counter += 1
-        return return_value
+
 
 
 if __name__ == "__main__":
