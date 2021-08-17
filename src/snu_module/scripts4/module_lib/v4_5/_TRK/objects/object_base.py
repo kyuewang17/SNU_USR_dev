@@ -228,9 +228,11 @@ class object_instances(object):
         # Return Selected Objects
         return [self.objects[idx] for idx in selected_object_indices]
 
-    def associate(self, *args, **kwargs):
+    def update(self, *args, **kwargs):
         raise NotImplementedError()
 
+    def predict(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":

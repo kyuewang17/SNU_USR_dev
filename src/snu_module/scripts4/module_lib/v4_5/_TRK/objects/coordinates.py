@@ -223,7 +223,7 @@ class STATE_IMAGE_COORD(COORD):
             self.w, self.h = kwargs.get("w"), kwargs.get("h")
             self.depth = kwargs.get("depth")
         else:
-            assert isinstance(input_arr, np.ndarray) and input_arr.size == 8
+            assert isinstance(input_arr, np.ndarray) and input_arr.size == 7
             input_arr_vec = input_arr.reshape(-1)
             self.x, self.y, self.dx, self.dy = \
                 input_arr_vec[0], input_arr_vec[1], input_arr_vec[2], input_arr_vec[3]

@@ -59,17 +59,16 @@ class BBOX(object):
             raise AssertionError()
         return ret_list[idx]
 
-    # def __setitem__(self, idx, value):
-    #     if self.bbox_format == "LTRB":
-    #         attr_str_list = ["lt_x", "lt_y", "rb_x", "rb_y"]
-    #     elif self.bbox_format == "LTWH":
-    #         attr_str_list = ["lt_x", "lt_y", "w", "h"]
-    #     elif self.bbox_format == "XYWH":
-    #         attr_str_list = ["x", "y", "w", "h"]
-    #     else:
-    #         raise AssertionError()
-    #     setattr(self, attr_str_list[idx], value)
-    #     self.__adjust_coordinates(pivot_fmt=self.bbox_format)
+    def __setitem__(self, idx, value):
+        if self.bbox_format == "LTRB":
+            attr_str_list = ["lt_x", "lt_y", "rb_x", "rb_y"]
+        elif self.bbox_format == "LTWH":
+            attr_str_list = ["lt_x", "lt_y", "w", "h"]
+        elif self.bbox_format == "XYWH":
+            attr_str_list = ["x", "y", "w", "h"]
+        else:
+            raise AssertionError()
+        setattr(self, attr_str_list[idx], value)
 
     def __iter__(self):
         return self
