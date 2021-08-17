@@ -20,6 +20,7 @@ from module_lib.v4_5._TRK.params.kalman_filter import KALMAN_FILTER
 from module_lib.v4_5._TRK.utils.assignment import associate
 from module_lib.v4_5._TRK.utils.histogram import histogramize_patch
 from module_lib.v4_5._TRK.utils.depth import compute_depth
+from module_lib.v4_5._TRK.utils.kcf import KCF_PREDICTOR
 
 
 class LATENT_TRAJECTORY(object_base.object_instance):
@@ -46,10 +47,10 @@ class LATENT_TRAJECTORY(object_base.object_instance):
         self.velocities = [np.array([0.0, 0.0])]
 
         # Initialize BBOX Predictor (KCF Module)
-        # TODO: Need to Modify KCF Predictor (modify to handle custom "BBOX" type)
-        # self.BBOX_PREDICTOR = kcf.KCF_PREDICTOR(
-        #     init_frame=frame,
-        # )
+        self.BBOX_PREDICTOR = KCF_PREDICTOR(
+            init_frame=frame, init_bbox=det_bbox, init_fidx=kwargs.get("init_fidx"),
+            kcf_params=tracker_opts.latent_tracker.visual_tracker["kcf_params"]
+        )
 
         # Set Iteration Counter
         self.__iter_counter = 0
@@ -105,17 +106,22 @@ class LATENT_TRAJECTORY(object_base.object_instance):
         self.frame_indices.append(fidx)
 
         # Get Detection BBOX and Confidence, and get Observation Object
+        prev_det_bbox = self.det_bboxes[-1]
         det_bbox, det_conf = kwargs.get("det_bbox"), kwargs.get("det_conf")
         if det_bbox is None and det_conf is None:
-            # TODO: If Previous Detection Confidence is High Enough, then Predict BBOX via KCF
+            # If Previous Detection Confidence is High Enough, then Predict BBOX via KCF
             # IDEA: Use Multi-modal Appearance for Visual Tracking Later on...?
             if self.det_confs[-1] > self.opts.latent_tracker.visual_tracker["activation_conf_thresh"]:
-                # pred_bbox, psr_value = self.BBOX_PREDICTOR.predict_bbox(frame, self.det_bboxes[-1])
-                # TODO: If KCF PSR Value is High Enough, then Update KCF Appearance Model
-                # if psr_value > self.opts.latent_tracker.visual_tracker["update_model_thresh"]:
-                #     self.__update_visual_tracker_model(frame=frame, bbox=pred_bbox)
-                pred_bbox, psr_value = bbox.BBOX(bbox_format="LTRB"), None
-                velocity = pred_bbox - self.det_bboxes[-1]
+
+                # Predict BBOX
+                pred_bbox, psr_value = self.BBOX_PREDICTOR.predict(frame=frame, roi_bbox=prev_det_bbox)
+
+                # If PSR Value of Response is High Enough, then Update KCF Appearance Model
+                if psr_value > self.opts.latent_tracker.visual_tracker["update_model_thresh"]:
+                    self.BBOX_PREDICTOR.update(frame=frame, roi_bbox=pred_bbox)
+
+                # Get Velocity
+                velocity = pred_bbox - prev_det_bbox
 
                 self.det_bboxes.append(pred_bbox)
                 self.det_confs.append(psr_value)
@@ -130,7 +136,7 @@ class LATENT_TRAJECTORY(object_base.object_instance):
 
         elif det_bbox is not None and det_conf is not None:
             assert isinstance(det_bbox, bbox.BBOX)
-            velocity = det_bbox - self.det_bboxes[-1]
+            velocity = det_bbox - prev_det_bbox
             self.det_bboxes.append(det_bbox)
             self.det_confs.append(det_conf)
             self.is_associated.append(True)
@@ -139,10 +145,11 @@ class LATENT_TRAJECTORY(object_base.object_instance):
         else:
             raise NotImplementedError()
 
-    def __update_visual_tracker_model(self, frame, bbox):
-        pass
+    def update_bbox_predictor(self, frame, roi_bbox):
+        assert isinstance(roi_bbox, bbox.BBOX)
+        self.BBOX_PREDICTOR.update(frame=frame, roi_bbox=roi_bbox)
 
-    def init_trk(self, frame, lidar_obj, fidx, **kwargs):
+    def init_trk(self, lidar_obj, fidx, **kwargs):
         # Get Tracker Options
         tracker_opts = self.opts
 

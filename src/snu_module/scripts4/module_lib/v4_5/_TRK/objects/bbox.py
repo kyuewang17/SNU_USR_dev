@@ -48,7 +48,7 @@ class BBOX(object):
         return self.bbox_format
 
     def __getitem__(self, idx):
-        assert isinstance(idx, int) and 0 <= idx <= 3
+        assert isinstance(idx, (int, slice))
         if self.bbox_format == "LTRB":
             ret_list = [self.lt_x, self.lt_y, self.rb_x, self.rb_y]
         elif self.bbox_format == "LTWH":
@@ -57,7 +57,14 @@ class BBOX(object):
             ret_list = [self.x, self.y, self.w, self.h]
         else:
             raise AssertionError()
-        return ret_list[idx]
+
+        if isinstance(idx, int):
+            return ret_list[idx]
+        else:
+            items = []
+            for j in range(idx.start, idx.stop):
+                items.append(getattr(self, ret_list[j]))
+            return np.array(items)
 
     def __setitem__(self, idx, value):
         if self.bbox_format == "LTRB":
