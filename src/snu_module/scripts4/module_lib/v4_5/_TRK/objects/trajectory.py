@@ -157,8 +157,8 @@ class LATENT_TRAJECTORY(object_base.object_instance):
                 # Get Velocity-Augmented IOC
                 ioc_value = aug_prev_det_bbox.get_ioc(det_bbox)
                 if ioc_value > self.opts.latent_tracker["ioc_thresh"]:
-
-
+                    # TODO: Implement HERE
+                    pass
 
             else:
                 self.det_bboxes.append(None)
@@ -166,9 +166,7 @@ class LATENT_TRAJECTORY(object_base.object_instance):
                 self.is_associated.append(False)
                 self.velocities.append(self.velocities[-1])
 
-                if ioc_value < 1e-3:
-                    ioc_value = np.nan
-
+                # TODO: Check Code HERE HERE HERE
 
             assert isinstance(det_bbox, bbox.BBOX)
             velocity = det_bbox - prev_det_bbox
@@ -745,6 +743,9 @@ class TRAJECTORIES(object_base.object_instances):
         }
 
     def predict(self):
+        if len(self):
+            return
+
         # Initialize Kalman Predict Flag List
         kalman_predict_flags = []
 

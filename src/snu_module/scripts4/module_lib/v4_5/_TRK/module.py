@@ -40,11 +40,12 @@ class SNU_MOT(object):
     def destroy_trajectories(self):
         raise NotImplementedError()
 
-    def generate_new_trajectories(self):
+    def get_new_trajectories(self):
         raise NotImplementedError()
 
     def __call__(self, sync_data_dict, fidx, detections):
         # Get Detection Results
+        # NOTE: Tentative Code
         if self.opts.agent_type == "static":
             modal = "color"
             trk_detections = detections[modal]
@@ -67,7 +68,7 @@ class SNU_MOT(object):
         self.destroy_latent_trajectories()
         self.destroy_trajectories()
 
-        # Associate Detections with Trajectories
+        # [Update] Associate Detections with Trajectories
         residual_detections = self.trks.update(
             frame=sync_data_dict[modal], lidar_obj=sync_data_dict["lidar"], detections=trk_detections,
             fidx=fidx, cost_thresh=self.opts.tracker.association["trk"]["cost_thresh"]
@@ -96,7 +97,12 @@ class SNU_MOT(object):
             # TODO: for the residual detections, generate new latent trajectories as above
             pass
 
+        # Generate New Trajectories from Latent Trajectories
+        # TODO: Appending New Trajectories and Updating Maximum Trajectory ID is included...!
+        self.get_new_trajectories()
 
+        # [Predict] Kalman Prediction of Trajectory States
+        self.trks.predict()
 
 
 
