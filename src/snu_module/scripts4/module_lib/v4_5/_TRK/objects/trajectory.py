@@ -49,7 +49,7 @@ class LATENT_TRAJECTORY(object_base.object_instance):
         # Initialize BBOX Predictor (KCF Module)
         self.BBOX_PREDICTOR = KCF_PREDICTOR(
             init_frame=frame, init_bbox=det_bbox, init_fidx=kwargs.get("init_fidx"),
-            kcf_params=tracker_opts.latent_tracker.visual_tracker["kcf_params"]
+            kcf_params=tracker_opts.latent_tracker["visual_tracker"]["kcf_params"]
         )
 
         # Set Iteration Counter
@@ -111,13 +111,13 @@ class LATENT_TRAJECTORY(object_base.object_instance):
         if det_bbox is None and det_conf is None:
             # If Previous Detection Confidence is High Enough, then Predict BBOX via KCF
             # IDEA: Use Multi-modal Appearance for Visual Tracking Later on...?
-            if self.det_confs[-1] > self.opts.latent_tracker.visual_tracker["activation_conf_thresh"]:
+            if self.det_confs[-1] > self.opts.latent_tracker["visual_tracker"]["activation_conf_thresh"]:
 
                 # Predict BBOX
                 pred_bbox, psr_value = self.BBOX_PREDICTOR.predict(frame=frame, roi_bbox=prev_det_bbox)
 
                 # If PSR Value of Response is High Enough, then Update KCF Appearance Model
-                if psr_value > self.opts.latent_tracker.visual_tracker["update_model_thresh"]:
+                if psr_value > self.opts.latent_tracker["visual_tracker"]["update_model_thresh"]:
                     self.BBOX_PREDICTOR.update(frame=frame, roi_bbox=pred_bbox)
 
                 # Get Velocity
@@ -135,6 +135,41 @@ class LATENT_TRAJECTORY(object_base.object_instance):
                 self.velocities.append(self.velocities[-1])
 
         elif det_bbox is not None and det_conf is not None:
+            # NOTE: Calculate IOC between Detection BBOX and Latent Trajectory BBOX
+            if prev_det_bbox is not None:
+                # Convert Format
+                prev_det_bbox.convert_bbox_fmt("LTRB")
+
+                # Pre-compute LT and RB augmentation multiplier
+                dx, dy = self.velocities[-1][0], self.velocities[-1][1]
+                lt_x_aug_m = 0.5 if dx >= 0 else 1.5
+                lt_y_aug_m = 0.5 if dy >= 0 else 1.5
+                rb_x_aug_m, rb_y_aug_m = 2.0 - lt_x_aug_m, 2.0 - lt_y_aug_m
+
+                # Augment Associated Detection BBOX
+                aug_prev_det_bbox = copy.deepcopy(prev_det_bbox)
+                aug_prev_det_bbox.lt_x = aug_prev_det_bbox.lt_x - abs(dx) * lt_x_aug_m
+                aug_prev_det_bbox.lt_y = aug_prev_det_bbox.lt_y - abs(dy) * lt_y_aug_m
+                aug_prev_det_bbox.rb_x = aug_prev_det_bbox.rb_x + abs(dx) * rb_x_aug_m
+                aug_prev_det_bbox.rb_y = aug_prev_det_bbox.rb_y + abs(dy) * rb_y_aug_m
+                aug_prev_det_bbox.adjust_coordinates()
+
+                # Get Velocity-Augmented IOC
+                ioc_value = aug_prev_det_bbox.get_ioc(det_bbox)
+                if ioc_value > self.opts.latent_tracker["ioc_thresh"]:
+
+
+
+            else:
+                self.det_bboxes.append(None)
+                self.det_confs.append(None)
+                self.is_associated.append(False)
+                self.velocities.append(self.velocities[-1])
+
+                if ioc_value < 1e-3:
+                    ioc_value = np.nan
+
+
             assert isinstance(det_bbox, bbox.BBOX)
             velocity = det_bbox - prev_det_bbox
             self.det_bboxes.append(det_bbox)
@@ -619,6 +654,9 @@ class TRAJECTORIES(object_base.object_instances):
         self.kalman_flag["predict"] = False
 
     def update(self, frame, lidar_obj, detections, fidx, **kwargs):
+        if len(self) == 0:
+            return detections
+
         # Change Association Activation Flag
         self.__is_updated = True
 
