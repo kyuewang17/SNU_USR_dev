@@ -5,11 +5,10 @@
 Header header
 
 # 2D Bounding Box
-#BoundingBox bbox
-int32 x
-int32 y
-int32 width
-int32 height
+int32 lt_x
+int32 lt_y
+int32 rb_x
+int32 rb_y
 
 # ID
 int32 id

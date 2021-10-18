@@ -78,7 +78,7 @@ def load_multimodal_data(base_path, logger, frame_interval):
     # Get Folder Lists
     modal_lists = os.listdir(base_path)
     matchers = [
-        "xml", ".bag", "lidar"
+        "xml", ".bag"
     ]
     matchings = [s for s in modal_lists if any(xs in s for xs in matchers)]
     for matching in matchings:
@@ -365,11 +365,11 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
                                 ROS_MODAL_ANNO.header.frame_id = modal_frame_id
 
                                 # Set 'bbox' Argument
-                                xywh_bbox_arr = modal_anno.bbox.numpify(type_conversion="xywh")
-                                ROS_MODAL_ANNO.x = int(xywh_bbox_arr[0])
-                                ROS_MODAL_ANNO.y = int(xywh_bbox_arr[1])
-                                ROS_MODAL_ANNO.width = int(xywh_bbox_arr[2])
-                                ROS_MODAL_ANNO.height = int(xywh_bbox_arr[3])
+                                xywh_bbox_arr = modal_anno.bbox.numpify()
+                                ROS_MODAL_ANNO.lt_x = int(xywh_bbox_arr[0])
+                                ROS_MODAL_ANNO.lt_y = int(xywh_bbox_arr[1])
+                                ROS_MODAL_ANNO.rb_x = int(xywh_bbox_arr[2])
+                                ROS_MODAL_ANNO.rb_y = int(xywh_bbox_arr[3])
 
                                 # Set 'id' Argument
                                 if modal_anno.id is None:

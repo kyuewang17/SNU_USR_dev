@@ -20,6 +20,8 @@ add_message_files(
    BoundingBox.msg
    Annotation.msg
    Annotations.msg
+   Evaluator.msg
+   Evaluators.msg
 )
 
 

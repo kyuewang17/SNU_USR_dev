@@ -11,7 +11,7 @@ from sensors import ros_sensor_image, ros_sensor_disparity, ros_sensor_lidar
 
 # Import ROS Message Types
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
-from osr_msgs.msg import Tracks
+from osr_msgs.msg import Tracks, Annotations, Evaluator
 from nav_msgs.msg import Odometry
 
 
@@ -25,6 +25,11 @@ class backbone(object):
 
         # Odometry Message (Pass-through Variable)
         self.odometry_msg = None
+
+        # NOTE: Annotations Message (Pass-through Variable - Tentative for MOT Evaluation)
+        self.annos_msg = {
+            "color": None, "thermal": None
+        }
 
         # TF Static-related Variables
         self.tf_transform = None
@@ -79,6 +84,10 @@ class backbone(object):
                 self.thermal_camerainfo_callback
             )
 
+        # NOTE: Annotations Subscriber (RGB/Thermal) - Tentative Code for MOT Evaluation
+        self.rgb_annos_sub = Subscriber("/osr/annos_RGB", Annotations, self.rgb_annos_callback)
+        self.thermal_annos_sub = Subscriber("/osr/annos_thermal", Annotations, self.thermal_annos_callback)
+
         # ROS Publisher
         self.tracks_pub = Publisher(
             opts.publish_mesg["tracks"], Tracks, queue_size=1
@@ -123,6 +132,13 @@ class backbone(object):
     def odometry_callback(self, msg):
         self.odometry_msg = msg
 
+    # NOTE: Annotations Callback Function (Tentative)
+    def rgb_annos_callback(self, msg):
+        self.annos_msg["color"] = msg
+
+    def thermal_annos_callback(self, msg):
+        self.annos_msg["thermal"] = msg
+
     # Color CameraInfo Callback Function
     def color_camerainfo_callback(self, msg):
         if self.color.get_sensor_params() is None:
@@ -147,6 +163,19 @@ class backbone(object):
     def publish_tracks(self, trajectories, odometry_msg):
         out_tracks = wrap_tracks(trackers=trajectories, odometry=odometry_msg)
         self.tracks_pub.publish(out_tracks)
+        return out_tracks
+
+    # NOTE: Publish Evaluator - Tentative Code for MOT Evaluation
+    def publish_evaluator(self, out_tracks):
+        # # Initialize Evaluator
+        # ros_evaluator = Evaluator()
+        # ros_evaluator.header = self.
+        #
+        # if len(out_tracks.tracks) == 0:
+        #     ros_evaluator.header.seq
+
+
+        print(1234)
 
     # Publish SNU Result Image ( DET / TRK + ACL )
     def publish_snu_result_image(self, result_frames_dict):

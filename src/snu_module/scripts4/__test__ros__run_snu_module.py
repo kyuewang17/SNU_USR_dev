@@ -197,7 +197,7 @@ class snu_module(backbone):
                         self.opts.time = "day"
                     else:
                         self.opts.time = "night"
-                self.opts.time = "day"
+                self.opts.time = "night"
 
                 # Make Synchronized Data
                 sync_ss.make_sync_data()
@@ -262,10 +262,48 @@ class snu_module(backbone):
                 # )
 
                 # Publish Tracks
-                self.publish_tracks(trajectories=trajectories, odometry_msg=self.odometry_msg)
+                out_tracks = self.publish_tracks(trajectories=trajectories, odometry_msg=self.odometry_msg)
 
                 # Publish SNU Result Image Results
                 self.publish_snu_result_image(result_frames_dict=result_frames_dict)
+
+                # NOTE: Publish Evaluator - Tentative Code for MOT Evaluation
+                if len(trajectories) != 0:
+                    # Search for Trajectory Modalities
+                    modals = []
+                    for trk in trajectories:
+                        trk_modal = trk.modal
+                        if len(modals) == 0:
+                            modals.append(trk_modal)
+                        else:
+                            if trk.modal not in modals:
+                                modals.append(trk_modal)
+
+                    # Make Modal Trajectories Dict
+                    modal_trks_dict = dict.fromkeys(modals)
+                    for modal in modal_trks_dict.keys():
+                        modal_trks_dict[modal] = []
+                        for trk in trajectories:
+                            if trk.modal == modal:
+                                modal_trks_dict[modal].append(trk)
+
+                    # Publish Evaluators for modals
+                    for modal, modal_trks in modal_trks_dict.items():
+                        from utils.ros.wrapper import wrap_tracks
+                        curr_out_tracks = wrap_tracks(trackers=modal_trks, odometry=self.odometry_msg)
+
+
+
+
+                    print(1234)
+
+
+                    # for modal in modals:
+
+
+
+
+                    self.publish_evaluator(out_tracks=out_tracks)
 
                 # # Draw / Show / Publish Top-view Result
                 # if self.opts.visualization.top_view["is_draw"] is True:
