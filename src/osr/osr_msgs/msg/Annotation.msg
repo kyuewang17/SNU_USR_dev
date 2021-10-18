@@ -6,10 +6,10 @@ Header header
 
 # 2D Bounding Box
 #BoundingBox bbox
-uint32 x
-uint32 y
-uint32 width
-uint32 height
+int32 x
+int32 y
+int32 width
+int32 height
 
 # ID
 int32 id

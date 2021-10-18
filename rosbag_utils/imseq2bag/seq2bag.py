@@ -35,11 +35,11 @@ def argument_parser():
         help="Base Path"
     )
     parser.add_argument(
-        "--start-fidx", "-S", default=3500,
+        "--start-fidx", "-S", default=500,
         help="Starting Frame Index"
     )
     parser.add_argument(
-        "--end-fidx", "-E", default=4000,
+        "--end-fidx", "-E", default=2500,
         help="Ending Frame Index"
     )
     parser.add_argument(
@@ -344,16 +344,17 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
                     else:
                         # Get Annotations of the Current Modal
                         modal_annos = mmt_annos_dict[modal]
+
+                        # Set ROS Topic Name
+                        modal_annos_frame_id = "osr/annos_{}".format(modal)
+
+                        # Initialize Annotations Msg
+                        ROS_MODAL_ANNOS = Annotations()
+                        ROS_MODAL_ANNOS.header.seq = fidx
+                        ROS_MODAL_ANNOS.header.stamp = modal_stamp
+                        ROS_MODAL_ANNOS.header.frame_id = modal_frame_id
+
                         if modal_annos is not None:
-                            # Set ROS Topic Name
-                            modal_annos_frame_id = "osr/annos_{}".format(modal)
-
-                            # Initialize Annotations Msg
-                            ROS_MODAL_ANNOS = Annotations()
-                            ROS_MODAL_ANNOS.header.seq = fidx
-                            ROS_MODAL_ANNOS.header.stamp = modal_stamp
-                            ROS_MODAL_ANNOS.header.frame_id = modal_frame_id
-
                             # Iterate for all 'modal_annos'
                             for modal_anno in modal_annos:
 
@@ -391,8 +392,8 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
                                 # Append to Annotations
                                 ROS_MODAL_ANNOS.annotations.append(ROS_MODAL_ANNO)
 
-                            # Write to Bag File
-                            bag.write(modal_annos_frame_id, ROS_MODAL_ANNOS, modal_stamp)
+                        # Write to Bag File
+                        bag.write(modal_annos_frame_id, ROS_MODAL_ANNOS, modal_stamp)
 
                         # ROS_MODAL_IMG = Image()
                         ROS_MODAL_IMG = bridge.cv2_to_imgmsg(modal_data, modal_encoding)
