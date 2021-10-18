@@ -3,6 +3,9 @@
 
 
 """
+import cv2
+import numpy as np
+from copy import deepcopy
 import rospy
 from std_msgs.msg import Header
 from sensor_msgs.msg import CameraInfo
@@ -64,6 +67,9 @@ class MODAL_BASE_OBJECT(object):
         # Timestamp
         self.timestamp = None
 
+        # Annotations
+        self.annos = None
+
     def __repr__(self):
         return self.modal
 
@@ -71,8 +77,11 @@ class MODAL_BASE_OBJECT(object):
         self.data = data
         self.timestamp = timestamp
 
+    def set_annos(self, annos):
+        self.annos = annos
+
     def get_data(self):
-        return {"data": self.data, "timestamp": self.timestamp}
+        return {"data": self.data, "timestamp": self.timestamp, "annos": self.annos}
 
     def get_modal(self):
         return self.modal
@@ -88,11 +97,41 @@ class IMAGE_MODAL_OBJ(MODAL_BASE_OBJECT):
     def get_camera_info(self):
         return self.camera_info
 
+    def get_dtype(self):
+        return self.data.dtype
+
     def update_camera_parameters(self, D, K, R, P):
         self.camera_info.update_camera_parameters(D, K, R, P)
 
     def get_camera_parameters(self):
         return self.camera_info.get_camera_parameters()
+
+    def draw_annos(self):
+        vis_frame = None
+        if self.annos is not None:
+            vis_frame = deepcopy(self.data.astype(np.uint8))
+            if len(vis_frame.shape) == 2:
+                vis_frame = np.dstack((vis_frame, vis_frame, vis_frame))
+
+            # For Annotations,
+            for anno in self.annos:
+                bbox = anno.bbox.numpify()
+
+                # Draw Rectangle BBOX (Left-Top Right-Bottom)
+                if anno.cls == "Car" or anno.cls == "Motorcycle":
+                    color = (255, 0, 0)
+                elif anno.cls == "Human":
+                    color = (0, 255, 0)
+                else:
+                    color = (120, 120, 120)
+
+                cv2.rectangle(
+                    vis_frame,
+                    (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),
+                    color, 2
+                )
+
+        return vis_frame, self.timestamp
 
 
 class LIDAR_MODAL_OBJ(MODAL_BASE_OBJECT):
@@ -164,18 +203,18 @@ class MULTIMODAL_DATA_OBJ(object):
         raise NotImplementedError()
 
     def get_data(self, idx):
-        data_dict, timestamp_dict = {}, {}
+        data_dict, timestamp_dict, annos_dict = {}, {}, {}
         for modal, modal_obj in self.__dict__.iteritems():
             if modal == "_MULTIMODAL_DATA_OBJ__dataLength":
                 continue
             if len(modal_obj) < idx+1:
-                data_dict[modal], timestamp_dict[modal] = None, None
+                data_dict[modal], timestamp_dict[modal], annos_dict[modal] = None, None, None
                 continue
             # Get Current Modal Data and Timestamp, Append to Dictionary
             idx_data_timestamp_dict = modal_obj.get_data(idx)
-            data_dict[modal], timestamp_dict[modal] = \
-                idx_data_timestamp_dict["data"], idx_data_timestamp_dict["timestamp"]
-        return data_dict, timestamp_dict
+            data_dict[modal], timestamp_dict[modal], annos_dict[modal] = \
+                idx_data_timestamp_dict["data"], idx_data_timestamp_dict["timestamp"], idx_data_timestamp_dict["annos"]
+        return data_dict, timestamp_dict, annos_dict
 
     def get_camera_info(self, idx):
         camera_info_dict = {}
@@ -200,6 +239,22 @@ class MULTIMODAL_DATA_OBJ(object):
             idx_camera_params = modal_obj.get_camera_parameters(idx)
             camera_params_dict[modal] = idx_camera_params
         return camera_params_dict
+
+    def draw_modal_annos(self, modal):
+        assert hasattr(self, modal), "Object does not have attribute [{}]...!".format(modal)
+        if modal == "lidar":
+            return None
+
+        sel_modal_data_obj = getattr(self, modal)
+        sel_modal_obj_list = sel_modal_data_obj.modal_obj_list
+
+        vis_frames, vis_timestamps = [], []
+        for sel_modal_obj in sel_modal_obj_list:
+            vis_frame, vis_timestamp = sel_modal_obj.draw_annos()
+            vis_frames.append(vis_frame)
+            vis_timestamps.append(vis_timestamp)
+
+        return vis_frames, vis_timestamps
 
 
 if __name__ == "__main__":

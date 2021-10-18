@@ -18,6 +18,8 @@ add_message_files(
    Track.msg
    Tracks.msg
    BoundingBox.msg
+   Annotation.msg
+   Annotations.msg
 )
 
 

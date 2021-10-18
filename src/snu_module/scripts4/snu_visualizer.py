@@ -246,28 +246,28 @@ class vis_trk_acl_obj(vis_obj):
                     # cv2.putText(modal_vis_frame, c3_str, (text_x, text_y), font, 1.2,
                     #             (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
-                    # Visualize Action Classification Result
-                    if trk.pose is not None and self.vopts.aclassifier["is_draw"] is True:
-                        # Draw Action Results only when Human
-                        # TODO: (later, handle this directly on action classification module)
-                        if trk.label == 1:
-                            # Get Image Height and Width
-                            H, W = modal_vis_frame.shape[0], modal_vis_frame.shape[1]
-
-                            # Convert Action Classification Result Text in Words
-                            if trk.pose == 1:
-                                pose_word = "Lie"
-                            elif trk.pose == 2:
-                                pose_word = "Sit"
-                            elif trk.pose == 3:
-                                pose_word = "Stand"
-                            else:
-                                pose_word = "NAN"
-
-                            # Put Result Text in the frame
-                            cv2.putText(modal_vis_frame, pose_word,
-                                        (min(int(trk.x3[0] + (trk.x3[5] / 2)), W - 1), min(int(trk.x3[1] + (trk.x3[6] / 2)), H - 1)),
-                                        font, 1.5, (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
+                    # # Visualize Action Classification Result
+                    # if trk.pose is not None and self.vopts.aclassifier["is_draw"] is True:
+                    #     # Draw Action Results only when Human
+                    #     # TODO: (later, handle this directly on action classification module)
+                    #     if trk.label == 1:
+                    #         # Get Image Height and Width
+                    #         H, W = modal_vis_frame.shape[0], modal_vis_frame.shape[1]
+                    #
+                    #         # Convert Action Classification Result Text in Words
+                    #         if trk.pose == 1:
+                    #             pose_word = "Lie"
+                    #         elif trk.pose == 2:
+                    #             pose_word = "Sit"
+                    #         elif trk.pose == 3:
+                    #             pose_word = "Stand"
+                    #         else:
+                    #             pose_word = "NAN"
+                    #
+                    #         # Put Result Text in the frame
+                    #         cv2.putText(modal_vis_frame, pose_word,
+                    #                     (min(int(trk.x3[0] + (trk.x3[5] / 2)), W - 1), min(int(trk.x3[1] + (trk.x3[6] / 2)), H - 1)),
+                    #                     font, 1.5, (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2)
 
             vis_frames[modal] = modal_vis_frame
 

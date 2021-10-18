@@ -9,16 +9,19 @@ import argparse
 import ros_numpy
 import numpy as np
 from pandas import read_csv
+import xmltodict
 import rosbag
 import rospy
 import roslib
 roslib.load_manifest('sensor_msgs')
 from sensor_msgs.msg import PointCloud2
+from osr_msgs.msg import Annotation, Annotations
 from cv_bridge import CvBridge
 import cv2
 
 from mmt_params import CAMERA_INFO as _CAMERAINFO
 from camera_objects import IMAGE_MODAL_OBJ, LIDAR_MODAL_OBJ, MODAL_DATA_OBJ, MULTIMODAL_DATA_OBJ
+from target_objects import BBOX, TARGET
 
 
 def argument_parser():
@@ -36,7 +39,7 @@ def argument_parser():
         help="Starting Frame Index"
     )
     parser.add_argument(
-        "--end-fidx", "-E", default=5500,
+        "--end-fidx", "-E", default=4000,
         help="Ending Frame Index"
     )
     parser.add_argument(
@@ -75,7 +78,7 @@ def load_multimodal_data(base_path, logger, frame_interval):
     # Get Folder Lists
     modal_lists = os.listdir(base_path)
     matchers = [
-        "xml", ".bag"
+        "xml", ".bag", "lidar"
     ]
     matchings = [s for s in modal_lists if any(xs in s for xs in matchers)]
     for matching in matchings:
@@ -89,11 +92,93 @@ def load_multimodal_data(base_path, logger, frame_interval):
         assert 0 <= frame_interval[0] < frame_interval[1]
         min_fidx, max_fidx = frame_interval[0], frame_interval[1]
 
+    # For XML Files,
+    xml_base_path = os.path.join(base_path, "xml")
+    xml_file_list = sorted(os.listdir(xml_base_path))
+
+    # Traverse through XML Files to Get Object Annotations
+    anno_list = []
+    anno_timing_list = []
+    anno_modal_list = []
+    for xml_idx, xml_filename in enumerate(xml_file_list):
+        # Get XML File Path
+        xml_filepath = os.path.join(xml_base_path, xml_filename)
+
+        # Open XML File
+        with open(xml_filepath) as anno_f:
+            anno_data = xmltodict.parse(anno_f.read())
+
+        # Get Modality
+        anno_modal = anno_data["Annotation"]["subfolder"].encode("utf8")
+        anno_modal_list.append(anno_modal)
+
+        # Get XML Timing String
+        xml_parsed_timing = xml_filename.split(".xml")[0].split("_")[2:]
+        xml_date, xml_time, xml_fidx = xml_parsed_timing[0], xml_parsed_timing[1], xml_parsed_timing[2]
+        anno_timing_list.append( {"date": xml_date, "time": xml_time, "fidx": xml_fidx})
+
+        # Get Modal Image Width, Height
+        anno_size_dict = anno_data["Annotation"]["size"]
+        modal_width = int(anno_size_dict["width"].encode("utf8"))
+        modal_height = int(anno_size_dict["height"].encode("utf8"))
+
+        # Get Objects
+        xml_objects = anno_data["Annotation"]["object"]
+        if isinstance(xml_objects, list) is False:
+            xml_objects = [xml_objects]
+
+        # Initialize Object List
+        obj_list = []
+
+        for xml_obj in xml_objects:
+            # Get Object ID
+            obj_id = int(xml_obj["index"].encode("utf8"))
+
+            # Get Object Class
+            obj_class = xml_obj["name"].encode("utf8")
+
+            # Get Object Pose
+            obj_pose = xml_obj["pose"].encode("utf8")
+
+            # # Get Object BBOX
+            # obj_bbox = BBOX(
+            #     LT_X=float(xml_obj["bndbox"]["xmin"].encode("utf8")),
+            #     LT_Y=float(xml_obj["bndbox"]["ymin"].encode("utf8")),
+            #     RB_X=float(xml_obj["bndbox"]["xmax"].encode("utf8")),
+            #     RB_Y=float(xml_obj["bndbox"]["ymax"].encode("utf8"))
+            # )
+
+            # Get Object BBOX
+            bbox_xmin = float(xml_obj["bndbox"]["xmin"].encode("utf8"))
+            bbox_ymin = float(xml_obj["bndbox"]["ymin"].encode("utf8"))
+            bbox_xmax = float(xml_obj["bndbox"]["xmax"].encode("utf8"))
+            bbox_ymax = float(xml_obj["bndbox"]["ymax"].encode("utf8"))
+
+
+            obj_bbox = BBOX(
+                LT_X=bbox_xmin, LT_Y=modal_height-bbox_ymax,
+                RB_X=bbox_xmax, RB_Y=modal_height-bbox_ymin
+            )
+
+            # Append to Object List
+            obj_list.append(
+                TARGET(
+                    id=obj_id, bbox=obj_bbox, cls=obj_class, pose=obj_pose,
+                    modal=anno_modal, date=xml_date, time=xml_time, fidx=xml_fidx
+                )
+            )
+
+        # Append to anno_list
+        anno_list.append(obj_list)
+
     # for each modalities
     modal_data_obj_dict = {}
     for modal_idx, modal in enumerate(modal_lists):
         # Join Path
         curr_modal_base_path = os.path.join(base_path, modal)
+
+        # Filter Annotation Indices w.r.t. modality
+        anno_list_modal_indices = [i for i, m in enumerate(anno_modal_list) if m == modal]
 
         # Get Modal File Lists
         modal_obj_list = []
@@ -126,6 +211,18 @@ def load_multimodal_data(base_path, logger, frame_interval):
                 _fidx = filename.split(".")[0].split("_")[4]
                 timestamp = {"date": _date, "time": _time, "fidx": _fidx}
 
+                # Filter Annotation Indices w.r.t. filename (date-time-fidx)
+                anno_list_timing_indices = [i for i, t in enumerate(anno_timing_list) if t == timestamp]
+
+                # Intersection Indices
+                anno_list_idx = list(set(anno_list_modal_indices).intersection(
+                    set(anno_list_timing_indices)
+                ))
+                if len(anno_list_idx) > 1:
+                    raise AssertionError()
+                else:
+                    annos = anno_list[anno_list_idx[0]] if len(anno_list_idx) != 0 else None
+
                 # Initialize Modal Object
                 if modal != "lidar":
                     modal_obj = IMAGE_MODAL_OBJ(modal=modal, timestamp=timestamp)
@@ -138,6 +235,9 @@ def load_multimodal_data(base_path, logger, frame_interval):
                     )
                 else:
                     modal_obj = LIDAR_MODAL_OBJ()
+
+                # Load Annotations
+                modal_obj.set_annos(annos=annos)
 
                 # Load Data
                 if modal == "RGB":
@@ -198,7 +298,7 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
     # Iterate for Multimodal Sensors
     try:
         for fidx in range(len(MMT_OBJ)):
-            mmt_data_dict, mmt_timestamp_dict = MMT_OBJ.get_data(fidx)
+            mmt_data_dict, mmt_timestamp_dict, mmt_annos_dict = MMT_OBJ.get_data(fidx)
             mmt_camera_info_dict = MMT_OBJ.get_camera_info(fidx)
             bridge = CvBridge()
             for modal, modal_data in mmt_data_dict.items():
@@ -249,6 +349,55 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
                         )
                         bag.write(modal_frame_id, ROS_LIDAR_PC2, modal_stamp)
                     else:
+                        # Get Annotations of the Current Modal
+                        modal_annos = mmt_annos_dict[modal]
+                        if modal_annos is not None:
+                            # Set ROS Topic Name
+                            modal_annos_frame_id = "osr/annos_{}".format(modal)
+
+                            # Initialize Annotations Msg
+                            ROS_MODAL_ANNOS = Annotations()
+                            ROS_MODAL_ANNOS.header.seq = fidx
+                            ROS_MODAL_ANNOS.header.stamp = modal_stamp
+                            ROS_MODAL_ANNOS.header.frame_id = modal_frame_id
+
+                            # Iterate for all 'modal_annos'
+                            for modal_anno in modal_annos:
+
+                                # Initialize Annotation Msg
+                                ROS_MODAL_ANNO = Annotation()
+                                ROS_MODAL_ANNO.header.seq = fidx
+                                ROS_MODAL_ANNO.header.stamp = modal_stamp
+                                ROS_MODAL_ANNO.header.frame_id = modal_frame_id
+
+                                # Set 'bbox' Argument
+                                xywh_bbox_arr = modal_anno.bbox.numpify(type_conversion="xywh")
+                                ROS_MODAL_ANNO.x = int(xywh_bbox_arr[0])
+                                ROS_MODAL_ANNO.y = int(xywh_bbox_arr[1])
+                                ROS_MODAL_ANNO.width = int(xywh_bbox_arr[2])
+                                ROS_MODAL_ANNO.height = int(xywh_bbox_arr[3])
+
+                                # Set 'id' Argument
+                                ROS_MODAL_ANNO.id = int(modal_anno.id)
+
+                                # Set 'pose' Argument
+                                if modal_anno.pose is None:
+                                    ROS_MODAL_ANNO.pose.data = "other"
+                                else:
+                                    ROS_MODAL_ANNO.pose.data = modal_anno.pose
+
+                                # Set 'class' Argument
+                                ROS_MODAL_ANNO.cls.data = modal_anno.cls
+
+                                # Set 'modal' Argument
+                                ROS_MODAL_ANNO.modal.data = modal
+
+                                # Append to Annotations
+                                ROS_MODAL_ANNOS.annotations.append(ROS_MODAL_ANNO)
+
+                            # Write to Bag File
+                            bag.write(modal_annos_frame_id, ROS_MODAL_ANNOS, modal_stamp)
+
                         # ROS_MODAL_IMG = Image()
                         ROS_MODAL_IMG = bridge.cv2_to_imgmsg(modal_data, modal_encoding)
                         ROS_MODAL_IMG.header.seq = fidx
@@ -282,11 +431,32 @@ if __name__ == "__main__":
 
     # Argparser
     args = argument_parser()
-    args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2020/Detection/ICCAS2021/1-01d"
+    # args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2020/Detection/ICCAS2021/1-01d"
+    args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2021/1-05d-iitp21"
 
     # Set Logger
     logger = set_logger()
 
+    # Load Multimodal Data Objects
     MMT_DATA_OBJ = load_multimodal_data(base_path=args.base_path, logger=logger, frame_interval=[args.start_fidx, args.end_fidx])
+
+    # # Visualize Modal Data
+    # vis_frames, vis_timestamps = MMT_DATA_OBJ.draw_modal_annos(modal="thermal")
+
+    # # Make Named Window
+    # winname = "thermal annos"
+    # cv2.namedWindow("thermal annos")
+    #
+    # # Imshow Frames
+    # fidx = 0
+    # while True:
+    #     vis_frame = vis_frames[fidx]
+    #     print(vis_timestamps[fidx])
+    #     fidx += 1
+    #     if fidx == len(vis_frames):
+    #         fidx = 0
+    #     cv2.imshow(winname, vis_frame)
+    #     cv2.waitKey(100)
+
     generate_multimodal_bag_file(MMT_OBJ=MMT_DATA_OBJ, logger=logger, base_path=args.base_path, override_mode=args.override_mode)
     pass

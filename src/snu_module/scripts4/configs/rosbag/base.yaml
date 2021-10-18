@@ -65,7 +65,7 @@ detector:
     sensors:
         color: true
         disparity: false
-        thermal: false
+        thermal: true
         infrared: false
         nightvision: false
         lidar: false
@@ -81,7 +81,7 @@ tracker:
     device: 0
     association:
         trk:
-            init_age: 3
+            init_age: 2
             destroy_age: 8
             similarity_thresh: 0.3
         trk_cand:
@@ -100,7 +100,7 @@ aclassifier:
     name: "Custom"
     device: 0
     sensors:
-        thermal: false
+        thermal: true
     visualization:
         is_draw: true
         is_show: false
