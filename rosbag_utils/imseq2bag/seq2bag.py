@@ -132,7 +132,10 @@ def load_multimodal_data(base_path, logger, frame_interval):
 
         for xml_obj in xml_objects:
             # Get Object ID
-            obj_id = int(xml_obj["index"].encode("utf8"))
+            if "index" in xml_obj:
+                obj_id = int(xml_obj["index"].encode("utf8"))
+            else:
+                obj_id = None
 
             # Get Object Class
             obj_class = xml_obj["name"].encode("utf8")
@@ -140,21 +143,11 @@ def load_multimodal_data(base_path, logger, frame_interval):
             # Get Object Pose
             obj_pose = xml_obj["pose"].encode("utf8")
 
-            # # Get Object BBOX
-            # obj_bbox = BBOX(
-            #     LT_X=float(xml_obj["bndbox"]["xmin"].encode("utf8")),
-            #     LT_Y=float(xml_obj["bndbox"]["ymin"].encode("utf8")),
-            #     RB_X=float(xml_obj["bndbox"]["xmax"].encode("utf8")),
-            #     RB_Y=float(xml_obj["bndbox"]["ymax"].encode("utf8"))
-            # )
-
             # Get Object BBOX
             bbox_xmin = float(xml_obj["bndbox"]["xmin"].encode("utf8"))
             bbox_ymin = float(xml_obj["bndbox"]["ymin"].encode("utf8"))
             bbox_xmax = float(xml_obj["bndbox"]["xmax"].encode("utf8"))
             bbox_ymax = float(xml_obj["bndbox"]["ymax"].encode("utf8"))
-
-
             obj_bbox = BBOX(
                 LT_X=bbox_xmin, LT_Y=modal_height-bbox_ymax,
                 RB_X=bbox_xmax, RB_Y=modal_height-bbox_ymin
@@ -378,7 +371,10 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
                                 ROS_MODAL_ANNO.height = int(xywh_bbox_arr[3])
 
                                 # Set 'id' Argument
-                                ROS_MODAL_ANNO.id = int(modal_anno.id)
+                                if modal_anno.id is None:
+                                    ROS_MODAL_ANNO.id = -1
+                                else:
+                                    ROS_MODAL_ANNO.id = int(modal_anno.id)
 
                                 # Set 'pose' Argument
                                 if modal_anno.pose is None:
