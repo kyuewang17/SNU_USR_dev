@@ -291,19 +291,7 @@ class snu_module(backbone):
                     for modal, modal_trks in modal_trks_dict.items():
                         from utils.ros.wrapper import wrap_tracks
                         curr_out_tracks = wrap_tracks(trackers=modal_trks, odometry=self.odometry_msg)
-
-
-
-
-                    print(1234)
-
-
-                    # for modal in modals:
-
-
-
-
-                    self.publish_evaluator(out_tracks=out_tracks)
+                        self.publish_evaluator(out_tracks=out_tracks, modal=modal)
 
                 # # Draw / Show / Publish Top-view Result
                 # if self.opts.visualization.top_view["is_draw"] is True:

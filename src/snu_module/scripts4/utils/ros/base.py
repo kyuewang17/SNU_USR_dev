@@ -93,6 +93,9 @@ class backbone(object):
             opts.publish_mesg["tracks"], Tracks, queue_size=1
         )
 
+        # NOTE: Evaluator Publisher (Tentative Code for MOT Evaluation)
+        self.evaluator_pub = Publisher("/osr/eval", Evaluator, queue_size=1)
+
         # ROS SNU Result Publisher
         # NOTE: Tentative Code
         self.det_results_pub = {
@@ -166,16 +169,27 @@ class backbone(object):
         return out_tracks
 
     # NOTE: Publish Evaluator - Tentative Code for MOT Evaluation
-    def publish_evaluator(self, out_tracks):
-        # # Initialize Evaluator
-        # ros_evaluator = Evaluator()
-        # ros_evaluator.header = self.
-        #
-        # if len(out_tracks.tracks) == 0:
-        #     ros_evaluator.header.seq
+    def publish_evaluator(self, out_tracks, modal):
+        if modal in self.annos_msg:
+            # Get Annotations Msg
+            annos = self.annos_msg[modal]
 
+            # Initialize Evaluator
+            ros_evaluator = Evaluator()
+            ros_evaluator.header = annos.header
 
-        print(1234)
+            # Get "Annotation" and "Track" Data and Input to Evaluator
+            for anno in annos.annotations:
+                ros_evaluator.annos.append(anno)
+
+            for track in out_tracks.tracks:
+                ros_evaluator.tracks.append(track)
+
+            # Publish Evaluator
+            self.evaluator_pub.publish(ros_evaluator)
+
+        else:
+            raise AssertionError()
 
     # Publish SNU Result Image ( DET / TRK + ACL )
     def publish_snu_result_image(self, result_frames_dict):
