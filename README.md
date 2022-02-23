@@ -192,30 +192,48 @@
     - RGB
           <div align="center">
             <img src="/readme_srcs/results/DET/Day_RGB_trimmed.gif" width="300px" />
-            <p>.</p>
+            <p>Daytime RGB Detection Results.</p>
           </div>
     - Thermal
           <div align="center">
             <img src="/readme_srcs/results/DET/Day_Thermal_trimmed.gif" width="300px" />
-            <p>.</p>
+            <p>Daytime Thermal Detection Results.</p>
           </div>
   - Nighttime
     - RGB
           <div align="center">
             <img src="/readme_srcs/results/DET/Night_RGB_trimmed.gif" width="300px" />
-            <p>.</p>
+            <p>Nighttime RGB Detection Results.</p>
           </div>
     - Thermal
           <div align="center">
             <img src="/readme_srcs/results/DET/Night_Thermal_trimmed.gif" width="300px" />
-            <p>.</p>
+            <p>Nighttime Thermal Detection Results.</p>
           </div>
   
 - MOT Results
+  - Daytime, RGB
+      <div align="center">
+        <img src="/readme_srcs/results/TRK/Day_RGB_trimmed.gif" width="300px" />
+        <p>Daytime RGB MOT Results.</p>
+      </div>
+  - Nighttime, Thermal
+      <div align="center">
+        <img src="/readme_srcs/results/TRK/Night_Thermal_trimmed.gif" width="300px" />
+        <p>Nighttime Thermal MOT Results.</p>
+      </div>
 
-
-
-
+- Action Classification Results
+  - Daytime, RGB
+      <div align="center">
+        <img src="/readme_srcs/results/ACL/Day_RGB.gif" width="300px" />
+        <p>Daytime RGB Action Classification Results.</p>
+      </div>
+  - Nighttime, Thermal
+      <div align="center">
+        <img src="/readme_srcs/results/ACL/Night_Thermal.gif" width="300px" />
+        <p>Nighttime Thermal Action Classification Results.</p>
+      </div>
 
 
 
