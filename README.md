@@ -186,7 +186,10 @@
 
 ---
 #### Integrated Module Experimental Sample Results
-
+<div align="center">
+  <img src="docs/resources/siamfcpp_ice2.gif" width="800px" />
+  <p>Example SiamFC++ outputs.</p>
+</div>
 
 
 
