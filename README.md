@@ -186,10 +186,32 @@
 
 ---
 #### Integrated Module Experimental Sample Results
-<div align="center">
-  <img src="/readme_srcs/results/DET/Day_RGB_trimmed.gif" width="800px" />
-  <p>Example SiamFC++ outputs.</p>
-</div>
+
+- Detection Results
+  - Daytime
+    - RGB
+          <div align="center">
+            <img src="/readme_srcs/results/DET/Day_RGB_trimmed.gif" width="300px" />
+            <p>.</p>
+          </div>
+    - Thermal
+          <div align="center">
+            <img src="/readme_srcs/results/DET/Day_Thermal_trimmed.gif" width="300px" />
+            <p>.</p>
+          </div>
+  - Nighttime
+    - RGB
+          <div align="center">
+            <img src="/readme_srcs/results/DET/Night_RGB_trimmed.gif" width="300px" />
+            <p>.</p>
+          </div>
+    - Thermal
+          <div align="center">
+            <img src="/readme_srcs/results/DET/Night_Thermal_trimmed.gif" width="300px" />
+            <p>.</p>
+          </div>
+  
+- MOT Results
 
 
 
