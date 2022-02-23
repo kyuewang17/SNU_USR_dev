@@ -37,6 +37,8 @@
 - Development System Information
     - Developed on **Ubuntu 16.04**
     - GPU: **_GeForce GTX 1070_** ( also tested on **_GTX 1080Ti_** )
+    - Note that " _master-final_ " branch is the main branch!
+
 
 - Dependencies ( use **Anaconda Environment** )
     - python 2.7
@@ -59,22 +61,7 @@
     - numpy, numba, scipy, FilterPy, sklearn, yacs
     - sip 4.18 ( for PyKDL support, version number is important! )
     - motmetrics ( *pip*, for MOT Performance Evaluation )
-    
-   
-- Build Detection Module (tentative, for current detector model: **yolo v4** [[Paper](https://arxiv.org/abs/2004.10934)]
-    - Setting Requirements
-        - CMake >= 3.12: https://cmake.org/download/ ( cf. https://snowdeer.github.io/linux/2018/04/10/upgrade-cmake/ (korean) )
-        - CUDA 10
-        - OpenCV >= 2.4
-        - cudnn >= 7.0 for CUDA 10.0
-        - requirement detail : https://github.com/AlexeyAB/darknet
-    - Download yolov4.weights file
-        - https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT
-        - path : src/snu_module/models/detector/YOLOv4/day/
-    - Build Steps
-        1. Run [build.sh](/src/snu_module/scripts4/detection_lib/darknet/build.sh) \
-        `>> name@name:~/src/snu_module/scripts4/detection_lib/darknet$ ./build.sh`
-        
+
 
 - How to use ROS-embedded current algorithm?
     1. Install [ROS-kinetic](http://wiki.ros.org/kinetic/Installation) and set basic things
@@ -89,7 +76,7 @@
             - `>> sudo apt install python-rosdep`\
               `>> sudo rosdep init`\
               `>> rosdep update`
-              
+            
     2. Custom ROS Messages and How to Build the Messages
         - [osr_msgs](/src/osr/osr_msgs)
           > ROS message types for publishing inferenced data through roscore.
@@ -119,7 +106,7 @@
             > Defines message object of multiple trajectories.
         
         - How to build **osr_msgs**
-            1. At the master directory, (_**i.e.**_ /path/to/SNU\_USR\_dev) run the following:\
+            1. At the master directory, ( _**i.e.**_ /path/to/SNU\_USR\_dev ) run the following:\
             `>> catkin_make`
             2. If successful, then additionally import the following path to the python interpreter:\
             **/devel/lib/python2.7/dist-packages**
@@ -127,36 +114,56 @@
             `>> source /path/to/SNU_USR_dev/devel/setup.bash`
               
     3. Run SNU USR Integrated Algorithm\
-         (The main execution file is  [**_run_snu_module.py_**](src/snu_module/scripts4/run_snu_module.py))
-         1. `>> roscore`
-         2. Publish _rostopics_ to the ROS Core
-            - [1] Unpack **_\*.bag_** file
-                1. Use "_rosbag_" command (CUI-based) \[[options](http://wiki.ros.org/rosbag/Commandline)\]
-                    - `>> rosbag play <file_name>.bag`
-                2. Use "_rqt_bag_" command (GUI-based)
-                    - `>> rqt_bag <file_name>.bag`
-                3. Use "_rqt\_image\_view_" command (for image-like rostopics only)
-                    - `>> rqt_image_view <file_name>.bag`
-                4. Use "_rviz_" command
-                    - TBA
-            - [2] Publish all the "_rostopics-of-interest_"\
-            (_i.e._) "**/osr/image_color**", "**/osr/lidar_pointcloud**", ...
-            - [3] Play the bag file
+        ( for example, say `<example>.py` is the execution code. )     
+         1. On terminal, run\
+            `>> roscore`
+         2. Publish _rostopics_ to the roscore\
+            - The messages should at least include the following topics,\
+                  to successfully execute SNU Integrated Module.\
+                  `/osr/image_color`\
+                  `/osr/image_color_camerainfo`\
+                  `/osr/image_thermal`\
+                  `/osr/image_thermal_camerainfo`\
+                  `/osr/lidar_pointcloud`
+              - For thorough information, explore configuration files in [[Link](/src/snu_module/scripts4/configs)]
+            - There are several ways to publish ROS messages to the roscore.\
+              Here, we introduce the following ways.
+            
+            > (1) Using ROS Bag File
+              - [1] Unpack **_\*.bag_** file
+                   1. Use "_rosbag_" command (CUI-based) \[[options](http://wiki.ros.org/rosbag/Commandline)\]
+                       - `>> rosbag play <file_name>.bag`
+                   2. Use "_rqt_bag_" command (GUI-based)
+                       - `>> rqt_bag <file_name>.bag`
+                   3. Use "_rqt\_image\_view_" command (for image-like rostopics only)
+                       - `>> rqt_image_view <file_name>.bag`
+              - [2] Publish all the "_rostopics-of-interest_"\
+               (_i.e._) "**/osr/image_color**", "**/osr/lidar_pointcloud**", ...
+              - [3] Play the bag file
+              - [4] Execute integrated module
+           
+            > (2) By Subscribing Messages via ROS
+              - [1] From another implemented ROS source, publish appropriate messages.
+              - [2] Execute integrated module
+
          3. Run the execution file
             - For command-line,\
-            `>> rosrun snu_module path/to/scripts4/run_snu_module.py`
+            `>> rosrun snu_module path/to/scripts4/<example>.py`
             - For PyCharm IDE
                 - _run as same as ordinary pycharm projects_\
                 (debugging is also possible)
+            - [ Note ]
+              - For " _rosbag_ " mode, execute [ [ros__run_snu_module.py](/src/snu_module/scripts4/ros__run_snu_module.py) ]
+              - For non - "_rosbag_ " mode, execute [ [run_osr_snu_module.py](/src/snu_module/scripts4/run_osr_snu_module.py) ]
 
-    4. Script Information
-        > [ros_snu_module.py](src/snu_module/scripts4/run_snu_module.py)
-        >    - the main execution code
+    5. Script Information
+          > [ros_snu_module.py](src/snu_module/scripts4/run_snu_module.py)
+          >    - the main execution code
         
-        > [options.py](src/snu_module/scripts4/options.py)
-        >    - option file for SNU USR integrated algorithm
+          > [options.py](src/snu_module/scripts4/options.py)
+          >    - option file for SNU USR integrated algorithm
 
-        - TBA
+          - TBA
 
 ---
 #### Code Know-hows and Trouble-shootings
