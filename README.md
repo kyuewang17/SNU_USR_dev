@@ -6,7 +6,7 @@
 
     - Development of multimodal sensor-based intelligent systems for outdoor surveillance robots
     
-    - Project Total Period : 2017-04-01 ~ 2021-12-31
+    - Project Total Period : **_2017.04.01.&nbsp;~&nbsp;2021.12.31._**
     
     - Institutions
         - LG Electronics
@@ -18,10 +18,10 @@
 #### Seoul National University (SNU) Researchers
 - **Perception and Intelligence Laboratory (PIL)**
     - Professor
-        - [Jin Young Choi](http://pil.snu.ac.kr/about/view.do?idx=1)
+        - [Jin Young Choi](https://pil.snu.ac.kr/member/professor)
     - Ph.D. Candidate
-        - [Kyuewang Lee](http://pil.snu.ac.kr/member/view.do?idx=15)
-        - [Daeho Um](http://pil.snu.ac.kr/member/view.do?idx=66)
+        - [Kyuewang Lee](https://pil.snu.ac.kr/member/ph-d-candidate)
+        - [Daeho Um](https://pil.snu.ac.kr/member/ph-d-candidate)
         
 - **Machine Intelligence and Pattern Recognition Laboratory (MIPAL)**
     - Professor
@@ -36,36 +36,33 @@
 #### Code Instructions
 - Development System Information
     - Developed on **Ubuntu 16.04**
-    - GPU: **_GeForce GTX 1070_** (also tested on **_GTX 1080Ti_**)
+    - GPU: **_GeForce GTX 1070_** ( also tested on **_GTX 1080Ti_** )
 
-- Dependencies (use **Anaconda Environment**)
+- Dependencies ( use **Anaconda Environment** )
     - python 2.7
     - PyTorch 1.1.0
         - torchvision 0.3.0
     - CUDA 10.0
         - cuDNN 7.5.0
-    - ROS-kinetic (**Install on Ubuntu Main System**)
+    - ROS-kinetic ( **Install on Ubuntu Main System** )
         - need "rospkg" module, install via *pip*\
         (**rospkg module is needed in the Anaconda Environment**, don't install it via pip on the system)
-        - For **LiDAR** support, do install additional module "_ros\_numpy_" as follows:\
-        `>> sudo apt install ros-kinetic-ros-numpy`\
-        (**Currently, NOT USING!!**)
         - for "pycharm" IDE, refer to [**THIS**](https://stackoverflow.com/questions/24197970/pycharm-import-external-library/24206781#24206781)
             - import-(1): **/opt/ros/\<distro\>/lib/python2.7/dist-packages**\
               also refer to [THIS](https://developpaper.com/ros-python-libraries-such-as-import-rospy-are-not-available-in-sublime-text-3-and-pycharm/)
             - import-(2): **/devel/lib/python2.7/dist-packages**\
               **\[Note\]** : "**catkin\_make**" is necessary\
               (check-out for step-02 in "_How to use ROS-embedded current algorithm?_" to build Custom ROS Messages)
-    - opencv-python (install via *pip*)
-    - empy (*pip*)
+    - opencv-python ( install via *pip* )
+    - empy ( *pip* )
     - yaml
     - numpy, numba, scipy, FilterPy, sklearn, yacs
-    - sip 4.18 (for PyKDL support, version number is important!)
-    - motmetrics (*pip*, for MOT Performance Evaluation)
+    - sip 4.18 ( for PyKDL support, version number is important! )
+    - motmetrics ( *pip*, for MOT Performance Evaluation )
     
    
-- Build Detection Module (tentative, for current detector model: **yolo v4** \[[Paper](https://arxiv.org/abs/2004.10934)\])
-    - Setting Requirements (_as far as we know_...)
+- Build Detection Module (tentative, for current detector model: **yolo v4** [[Paper](https://arxiv.org/abs/2004.10934)]
+    - Setting Requirements
         - CMake >= 3.12: https://cmake.org/download/ ( cf. https://snowdeer.github.io/linux/2018/04/10/upgrade-cmake/ (korean) )
         - CUDA 10
         - OpenCV >= 2.4
@@ -93,11 +90,33 @@
               `>> sudo rosdep init`\
               `>> rosdep update`
               
-    2. Build Custom ROS Messages
+    2. Custom ROS Messages and How to Build the Messages
         - [osr_msgs](/src/osr/osr_msgs)
-            1. [BoundingBox.msg](/src/osr/osr_msgs/msg/BoundingBox.msg)
-            2. [Track.msg](/src/osr/osr_msgs/msg/Track.msg)
-            3. [Tracks.msg](/src/osr/osr_msgs/msg/Tracks.msg)
+          > ROS message types for publishing inferenced data through roscore.
+        
+          - [Annotation.msg](/src/osr/osr_msgs/msg/Annotation.msg)
+            > Defines annotation of single distinguishable object.
+          
+          - [Annotations.msg](/src/osr/osr_msgs/msg/Annotations.msg)
+            > Defines multiple annotation objects.
+
+          - [BoundingBox.msg](/src/osr/osr_msgs/msg/BoundingBox.msg)
+            > Defines bounding box object of format: XYWH
+            
+          - [Evaluator.msg](/src/osr/osr_msgs/msg/Evaluator.msg)
+            > Defines message object for MOT evaluation. (single frame)\
+            This message stores "Annotations" and "Tracks", for evaluation.\
+            Note that this message is declared in a single frame index time.\
+            For using this across frame indices, use "Evaluators" message.
+        
+          - [Evaluators.msg](/src/osr/osr_msgs/msg/Evaluators.msg)
+            > Defines message object for MOT evaluation. (multiple frame)
+            
+          - [Track.msg](/src/osr/osr_msgs/msg/Track.msg)
+            > Defines message object of single trajectory, with specific ID.
+            
+          - [Tracks.msg](/src/osr/osr_msgs/msg/Tracks.msg)
+            > Defines message object of multiple trajectories.
         
         - How to build **osr_msgs**
             1. At the master directory, (_**i.e.**_ /path/to/SNU\_USR\_dev) run the following:\
@@ -130,7 +149,7 @@
                 - _run as same as ordinary pycharm projects_\
                 (debugging is also possible)
 
-    3. Script Information
+    4. Script Information
         > [ros_snu_module.py](src/snu_module/scripts4/run_snu_module.py)
         >    - the main execution code
         
