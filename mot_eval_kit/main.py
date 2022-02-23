@@ -9,13 +9,69 @@ MOT Evaluation Kit
 
 """
 import cv2
+import argparse
 import os
+import random
 import copy
 import numpy as np
 import logging
 import motmetrics
 import rosbag
 from cv_bridge import CvBridge
+import matplotlib
+import matplotlib.pyplot as plt
+
+
+class COLORMAP(object):
+    def __init__(self):
+        # Referred to https://sashamaps.net/docs/resources/20-colors/
+
+        # List of Color Maps
+        self.colormaps = [
+            # Maroon
+            (128, 0, 0),
+            # Red
+            (230, 25, 75),
+            # Pink
+            (250, 190, 212),
+            # Brown
+            (170, 110, 40),
+            # Orange
+            (245, 130, 48),
+            # Yellow
+            (255, 225, 25),
+            # Teal
+            (0, 128, 128),
+            # Cyan
+            (70, 240, 240),
+            # Navy
+            (0, 0, 128),
+            # Blue
+            (0, 130, 200),
+            # Lavender
+            (220, 190, 255),
+            # Magenta
+            (240, 50, 230),
+            # Purple
+            (145, 30, 180)
+        ]
+
+    def __call__(self, idx, **kwargs):
+        # Check for OpenCV Mode
+        is_opencv = kwargs.get("is_opencv", False)
+        assert isinstance(is_opencv, bool)
+
+        # Check for Random Index Mode
+        is_random_idx = kwargs.get("is_rand_idx", False)
+        assert isinstance(is_random_idx, bool)
+
+        # Get Colormap
+        colormap = self.colormaps[(idx % len(self.colormaps))]
+
+        if is_opencv is True:
+            colormap = (colormap[2], colormap[1], colormap[0])
+
+        return colormap
 
 
 class ANNOTATION(object):
@@ -113,12 +169,11 @@ class TRAJECTORY(object):
         self.lt_x, self.lt_y = cx - w / 2.0, cy - h / 2.0
         self.width, self.height = w, h
 
+        # Initialize Unique Color for Visualization
+        self.id_color = None
+
         # Iteration Counter
         self.__iter_counter = 0
-
-        # DEBUG
-        if self.cls == 1 and self.lt_x == 4294967229:
-            print(123)
 
     def __len__(self):
         return 4
@@ -221,6 +276,16 @@ class EVALUATOR(object):
         self.trajectories = new_tracks
         self.logger.info("Trajectories Successfully Converted...!")
 
+    def get_max_trk_id(self):
+        max_id = None
+        for trk in self.trajectories:
+            if max_id is None:
+                max_id = trk.id
+            else:
+                if max_id < trk.id:
+                    max_id = trk.id
+        return max_id
+
     def check_bbox_sanity_and_destroy_invalid(self):
         new_annos = []
         for anno in self.annotations:
@@ -261,6 +326,7 @@ class EVALUATOR(object):
         # Get KWARGS Options
         is_anno_draw = kwargs.get("draw_anno", True)
         is_trk_draw = kwargs.get("draw_trk", True)
+        txt_font = kwargs.get("txt_font", cv2.FONT_HERSHEY_COMPLEX_SMALL)
 
         # Copy Visualization Frame and Adjust Dims and Types
         vis_frame = copy.deepcopy(self.frame)
@@ -283,11 +349,45 @@ class EVALUATOR(object):
         # Draw Trajectory BBOX
         if is_trk_draw is True:
             for trk in self.trajectories:
+                # Get Trajectory Color
+                trk_color = trk.id_color if trk.id_color is not None else (255, 0, 0)
+
+                # Draw Trajectory BBOX
                 cv2.rectangle(
                     vis_frame,
                     (int(np.floor(trk.lt_x)), int(np.floor(trk.lt_y))),
                     (int(np.floor(trk.lt_x + trk.width)), int(np.floor(trk.lt_y + trk.height))),
-                    (0, 0, 255), 2
+                    trk_color, 2
+                )
+
+                # Center Coordinates
+                cx, cy = (trk.lt_x + trk.width / 2.0), (trk.lt_y + trk.height / 2.0)
+
+                # Put Trajectory ID Text
+                fontScale = 1
+                thickness = 2
+
+                trk_id_str = "{}".format(trk.id)
+                (tx, ty) = \
+                    cv2.getTextSize(trk_id_str, txt_font, fontScale=fontScale, thickness=thickness)[0]
+                txt_C = [cx, cy - trk.height / 2.0]
+                txt_LT = [txt_C[0] - tx / 2.0, txt_C[1] - ty / 2.0]
+                txt_RB = [txt_C[0] + tx / 2.0, txt_C[1] + ty / 2.0]
+
+                pad_x, pad_y = 1, 2
+                txtbox_LT = [txt_LT[0] - pad_x, txt_LT[1] - pad_y]
+                txtbox_RB = [txt_RB[0] + pad_x, txt_RB[1] + pad_y]
+                cv2.rectangle(
+                    vis_frame,
+                    (int(txtbox_LT[0]), int(txtbox_LT[1])), (int(txtbox_RB[0]), int(txtbox_RB[1])),
+                    (255, 255, 255), -1
+                )
+                cv2.putText(
+                    vis_frame,
+                    trk_id_str, (int(txt_LT[0]), int(txt_RB[1])), txt_font,
+                    color=trk_color,
+                    fontScale=fontScale, thickness=thickness,
+                    bottomLeftOrigin=False
                 )
 
         # Set Visualization Frame
@@ -342,7 +442,12 @@ class EVALUATOR(object):
 
         # Update Accumulator
         if len(anno_bboxes) > 0:
-            acc.update(anno_ids, trk_ids, dist_matrix)
+            try:
+                acc.update(anno_ids, trk_ids, dist_matrix)
+            except:
+                print(anno_ids)
+                print(trk_ids)
+                print(dist_matrix)
 
         # Mark Evaluated Flag as 'True'
         self.is_evaluated = True
@@ -436,6 +541,31 @@ class MOT_EVAL_OBJECT(object):
 
         # Traverse through trajectories in evaluators, size-down id
         self.__correct_tracks_id()
+
+        # Traverse for All Trajectories, get Maximum ID and give ID Color for the ID's proportion
+        max_trk_id = None
+        for eval in self:
+            # Get Max Trk ID
+            curr_max_trk_id = eval.get_max_trk_id()
+
+            if max_trk_id is None:
+                max_trk_id = curr_max_trk_id
+            else:
+                if max_trk_id < curr_max_trk_id:
+                    max_trk_id = curr_max_trk_id
+
+        cmap = COLORMAP()
+        rsi = list(range(max_trk_id+1))
+        random.shuffle(rsi)
+        for eval_idx, eval in enumerate(self):
+            for trk_idx, trk in enumerate(eval.trajectories):
+                # colormap = list(cmap(rsi[trk.id]))
+                colormap = list(cmap(trk.id, is_opencv=True))
+                colormap[0] = int(np.floor(colormap[0]))
+                colormap[1] = min(int(np.floor(colormap[1])), 10)
+                colormap[2] = int(np.floor(colormap[2]))
+                colormap = tuple(colormap)
+                self.evaluators[eval_idx].trajectories[trk_idx].id_color = colormap
 
     def __len__(self):
         return len(self.evaluators)
@@ -770,6 +900,7 @@ class MOT_EVAL_OBJECTS(object):
     def draw_and_show(self, **kwargs):
         # Get KWARGS Options
         is_anno_draw, is_trk_draw = kwargs.get("draw_anno", True), kwargs.get("draw_trk", True)
+        is_show = kwargs.get("is_show", False)
         show_delay = kwargs.get("show_delay", 1)
         draw_target_frame = "vis_frame"
 
@@ -778,8 +909,9 @@ class MOT_EVAL_OBJECTS(object):
             self.eval_objects[eval_obj_idx].draw(draw_anno=is_anno_draw, draw_trk=is_trk_draw)
 
         # Iterate for Evaluator Objects and Show (visualize via OpenCV)
-        for eval_obj in self:
-            eval_obj.show(draw_target_frame=draw_target_frame, show_delay=show_delay)
+        if is_show is True:
+            for eval_obj in self:
+                eval_obj.show(draw_target_frame=draw_target_frame, show_delay=show_delay)
 
     def save(self, **kwargs):
         # Get Duplicate Options
@@ -789,7 +921,7 @@ class MOT_EVAL_OBJECTS(object):
         for eval_obj in self:
             eval_obj.save_vis_frame(is_override=is_override)
 
-    def evaluate(self, metrics, motchallenge_format=True):
+    def evaluate(self, metrics, save_path, motchallenge_format=True):
         # Evaluate individual Evaluator
         acc_list, bag_names = [], []
         for eval_obj in self:
@@ -812,6 +944,10 @@ class MOT_EVAL_OBJECTS(object):
         )
         print(strsummary)
 
+        f = open(os.path.join(save_path, "mot_results.txt"), "w")
+        f.write(strsummary.encode("utf8"))
+        f.close()
+
 
 def set_logger(logging_level=logging.INFO):
     # Define Logger
@@ -830,14 +966,36 @@ def set_logger(logging_level=logging.INFO):
     return logger
 
 
+def argument_parser():
+    # Define Argument Parser
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="Python Script for MOT Evaluation"
+    )
+    parser.add_argument(
+        "--base-path", "-P",
+        help="Base Path"
+    )
+
+    # Parse Arguments
+    args = parser.parse_args()
+
+    return args
+
+
 if __name__ == "__main__":
+    # Argument Parser
+    args = argument_parser()
+
     # Evaluation Bag Base Path
-    __EVAL_BAG_FILE_BASEPATH__ = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2021/eval_target_bags/"
+    # __EVAL_BAG_FILE_BASEPATH__ = "/media/kyle/DATA003/mmosr_RAL_db/iitp_2020_mot_results/1-10d/01"
+    # __EVAL_BAG_FILE_BASEPATH__ = "/media/kyle/DATA003/mmosr_RAL_db/MMOSDX_DB_RESULTS/iitp_2021_mot_results/01"
+    __EVAL_BAG_FILE_BASEPATH__ = args.base_path
     assert os.path.isdir(__EVAL_BAG_FILE_BASEPATH__)
 
     # Search for All bag files, sort ( search for *.bag files )
     eval_bag_files = os.listdir(__EVAL_BAG_FILE_BASEPATH__)
-    eval_bag_filenames = [fn for fn in eval_bag_files if fn.endswith("bag")]
+    eval_bag_filenames = sorted([fn for fn in eval_bag_files if fn.endswith("bag")])
     eval_bag_filepaths = [
         os.path.join(__EVAL_BAG_FILE_BASEPATH__, f) for f in eval_bag_filenames
     ]
@@ -855,8 +1013,8 @@ if __name__ == "__main__":
 
     # Set Target Topic Names and Encoding
     eval_topicname = "/osr/eval"
-    frame_topicname = "/osr/image_thermal"
-    frame_cvt_encoding = "16UC1"
+    frame_topicname = "/osr/image_color"
+    frame_cvt_encoding = "8UC3"
 
     # Set Evaluation Metrics
     # metrics = ["num_frames", "mota", "motp", "idf1", "recall", "precision"]
@@ -880,12 +1038,12 @@ if __name__ == "__main__":
     )
 
     # Evaluate
-    eval_objs.evaluate(metrics=metrics, motchallenge_format=True)
+    eval_objs.evaluate(metrics=metrics, save_path=__EVAL_BAG_FILE_BASEPATH__, motchallenge_format=True)
 
     # Draw and Show
     eval_objs.draw_and_show(
-        draw_anno=True, draw_trk=True, draw_target_frame="vis_frame", show_delay=50
+        draw_anno=True, draw_trk=True, is_show=False, draw_target_frame="vis_frame", show_delay=50
     )
 
-    # # Save
-    # eval_objs.save()
+    # Save
+    eval_objs.save()

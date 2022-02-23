@@ -79,6 +79,12 @@ def argument_parser(logger, script_name, dev_version=None, mode_selection=None):
             help="Integrated Algorithm Development Version"
         )
 
+    # Day/Night Flag
+    parser.add_argument(
+        "--day-night", "-D", type=str, default="day",
+        choices=["day", "night"], help="Day or Night"
+    )
+
     # Add Sub-Parser
     subparser = parser.add_subparsers(help="Sub-Parser Commands")
 

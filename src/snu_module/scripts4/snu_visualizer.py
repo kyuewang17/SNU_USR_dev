@@ -212,18 +212,18 @@ class vis_trk_acl_obj(vis_obj):
                     pad_pixels = self.vopts.pad_pixels
                     info_interval = self.vopts.info_interval
 
-                    # # Visualize Trajectory ID
-                    # trk_id_str = "id:" + str(trk.id) + ""
-                    # (tw, th) = cv2.getTextSize(trk_id_str, font, fontScale=font_size, thickness=2)[0]
-                    # text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
-                    # text_y = int(state_bbox[1] + th)
-                    # box_coords = ((int(text_x - pad_pixels / 2.0), int(text_y - th - pad_pixels / 2.0)),
-                    #               (int(text_x + tw + pad_pixels / 2.0), int(text_y + pad_pixels / 2.0)))
-                    # cv2.rectangle(modal_vis_frame, box_coords[0], box_coords[1], (trk.color[0], trk.color[1], trk.color[2]), cv2.FILLED)
-                    # cv2.putText(
-                    #     modal_vis_frame, trk_id_str, (text_x, text_y), font, font_size,
-                    #     (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
-                    # )
+                    # Visualize Trajectory ID
+                    trk_id_str = "id:" + str(trk.id) + ""
+                    (tw, th) = cv2.getTextSize(trk_id_str, font, fontScale=font_size, thickness=2)[0]
+                    text_x = int((state_bbox[0] + state_bbox[2]) / 2.0 - tw / 2.0)
+                    text_y = int(state_bbox[1] + th)
+                    box_coords = ((int(text_x - pad_pixels / 2.0), int(text_y - th - pad_pixels / 2.0)),
+                                  (int(text_x + tw + pad_pixels / 2.0), int(text_y + pad_pixels / 2.0)))
+                    cv2.rectangle(modal_vis_frame, box_coords[0], box_coords[1], (trk.color[0], trk.color[1], trk.color[2]), cv2.FILLED)
+                    cv2.putText(
+                        modal_vis_frame, trk_id_str, (text_x, text_y), font, font_size,
+                        (255 - trk.color[0], 255 - trk.color[1], 255 - trk.color[2]), thickness=2
+                    )
 
                     # Visualize Trajectory Depth
                     if trk.depth is not None:

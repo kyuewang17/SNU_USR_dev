@@ -7,6 +7,7 @@ import os
 import logging
 import argparse
 import ros_numpy
+import ros_numpy
 import numpy as np
 from pandas import read_csv
 import xmltodict
@@ -35,11 +36,11 @@ def argument_parser():
         help="Base Path"
     )
     parser.add_argument(
-        "--start-fidx", "-S", default=500,
+        "--start-fidx", "-S", default=2000, type=int,
         help="Starting Frame Index"
     )
     parser.add_argument(
-        "--end-fidx", "-E", default=2500,
+        "--end-fidx", "-E", default=4500, type=int,
         help="Ending Frame Index"
     )
     parser.add_argument(
@@ -93,6 +94,14 @@ def load_multimodal_data(base_path, logger, frame_interval):
         min_fidx, max_fidx = frame_interval[0], frame_interval[1]
 
     # For XML Files,
+    # seq_foldername = base_path.split("/")[-1]
+    # if seq_foldername in ["1-01d", "1-02d", "1-06d", "1-07d"]:
+    #     _time = "rgb"
+    # else:
+    #     _time = "thermal"
+    #
+    # xml_base_path = os.path.join(base_path, "xml", seq_foldername)
+    # assert os.path.isdir(xml_base_path)
     xml_base_path = os.path.join(base_path, "xml")
     xml_file_list = sorted(os.listdir(xml_base_path))
 
@@ -171,7 +180,10 @@ def load_multimodal_data(base_path, logger, frame_interval):
         curr_modal_base_path = os.path.join(base_path, modal)
 
         # Filter Annotation Indices w.r.t. modality
-        anno_list_modal_indices = [i for i, m in enumerate(anno_modal_list) if m == modal]
+        if modal != "RGB":
+            anno_list_modal_indices = [i for i, m in enumerate(anno_modal_list) if m == modal]
+        else:
+            anno_list_modal_indices = [i for i, m in enumerate(anno_modal_list) if "color" in m]
 
         # Get Modal File Lists
         modal_obj_list = []
@@ -291,6 +303,12 @@ def generate_multimodal_bag_file(MMT_OBJ, logger, base_path, override_mode):
     # Iterate for Multimodal Sensors
     try:
         for fidx in range(len(MMT_OBJ)):
+            # Logger
+            iter_logger_msg = "Get Multi-modal Objects ({}/{})".format(
+                fidx+1, len(MMT_OBJ)
+            )
+            logger.info(iter_logger_msg)
+
             mmt_data_dict, mmt_timestamp_dict, mmt_annos_dict = MMT_OBJ.get_data(fidx)
             mmt_camera_info_dict = MMT_OBJ.get_camera_info(fidx)
             bridge = CvBridge()
@@ -429,7 +447,10 @@ if __name__ == "__main__":
     # Argparser
     args = argument_parser()
     # args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2020/Detection/ICCAS2021/1-01d"
-    args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2021/1-05d-iitp21"
+    # args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/2021/1-05d-iitp21"
+    # args.base_path = "/mnt/wwn-0x50014ee212217ddb-part1/Unmanned Surveillance/rosbag/iitp21_final/day_night/1-07d/imseqs"
+    # args.base_path = "/media/kyle/DATA003/mmosr_RAL_db/2020_retagged/1-10d"
+    args.base_path = "/media/kyle/DATA003/mmosr_RAL_db/2021/MV01"
 
     # Set Logger
     logger = set_logger()

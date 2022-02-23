@@ -300,7 +300,7 @@ class Trajectory(object_instance):
     def get_2d_img_coord_state(self):
         return snu_bbox.zx3_to_zx2(self.x3)
 
-    def get_depth(self, sync_data_dict, opts):
+    def get_depth(self, sync_data_dict, opts, force_depth_value=None):
         # Parse and Check KWARGS Variable
         assert opts.__class__.__name__ == "snu_option_class"
 
@@ -316,7 +316,10 @@ class Trajectory(object_instance):
 
         # If LiDAR is unavailable, set depth value as 1.0
         if sync_data_dict["lidar"] is None:
-            self.depth.append(1.0)
+            if force_depth_value is not None:
+                self.depth.append(1.0)
+            else:
+                self.depth.append(0.0)
         else:
             # Project XYZ to uv-coordinate
             uv_array, pc_distances, _ = sync_data_dict["lidar"].project_xyz_to_uv_inside_bbox(
