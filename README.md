@@ -156,22 +156,33 @@
               - For " _rosbag_ " mode, execute [ [ros__run_snu_module.py](/src/snu_module/scripts4/ros__run_snu_module.py) ]
               - For non - "_rosbag_ " mode, execute [ [run_osr_snu_module.py](/src/snu_module/scripts4/run_osr_snu_module.py) ]
 
-    5. Script Information
-          > [ros_snu_module.py](src/snu_module/scripts4/run_snu_module.py)
-          >    - the main execution code
-        
-          > [options.py](src/snu_module/scripts4/options.py)
-          >    - option file for SNU USR integrated algorithm
-
-          - TBA
+    4. Other Important Source Codes or Parts
+       - [ module libraries ](/src/snu_module/scripts4/module_lib)
+         - Currently, v4.5 is the latest version and public version only.
+         - We do have previous versions, but currently have no intentions to make them public. ( however, they might be found manually from the git histories )
+       - [ module_bridge.py ](/src/snu_module/scripts4/module_bridge.py)
+         - Next important source code script to the execution file.
+         - Defines class that incorporates each individual module.
+       - [ models ](/src/snu_module/models)
+         - All models are included ( do not need to download from external drives )
+       - [ LiDAR-to-Camera Registration ](/src/snu_module/scripts4/registration)
+         - Parameters for Unmanned Robots are given [[Here](/src/snu_module/scripts4/registration/params)]
+         - Class to Simulate ROS TF2 message are given in the same [registration folder](/src/snu_module/scripts4/registration)
+       - [ Visualization Code ](/src/snu_module/scripts4/snu_visualizer.py)
+         - Defines Visualization Codes
+       - [ ROS Base Codes ](/src/snu_module/scripts4/utils/ros)
+         - [base.py](/src/snu_module/scripts4/utils/ros/base.py)
+           - Provides Multimodal Sensor Subscription Functional
+         - [wrapper.py](/src/snu_module/scripts4/utils/ros/wrapper.py)
+           - Provides Publishers
+         - [sync_subscriber.py](/src/snu_module/scripts4/utils/sync_subscriber.py)
+           - Provides Synchronization functional for multimodal sensor subscription
+       - See through codes for detailed implementations.
 
 ---
 #### Code Know-hows and Trouble-shootings
 1. rospkg.common.Resourcenotfound (**tf2_ros**) \[on **PyCharm** IDE\]
     - Run PyCharm at the terminal with Anaconda environment activated
-    
-2. TBA
-
 
 
 
